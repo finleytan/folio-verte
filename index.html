@@ -200,7 +200,7 @@ body{font-family:var(--font-ui);background:var(--bg);color:var(--text);height:10
 .toc-num{font-size:10px;color:var(--text3);margin-right:6px;font-variant-numeric:tabular-nums;}
 .toc-empty{padding:20px 16px;font-size:13px;color:var(--text3);font-style:italic;}
 .ebook-area{flex:1;overflow:hidden;display:flex;flex-direction:column;}
-.ebook-scroll{flex:1;overflow-y:auto;padding:32px 20px 40px;scroll-behavior:smooth;}
+.ebook-scroll{flex:1;overflow-y:auto;padding:32px 20px 40px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
 .ebook-content{max-width:var(--max-width);margin:0 auto;font-family:var(--font-body);font-size:var(--font-size);line-height:var(--line-height);color:var(--text2);}
 .ebook-h{font-family:var(--font-body);font-weight:600;color:var(--text);line-height:1.3;}
 .ebook-h1{font-size:1.45em;margin:2em 0 .6em;}
@@ -282,7 +282,65 @@ body{font-family:var(--font-ui);background:var(--bg);color:var(--text);height:10
   .seek-strip .vdiv,.seek-strip .rate-sel,.seek-strip .vol-wrap{display:flex;}
 }
 @media(max-width:639px){
-  .seek-strip .vdiv,.seek-strip .rate-sel,.seek-strip .vol-wrap{display:none;}
+  /* Hide desktop-only seek strip controls */
+  .seek-strip .vol-wrap{display:none;}
+
+  /* Top bar — tighter, show fewer buttons */
+  .top-bar{height:52px;padding:0 10px;gap:6px;}
+  .bk-title{font-size:13px;}
+  .bk-prog{font-size:10px;}
+  .ic-btn{width:38px;height:38px;font-size:14px;}
+  .play-btn{width:44px;height:44px;font-size:16px;}
+
+  /* Seek strip — full width, bigger thumb */
+  .seek-strip{padding:6px 12px 8px;gap:6px;}
+  .seek-time{font-size:11px;min-width:30px;}
+  .seek-strip-bar::-webkit-slider-thumb{width:20px;height:20px;}
+
+  /* Rate presets on mobile — show all but smaller */
+  .rate-presets{gap:2px;}
+  .rate-preset-btn{padding:3px 6px;font-size:10px;min-height:28px;}
+  .rate-custom-input{width:40px;font-size:10px;padding:3px 4px;min-height:28px;}
+
+  /* Bottom bar — bigger play controls, cleaner layout */
+  .bottom-bar{padding-bottom:env(safe-area-inset-bottom,0px);}
+  .bb-row{padding:6px 10px;gap:6px;}
+  .m-btn{height:40px;padding:0 10px;font-size:12px;}
+  .nudge-btn{height:40px;padding:0 8px;font-size:12px;}
+
+  /* Mobile play controls row — center and enlarge */
+  .bb-row.bb-play-row{justify-content:center;padding:10px 12px 8px;gap:8px;}
+  .m-btn.m-play-main{height:56px;padding:0 28px;font-size:16px;font-weight:700;border-radius:28px;background:var(--accent);border-color:var(--accent);color:white;flex-shrink:0;}
+  .m-btn.m-play-main:hover{filter:brightness(1.1);}
+  .m-btn.m-side{height:44px;padding:0 14px;font-size:13px;}
+
+  /* Jump row — horizontal scroll */
+  .bb-row.bb-jump-row{padding:4px 10px 6px;gap:4px;}
+  .nudge-btn.nudge-mobile{height:36px;padding:0 10px;font-size:11px;border-radius:6px;}
+
+  /* Options panel full screen on mobile */
+  .opt-panel{position:fixed;bottom:0;left:0;right:0;top:auto;border-radius:20px 20px 0 0;max-height:75vh;padding:16px 16px 24px;box-shadow:0 -8px 40px rgba(0,0,0,.4);}
+  .opt-panel::before{content:'';display:block;width:40px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 16px;flex-shrink:0;}
+
+  /* Library grid — 2 col on mobile */
+  .lib-grid{grid-template-columns:repeat(2,1fr);gap:12px;padding:0 12px;}
+  .lib-header{margin-bottom:28px;padding-top:32px;}
+  .lib-logo{font-size:32px;}
+
+  /* Ebook reading area */
+  .ebook-scroll{padding:20px 14px 80px;}
+
+  /* TOC sidebar overlay */
+  .toc-sidebar{width:80vw !important;}
+
+  /* Modal full screen */
+  .modal{max-height:92vh;border-radius:20px 20px 0 0;}
+  .modal-overlay{align-items:flex-end;}
+}
+
+/* Safe area for notched phones */
+@supports(padding-bottom:env(safe-area-inset-bottom)){
+  .bottom-bar{padding-bottom:calc(4px + env(safe-area-inset-bottom));}
 }
 
 audio{display:none;}
@@ -299,7 +357,7 @@ audio{display:none;}
 .rate-preset-btn.active{background:var(--accent);border-color:var(--accent);color:white;}
 .rate-custom-input{width:52px;padding:4px 6px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:var(--font-ui);font-size:11px;font-weight:600;text-align:center;outline:none;min-height:30px;}
 .rate-custom-input:focus{border-color:var(--accent);}
-@media(max-width:600px){.rate-presets .rate-preset-btn:nth-child(n+3){display:none;}}
+/* rate presets: show all on mobile via mobile media query above */
 
 /* ── OPTIONS TABS ── */
 .op-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:2px;flex-shrink:0;}
@@ -569,27 +627,27 @@ audio{display:none;}
   </div>
 
   <div class="bottom-bar">
-    <div class="bb-row">
-      <button class="m-btn" id="mBtnPlay" onclick="mediaPlay()">▶ Play</button>
-      <button class="m-btn" id="mBtnPause" onclick="mediaPause()">⏸ Pause</button>
-      <button class="m-btn" id="mBtnStop" onclick="mediaStop()">⏹ Stop</button>
-      <div class="vdiv"></div>
-      <span class="bb-lbl">Jump</span>
-      <div style="display:flex;gap:4px">
-        <button class="nudge-btn" onclick="nudge(-10)">−10</button>
-        <button class="nudge-btn" onclick="nudge(-5)">−5</button>
-        <button class="nudge-btn" onclick="nudge(-1)">−1</button>
-        <button class="nudge-btn" onclick="nudge(1)">+1</button>
-        <button class="nudge-btn" onclick="nudge(5)">+5</button>
-        <button class="nudge-btn" onclick="nudge(10)">+10</button>
-      </div>
-      <div class="vdiv"></div>
-      <div class="as-wrap">
-        <span class="as-lbl">Auto-scroll</span>
+    <!-- Row 1: main playback controls — big on mobile -->
+    <div class="bb-row bb-play-row">
+      <button class="m-btn m-side" id="mBtnStop" onclick="mediaStop()">⏹</button>
+      <button class="m-btn m-play-main" id="mBtnPlay" onclick="mediaPlay()">▶ Play</button>
+      <button class="m-btn m-play-main" id="mBtnPause" onclick="mediaPause()" style="display:none">⏸ Pause</button>
+      <button class="m-btn m-side" id="resyncBtn" onclick="resync()" style="display:none;border-color:var(--accent);color:var(--accent)">↺</button>
+      <div class="as-wrap" style="margin-left:0">
+        <span class="as-lbl">Scroll</span>
         <button class="toggle on" id="asToggle" onclick="toggleAS()"></button>
       </div>
-      <button class="m-btn" id="resyncBtn" onclick="resync()" style="display:none;border-color:var(--accent);color:var(--accent)">↺ Resync</button>
-      <button class="m-btn" id="syncToggleBtn" onclick="toggleSyncPanel()" style="margin-left:auto;color:var(--text3);font-size:11px" title="Advanced sync">⚙ Sync</button>
+      <button class="m-btn" id="syncToggleBtn" onclick="toggleSyncPanel()" style="color:var(--text3);font-size:11px;margin-left:auto" title="Advanced sync">⚙ Sync</button>
+    </div>
+    <!-- Row 2: sentence jump controls -->
+    <div class="bb-row bb-jump-row">
+      <span class="bb-lbl">Jump</span>
+      <button class="nudge-btn nudge-mobile" onclick="nudge(-10)">−10</button>
+      <button class="nudge-btn nudge-mobile" onclick="nudge(-5)">−5</button>
+      <button class="nudge-btn nudge-mobile" onclick="nudge(-1)">−1</button>
+      <button class="nudge-btn nudge-mobile" onclick="nudge(1)">+1</button>
+      <button class="nudge-btn nudge-mobile" onclick="nudge(5)">+5</button>
+      <button class="nudge-btn nudge-mobile" onclick="nudge(10)">+10</button>
     </div>
     <div id="syncPanel">
       <div class="sync-panel" id="syncPanelInner">
@@ -1985,8 +2043,16 @@ function onSeekChange(v){
 // ══════════════════════════════════════════════════════
 function setMediaState(s){
   mediaState=s;
-  document.getElementById('mBtnPlay').classList.toggle('m-active',s==='playing');
-  document.getElementById('mBtnPause').classList.toggle('m-active',s==='paused');
+  // On mobile: swap play/pause button visually
+  const play=document.getElementById('mBtnPlay');
+  const pause=document.getElementById('mBtnPause');
+  if(s==='playing'){
+    play.style.display='none'; pause.style.display='';
+  } else {
+    play.style.display=''; pause.style.display='none';
+  }
+  play.classList.toggle('m-active',s==='playing');
+  pause.classList.toggle('m-active',s==='paused');
   document.getElementById('mBtnStop').classList.toggle('m-active',s==='stopped');
 }
 function mediaPlay(){
@@ -2866,6 +2932,30 @@ async function init(){
   }
 }
 init();
+
+// ── SWIPE GESTURES (mobile sentence navigation) ──
+(function(){
+  let tx=0,ty=0,moved=false;
+  const area=document.getElementById('eScroll');
+  if(!area) return;
+  area.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1) return;
+    tx=e.touches[0].clientX; ty=e.touches[0].clientY; moved=false;
+  },{passive:true});
+  area.addEventListener('touchmove',e=>{
+    if(e.touches.length!==1) return;
+    const dx=e.touches[0].clientX-tx, dy=e.touches[0].clientY-ty;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>12) moved=true;
+  },{passive:true});
+  area.addEventListener('touchend',e=>{
+    if(!moved) return;
+    const dx=e.changedTouches[0].clientX-tx;
+    if(Math.abs(dx)>50){
+      nudge(dx<0?1:-1); // swipe left = next sentence, right = prev
+      moved=false;
+    }
+  },{passive:true});
+})();
 
 // ── SERVICE WORKER REGISTRATION ──
 if('serviceWorker' in navigator){
