@@ -19,6 +19,10 @@ roadmap phases. Add anything here as you think of it while using the app.
       same seek strip style, same button arrangement, unified
       experience regardless of playback mode
       Added: 2026-03-11
+	  
+- [ ] Improve how the ebook is formatted currently cutting off part of the text for first word of a new chapter.
+      Added: 2026-03-11	  
+
 
 ## PWA & Platform
 - [ ] Save and restore all user settings (voices, TTS rate,

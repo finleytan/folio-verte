@@ -48,3 +48,7 @@ Current version: v1.1
 | Refresh returned to library instead of book | v1.1 |
 | Seek bar did not sync ebook when paused | v1.1 |
 | localStorage quota exceeded with large covers | v1.1 |
+
+
+
+not saving audiobook location and not showing status when in the library
