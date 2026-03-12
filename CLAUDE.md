@@ -4,9 +4,9 @@ Single-file HTML PWA (~3k lines): audiobook/ebook reader with synced highlightin
 File: index.html — <style>, static HTML (4 screens + 5 modals), <script>.
 
 ## File structure
-- CSS: lines 15–463
+- CSS: lines 15–462
 - HTML: lines 465–851
-- JS: lines 852–2996
+- JS: lines 852–3258
 
 ## Two playback modes (set by configurePlayerForMode)
 - Audio mode: <audio> drives playback, _wordTick() at rAF for word highlights

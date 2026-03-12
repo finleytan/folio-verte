@@ -867,10 +867,12 @@ let isSeeking = false;
 let sentenceTimings = [];
 let syncOffset = 0;
 let transcriptWords = null; let transcriptText = null;
+let _timingWorker = null; let _timingWorkerBlobUrl = null; let _pendingTimingBookIdx = -1;
 let ttsMode = false; let ttsSpeaking = false; let ttsUtterance = null;
 let ttsVoice = null; let ttsPaused = false;
 let txPending = null; let laPending = null;
 let pwaRootHandle = null;
+let _contentClickHandler = null;
 let folderFiles = [];
 let _fontBody = "'Lora',Georgia,serif";
 let _fontSize = 18;
@@ -1531,7 +1533,7 @@ function goLib(){
   document.getElementById('library').style.display='flex';
   document.getElementById('player').style.display='none';
   document.getElementById('optPanel').classList.remove('open');
-  curBookIdx=-1; transcriptWords=null; transcriptText=null; sentenceTimings=[]; wordTimings=[]; syncOffset=0;
+  curBookIdx=-1; transcriptWords=null; transcriptText=null; sentenceTimings=[]; wordTimings=[]; syncOffset=0; _pendingTimingBookIdx=-1;
   _activeSentEl=null; _activeWordEl=null;
   releaseWakeLock();
   clearSleepTimer(); _sleepTimerIdx=0;
@@ -2072,43 +2074,287 @@ function setBannerState(state,text,detail){
 // wordTimings[sentIdx] = [{start,end}] one entry per word span in sentence
 let wordTimings = [];
 
+// ── Timing Web Worker (inline Blob) ──
+// Self-contained function serialised into a Blob Worker.
+// NO DOM access, NO global refs. Communicates via postMessage.
+function _timingWorkerFn(){
+  function splitSentences(text){
+    text=text.replace(/\s+/g,' ').trim();
+    if(!text) return [];
+    var parts=[];
+    var re=/(?<!\b(?:Dr|Mr|Mrs|Ms|Prof|Rev|Sr|Jr|St|vs|etc|vol|ch|no))(?<!\b[A-Z])[.!?]+["'\u00bb\u201d\u2019)}\]]?\s+|[.!?]+["'\u00bb\u201d\u2019)}\]]?$/g;
+    var last=0,m;
+    while((m=re.exec(text))!==null){
+      var end=m.index+m[0].length;
+      var s=text.slice(last,end).trim();
+      if(s) parts.push(s);
+      last=end;
+    }
+    if(last<text.length){ var s2=text.slice(last).trim(); if(s2) parts.push(s2); }
+    return parts.length?parts:[text];
+  }
+  function similarity(a,b){
+    var wa=new Set(a.split(/\s+/).filter(Boolean));
+    var wb=new Set(b.split(/\s+/).filter(Boolean));
+    var inter=0; wa.forEach(function(w){if(wb.has(w))inter++;});
+    var union=wa.size+wb.size-inter;
+    return union?inter/union:0;
+  }
+  function doSentenceTimings(sentTexts,sentWordCounts,rawTw){
+    var n=sentTexts.length;
+    var st=new Array(n);
+    var wt=new Array(n);
+    var tw=[];
+    for(var i=0;i<rawTw.length;i++){
+      var cleaned=rawTw[i].word.replace(/[^a-z0-9']/gi,'').toLowerCase();
+      if(cleaned.length>0) tw.push({word:cleaned,start:rawTw[i].start,end:rawTw[i].end,idx:i});
+    }
+    function findMatch(sWords,sSet,lo,hi,earlyStop){
+      var bestScore=0,bestStart=-1,bestEnd=-1;
+      var sSize=sSet.size;
+      var minRunLen=Math.max(1,sWords.length-2);
+      var maxRunLen=sWords.length*3;
+      for(var wi=lo;wi<=hi;wi++){
+        var runFreq=new Map();
+        var runDistinct=0,inter=0;
+        for(var wj=wi;wj<tw.length&&(wj-wi)<maxRunLen;wj++){
+          var w=tw[wj].word;
+          var prev=runFreq.get(w)||0;
+          runFreq.set(w,prev+1);
+          if(prev===0){runDistinct++;if(sSet.has(w))inter++;}
+          var runLen=wj-wi+1;
+          if(runLen>=minRunLen){
+            var union=sSize+runDistinct-inter;
+            var score=union?inter/union:0;
+            if(score>bestScore){bestScore=score;bestStart=wi;bestEnd=wj;}
+            if(score>earlyStop) break;
+          }
+        }
+        if(bestScore>earlyStop) break;
+      }
+      return {bestScore:bestScore,bestStart:bestStart,bestEnd:bestEnd};
+    }
+    function assignWT(si,ebCount,matched,tStart){
+      var wStarts=new Array(ebCount);
+      if(ebCount===1){wStarts[0]=tStart;}
+      else if(matched.length>=ebCount){
+        for(var wi=0;wi<ebCount;wi++){
+          var twIdx=Math.round(wi*(matched.length-1)/(ebCount-1));
+          wStarts[wi]=matched[Math.min(twIdx,matched.length-1)].start;
+        }
+      } else {
+        var anchors=matched.map(function(tw3,ti){return {
+          ebIdx:Math.round(ti*(ebCount-1)/(matched.length-1)),t:tw3.start
+        };});
+        for(var ai=0;ai<anchors.length-1;ai++){
+          var a0=anchors[ai],a1=anchors[ai+1];
+          for(var wi2=a0.ebIdx;wi2<=a1.ebIdx;wi2++){
+            var frac=a1.ebIdx>a0.ebIdx?(wi2-a0.ebIdx)/(a1.ebIdx-a0.ebIdx):0;
+            wStarts[wi2]=a0.t+frac*(a1.t-a0.t);
+          }
+        }
+        wStarts[ebCount-1]=anchors[anchors.length-1].t;
+      }
+      for(var wi3=1;wi3<ebCount;wi3++){
+        if(wStarts[wi3]<=wStarts[wi3-1]) wStarts[wi3]=wStarts[wi3-1]+0.001;
+      }
+      wt[si]={starts:wStarts,count:ebCount};
+    }
+    function accept(si,bestStart,bestEnd){
+      var m=tw.slice(bestStart,bestEnd+1);
+      var tStart=m[0].start;
+      var tEnd=m[m.length-1].end;
+      st[si]={start:tStart,end:tEnd};
+      assignWT(si,sentWordCounts[si],m,tStart);
+    }
+    var sentTokens=sentTexts.map(function(text){
+      var sWords=text.replace(/[^a-z0-9' ]/gi,' ').toLowerCase().split(/\s+/).filter(Boolean);
+      return {sWords:sWords,sSet:new Set(sWords)};
+    });
+    // Pass 1: Anchor pass
+    var searchFrom=0;
+    var anchorTwIdx=[];
+    for(var si=0;si<n;si++){
+      var tok=sentTokens[si];
+      if(!tok.sWords.length) continue;
+      var windowLen=Math.max(tok.sWords.length*2,10);
+      var lo=Math.max(0,searchFrom-5);
+      var hi=Math.min(tw.length-tok.sWords.length,lo+windowLen*8);
+      var r=findMatch(tok.sWords,tok.sSet,lo,hi,0.85);
+      if(r.bestStart>=0&&r.bestScore>=0.6){
+        accept(si,r.bestStart,r.bestEnd);
+        anchorTwIdx[si]=r.bestStart;
+        searchFrom=Math.max(searchFrom,r.bestStart+1);
+      }
+    }
+    // Pass 2: Fill pass
+    for(var si2=0;si2<n;si2++){
+      if(st[si2]) continue;
+      var tok2=sentTokens[si2];
+      if(!tok2.sWords.length) continue;
+      var prevTwEnd=0;
+      for(var j=si2-1;j>=0;j--){
+        if(anchorTwIdx[j]!=null){
+          var prevSentEnd=st[j];
+          for(var k=anchorTwIdx[j];k<tw.length;k++){
+            if(tw[k].start>=prevSentEnd.end){prevTwEnd=k;break;}
+          }
+          break;
+        }
+      }
+      var nextTwStart=tw.length-1;
+      for(var j2=si2+1;j2<n;j2++){
+        if(anchorTwIdx[j2]!=null){nextTwStart=anchorTwIdx[j2];break;}
+      }
+      var lo2=Math.max(0,prevTwEnd);
+      var hi2=Math.min(tw.length-tok2.sWords.length,nextTwStart);
+      if(lo2>hi2) continue;
+      var r2=findMatch(tok2.sWords,tok2.sSet,lo2,hi2,0.85);
+      if(r2.bestStart>=0&&r2.bestScore>0.35){
+        accept(si2,r2.bestStart,r2.bestEnd);
+      }
+    }
+    return {sentenceTimings:st,wordTimings:wt};
+  }
+  function doPlainTextTimings(sentTexts,txText,audioDuration){
+    var n=sentTexts.length;
+    var st=new Array(n);
+    var txSents=splitSentences(txText);
+    if(!txSents.length) return {sentenceTimings:st};
+    if(!audioDuration) return {sentenceTimings:st};
+    var txWordCounts=txSents.map(function(s){return s.split(/\s+/).filter(Boolean).length;});
+    var totalWords=txWordCounts.reduce(function(a,b){return a+b;},0)||1;
+    var txTimings=[];
+    var cumTime=0;
+    txSents.forEach(function(ts,ti){
+      var segDur=(txWordCounts[ti]/totalWords)*audioDuration;
+      txTimings.push({start:cumTime,end:cumTime+segDur});
+      cumTime+=segDur;
+    });
+    sentTexts.forEach(function(text,si){
+      var best=-1,bestScore=0;
+      txSents.forEach(function(ts,ti){
+        var sc=similarity(text.toLowerCase(),ts.toLowerCase());
+        if(sc>bestScore){bestScore=sc;best=ti;}
+      });
+      if(best>=0&&bestScore>0.35) st[si]=txTimings[best];
+    });
+    return {sentenceTimings:st};
+  }
+  self.onmessage=function(e){
+    var d=e.data;
+    if(d.type==='buildSentenceTimings'){
+      var r=doSentenceTimings(d.sentTexts,d.sentWordCounts,d.transcriptWords);
+      self.postMessage({type:'buildSentenceTimings',sentenceTimings:r.sentenceTimings,wordTimings:r.wordTimings,bookIdx:d.bookIdx});
+    } else if(d.type==='buildTimingsFromPlainText'){
+      var r2=doPlainTextTimings(d.sentTexts,d.transcriptText,d.audioDuration);
+      self.postMessage({type:'buildTimingsFromPlainText',sentenceTimings:r2.sentenceTimings,bookIdx:d.bookIdx});
+    }
+  };
+}
+
+function getTimingWorker(){
+  if(_timingWorker) return _timingWorker;
+  var code='('+_timingWorkerFn.toString()+')()';
+  _timingWorkerBlobUrl=URL.createObjectURL(new Blob([code],{type:'application/javascript'}));
+  _timingWorker=new Worker(_timingWorkerBlobUrl);
+  _timingWorker.onmessage=function(e){
+    var d=e.data;
+    if(d.bookIdx!==_pendingTimingBookIdx) return;
+    if(!sentences.length||sentences.length!==d.sentenceTimings.length) return;
+    sentenceTimings=d.sentenceTimings;
+    if(d.wordTimings) wordTimings=d.wordTimings;
+    var matched=sentenceTimings.filter(Boolean).length;
+    setBannerState('ready','Transcript synced · Ready to play',
+      matched+' sentences matched ('+Math.round(matched/sentences.length*100)+'%)');
+  };
+  _timingWorker.onerror=function(err){
+    console.warn('Timing worker error, falling back to sync:',err);
+    _buildSentenceTimingsSync();
+  };
+  return _timingWorker;
+}
+
 async function buildSentenceTimings(){
   setBannerState('syncing','Syncing transcript…','Matching words to ebook sentences');
   await yieldToMain();
-  sentenceTimings = new Array(sentences.length);
-  wordTimings = new Array(sentences.length);
+  sentenceTimings=new Array(sentences.length);
+  wordTimings=new Array(sentences.length);
   if(!transcriptWords||!transcriptWords.length){
     if(transcriptText) await buildTimingsFromPlainText();
     return;
   }
+  var bookIdx=curBookIdx;
+  _pendingTimingBookIdx=bookIdx;
+  try{
+    var worker=getTimingWorker();
+    worker.postMessage({
+      type:'buildSentenceTimings',
+      sentTexts:sentences.map(function(s){return s.text;}),
+      sentWordCounts:sentences.map(function(s){return s.words.length;}),
+      transcriptWords:transcriptWords,
+      bookIdx:bookIdx
+    });
+  }catch(e){
+    await _buildSentenceTimingsSync();
+  }
+}
 
-  // Build a flat array of cleaned transcript words with original indices
-  const tw = transcriptWords.map((w,i)=>({
-    word: w.word.replace(/[^a-z0-9']/gi,'').toLowerCase(),
-    start: w.start, end: w.end, idx: i
+async function buildTimingsFromPlainText(){
+  setBannerState('syncing','Syncing transcript…','Estimating timing from plain text');
+  await yieldToMain();
+  sentenceTimings=new Array(sentences.length);
+  wordTimings=new Array(sentences.length);
+  var dur=isFinite(_audio.duration)?_audio.duration:0;
+  if(!dur) return;
+  var bookIdx=curBookIdx;
+  _pendingTimingBookIdx=bookIdx;
+  try{
+    var worker=getTimingWorker();
+    worker.postMessage({
+      type:'buildTimingsFromPlainText',
+      sentTexts:sentences.map(function(s){return s.text;}),
+      transcriptText:transcriptText,
+      audioDuration:dur,
+      bookIdx:bookIdx
+    });
+  }catch(e){
+    await _buildTimingsFromPlainTextSync();
+  }
+}
+
+// ── Synchronous fallbacks (file:// origins or worker failure) ──
+async function _buildSentenceTimingsSync(){
+  setBannerState('syncing','Syncing transcript…','Matching words to ebook sentences');
+  await yieldToMain();
+  sentenceTimings=new Array(sentences.length);
+  wordTimings=new Array(sentences.length);
+  if(!transcriptWords||!transcriptWords.length){
+    if(transcriptText) await _buildTimingsFromPlainTextSync();
+    return;
+  }
+  const tw=transcriptWords.map((w,i)=>({
+    word:w.word.replace(/[^a-z0-9']/gi,'').toLowerCase(),
+    start:w.start,end:w.end,idx:i
   })).filter(w=>w.word.length>0);
-
-  // Helper: Jaccard-match an ebook sentence against a transcript window
-  // Uses incremental Set with a word-frequency map to avoid per-iteration allocations
-  function findMatch(sWords, sSet, lo, hi, earlyStop){
-    let bestScore=0, bestStart=-1, bestEnd=-1;
+  function findMatch(sWords,sSet,lo,hi,earlyStop){
+    let bestScore=0,bestStart=-1,bestEnd=-1;
     const sSize=sSet.size;
     const minRunLen=Math.max(1,sWords.length-2);
     const maxRunLen=sWords.length*3;
     for(let wi=lo;wi<=hi;wi++){
-      // Incremental run: track word frequencies to compute Jaccard without new Sets
       const runFreq=new Map();
-      let runDistinct=0, inter=0;
+      let runDistinct=0,inter=0;
       for(let wj=wi;wj<tw.length&&(wj-wi)<maxRunLen;wj++){
         const w=tw[wj].word;
         const prev=runFreq.get(w)||0;
         runFreq.set(w,prev+1);
-        if(prev===0){ runDistinct++; if(sSet.has(w)) inter++; }
+        if(prev===0){runDistinct++;if(sSet.has(w))inter++;}
         const runLen=wj-wi+1;
         if(runLen>=minRunLen){
           const union=sSize+runDistinct-inter;
           const score=union?inter/union:0;
-          if(score>bestScore){ bestScore=score; bestStart=wi; bestEnd=wj; }
+          if(score>bestScore){bestScore=score;bestStart=wi;bestEnd=wj;}
           if(score>earlyStop) break;
         }
       }
@@ -2116,12 +2362,10 @@ async function buildSentenceTimings(){
     }
     return {bestScore,bestStart,bestEnd};
   }
-
-  // Helper: build per-word timing for a matched sentence
-  function assignWordTimings(si, s, matchedTw, tStart){
+  function assignWordTimings(si,s,matchedTw,tStart){
     const ebCount=s.words.length;
     const wStarts=new Array(ebCount);
-    if(ebCount===1){ wStarts[0]=tStart; }
+    if(ebCount===1){wStarts[0]=tStart;}
     else if(matchedTw.length>=ebCount){
       for(let wi=0;wi<ebCount;wi++){
         const twIdx=Math.round(wi*(matchedTw.length-1)/(ebCount-1));
@@ -2129,7 +2373,7 @@ async function buildSentenceTimings(){
       }
     } else {
       const anchors=matchedTw.map((tw3,ti)=>({
-        ebIdx:Math.round(ti*(ebCount-1)/(matchedTw.length-1)), t:tw3.start
+        ebIdx:Math.round(ti*(ebCount-1)/(matchedTw.length-1)),t:tw3.start
       }));
       for(let ai=0;ai<anchors.length-1;ai++){
         const a0=anchors[ai],a1=anchors[ai+1];
@@ -2145,27 +2389,20 @@ async function buildSentenceTimings(){
     }
     wordTimings[si]={starts:wStarts,count:ebCount};
   }
-
-  // Helper: accept a match for sentence si
-  function acceptMatch(si, bestStart, bestEnd){
+  function acceptMatch(si,bestStart,bestEnd){
     const matchedTw=tw.slice(bestStart,bestEnd+1);
     const tStart=matchedTw[0].start;
     const tEnd=matchedTw[matchedTw.length-1].end;
     sentenceTimings[si]={start:tStart,end:tEnd};
     assignWordTimings(si,sentences[si],matchedTw,tStart);
   }
-
-  // Tokenise all sentences once
   const sentTokens=sentences.map(s=>{
     const sWords=s.text.replace(/[^a-z0-9' ]/gi,' ').toLowerCase().split(/\s+/).filter(Boolean);
     return {sWords,sSet:new Set(sWords)};
   });
-
-  // ── Pass 1: Anchor pass — high-confidence matches only ──
-  // Yield every YIELD_EVERY sentences to keep UI responsive
   const YIELD_EVERY=80;
   let searchFrom=0;
-  const anchorTwIdx=[]; // anchorTwIdx[si] = bestStart index in tw (for anchors only)
+  const anchorTwIdx=[];
   for(let si=0;si<sentences.length;si++){
     const {sWords,sSet}=sentTokens[si];
     if(!sWords.length) continue;
@@ -2180,27 +2417,23 @@ async function buildSentenceTimings(){
     }
     if(si%YIELD_EVERY===0) await yieldToMain();
   }
-
-  // ── Pass 2: Fill pass — match remaining sentences between anchors ──
   for(let si=0;si<sentences.length;si++){
-    if(sentenceTimings[si]) continue; // already matched
+    if(sentenceTimings[si]) continue;
     const {sWords,sSet}=sentTokens[si];
     if(!sWords.length) continue;
-    // Find nearest previous and next anchors
     let prevTwEnd=0;
     for(let j=si-1;j>=0;j--){
       if(anchorTwIdx[j]!=null){
-        // Start after the previous anchor's matched region
         const prevSentEnd=sentenceTimings[j];
         for(let k=anchorTwIdx[j];k<tw.length;k++){
-          if(tw[k].start>=prevSentEnd.end){ prevTwEnd=k; break; }
+          if(tw[k].start>=prevSentEnd.end){prevTwEnd=k;break;}
         }
         break;
       }
     }
     let nextTwStart=tw.length-1;
     for(let j=si+1;j<sentences.length;j++){
-      if(anchorTwIdx[j]!=null){ nextTwStart=anchorTwIdx[j]; break; }
+      if(anchorTwIdx[j]!=null){nextTwStart=anchorTwIdx[j];break;}
     }
     const lo=Math.max(0,prevTwEnd);
     const hi=Math.min(tw.length-sWords.length,nextTwStart);
@@ -2211,19 +2444,17 @@ async function buildSentenceTimings(){
     }
     if(si%YIELD_EVERY===0) await yieldToMain();
   }
-
-  const matched = sentenceTimings.filter(Boolean).length;
+  const matched=sentenceTimings.filter(Boolean).length;
   setBannerState('ready','Transcript synced · Ready to play',
     matched+' sentences matched ('+Math.round(matched/sentences.length*100)+'%)');
 }
-async function buildTimingsFromPlainText(){
+async function _buildTimingsFromPlainTextSync(){
   setBannerState('syncing','Syncing transcript…','Estimating timing from plain text');
   await yieldToMain();
   const txSents=splitSentences(transcriptText);
   if(!txSents.length) return;
   const dur=isFinite(_audio.duration)?_audio.duration:0;
   if(!dur) return;
-  // Proportional timing: weight each transcript sentence by word count
   const txWordCounts=txSents.map(s=>s.split(/\s+/).filter(Boolean).length);
   const totalWords=txWordCounts.reduce((a,b)=>a+b,0)||1;
   const txTimings=[];
@@ -2241,7 +2472,7 @@ async function buildTimingsFromPlainText(){
     });
     if(best>=0&&bestScore>0.35) sentenceTimings[si]=txTimings[best];
   });
-  const matched = sentenceTimings.filter(Boolean).length;
+  const matched=sentenceTimings.filter(Boolean).length;
   setBannerState('ready','Transcript synced · Ready to play',
     matched+' sentences matched ('+Math.round(matched/sentences.length*100)+'%)');
 }
@@ -2261,6 +2492,8 @@ function updateTranscriptUI(){
 // ══════════════════════════════════════════════════════
 // Yield to main thread so mobile UI stays responsive during long DOM builds
 function yieldToMain(){
+  if(typeof scheduler!=='undefined'&&scheduler.postTask)
+    return scheduler.postTask(()=>{},{priority:'background'});
   return new Promise(r=>setTimeout(r,0));
 }
 
@@ -2280,25 +2513,10 @@ async function loadEbook(book,onDone){
     else                                        items=parseTxt(String(book.ebookData||''));
   }catch(err){ items=[{type:'text',text:'Error loading ebook: '+err.message}]; }
   content.innerHTML='';
-  // Delegated click handler — one listener instead of one per word/sentence
-  content.onclick=function(ev){
-    const wordEl=ev.target.closest('.word');
-    const sentEl=ev.target.closest('.sent');
-    if(!sentEl) return;
-    const sIdx=parseInt(sentEl.dataset.s,10);
-    if(isNaN(sIdx)) return;
-    if(wordEl){
-      wordEl.classList.add('flashing');
-      wordEl.addEventListener('animationend',()=>wordEl.classList.remove('flashing'),{once:true});
-      const wIdx=parseInt(wordEl.dataset.w,10);
-      if(!isNaN(wIdx)){curSent=sIdx;curWord=wIdx;updateHL();updateProg();saveBookProgress();return;}
-    }
-    curSent=sIdx;curWord=0;updateHL();updateProg();saveBookProgress();
-  };
   // Use a DocumentFragment to batch all DOM insertions into one reflow
   const frag=document.createDocumentFragment();
   // Chunk size: smaller on slower devices (heuristic: < 6 logical CPUs → mobile)
-  const CHUNK = (navigator.hardwareConcurrency||2) < 6 ? 20 : 50;
+  const CHUNK = (navigator.hardwareConcurrency||2) < 6 ? 20 : 80;
   let i=0;
   while(i<items.length){
     const end=Math.min(i+CHUNK, items.length);
@@ -2325,14 +2543,14 @@ async function loadEbook(book,onDone){
             else if(tok){
               const ws=document.createElement('span');
               ws.className='word'; ws.textContent=tok;
-              ws.dataset.w=wIdx++;
+              ws.dataset.wi=wIdx++;
               wordEls.push({el:ws,text:tok});
               sentSpan.appendChild(ws);
             }
           });
           sentSpan.appendChild(document.createTextNode(' '));
           const sIdx=sentences.length;
-          sentSpan.dataset.s=sIdx;
+          sentSpan.dataset.si=sIdx;
           sentences.push({el:sentSpan,words:wordEls,text:s});
           para.appendChild(sentSpan);
         });
@@ -2343,11 +2561,30 @@ async function loadEbook(book,onDone){
     // Flush the fragment to DOM in one batch, then yield before next chunk
     if(i<items.length){
       content.appendChild(frag);
+      setBannerState('loading','Building ebook\u2026',Math.round(i/items.length*100)+'%');
       await yieldToMain();
     }
   }
   // Final flush
   content.appendChild(frag);
+  setBannerState('hidden');
+  // Delegated click handler — one listener instead of one per word/sentence
+  if(_contentClickHandler) content.removeEventListener('click',_contentClickHandler);
+  _contentClickHandler=function(ev){
+    const wordEl=ev.target.closest('.word');
+    const sentEl=ev.target.closest('.sent');
+    if(!sentEl) return;
+    const sIdx=parseInt(sentEl.dataset.si,10);
+    if(isNaN(sIdx)) return;
+    if(wordEl){
+      wordEl.classList.add('flashing');
+      wordEl.addEventListener('animationend',()=>wordEl.classList.remove('flashing'),{once:true});
+      const wIdx=parseInt(wordEl.dataset.wi,10);
+      if(!isNaN(wIdx)){curSent=sIdx;curWord=wIdx;updateHL();updateProg();saveBookProgress();return;}
+    }
+    curSent=sIdx;curWord=0;updateHL();updateProg();saveBookProgress();
+  };
+  content.addEventListener('click',_contentClickHandler);
   buildToc();
   if(transcriptWords||transcriptText) await buildSentenceTimings();
   if(onDone) onDone();
