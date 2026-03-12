@@ -32,7 +32,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | TTS bar | `.tts-bar` |
 | Transcript banner | `.tx-banner` (loading/syncing/ready/error), `.tx-spinner`, shimmer keyframes |
 | Reading progress | `.ebook-area`, `.read-progress-wrap`, `.read-progress-bar` |
-| Reader body | `.reader-body`, `.toc-sidebar`, `.toc-item`, `.ebook-scroll`, `.ebook-content`, `.sent`, `.word`, `.sent-resume-pulse` + `@keyframes sent-pulse`; `.ebook-para` has `content-visibility:auto; contain-intrinsic-size:auto 80px` |
+| Reader body | `.reader-body`, `.toc-sidebar`, `.toc-item`, `.ebook-scroll`, `.ebook-content`, `.sent`, `.word` (no CSS transitions — removed for 60fps highlight performance), `.sent-resume-pulse` + `@keyframes sent-pulse`; `.ebook-para` has `content-visibility:auto; contain-intrinsic-size:auto 80px` |
 | Relink overlay | `.relink-overlay`, `.relink-sheet` |
 | PWA screens | `.pwa-setup-card`, `.pwa-regrant-card` |
 | Media queries | `@media(min-width:640px)` desktop, `@media(max-width:639px)` mobile |
@@ -87,13 +87,13 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | **DISPLAY PREFERENCES** | `saveDisplayPrefs()` (reads `_fontBody/_fontSize/_lineHeight/_maxWidth`; no `getComputedStyle`), `loadDisplayPrefs()` |
 | **LIBRARY UI** | `renderLib()`, `renameBook()`, `deleteBook()` (inline confirm, calls `_deleteBlobsFor`), `configurePlayerForMode()` |
 | **PLAYER CONFIG** | `configurePlayerForMode(b, audioSrc, rate)` — decides ttsMode, shows/hides seek strip vs TTS bar; revokes previous `blob:` URL on `_audio.src` before assigning new src |
-| **OPEN BOOK / GO LIB** | `openBook(i)` (calls `pulseResumeSent()`), `goLib()` (resets `transcriptWords`, `transcriptText`, `sentenceTimings`, `wordTimings`, `sentences`, `tocEntries`, `syncOffset`, `_pendingTimingBookIdx`; also cancels `_plainTextRetryListener` and `_timingWorkerTimeout`) |
+| **OPEN BOOK / GO LIB** | `openBook(i)` (calls `pulseResumeSent()`), `goLib()` (resets `transcriptWords`, `transcriptText`, `sentenceTimings`, `wordTimings`, `sentences`, `tocEntries`, `_tocItems`, `_prevTocActive`, `syncOffset`, `_pendingTimingBookIdx`; also cancels `_plainTextRetryListener` and `_timingWorkerTimeout`) |
 | **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()` (calls `updateSpeedBadge()`), `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()` (uses `syncOffset`), `onSeekInput()`, `onSeekChange()` |
-| **AUDIO EVENTS** | `_wordTick()` (rAF word highlight, uses `syncOffset`), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate throttled ~4fps + binary search for sentence, ended/play/pause; uses `syncOffset`) |
+| **AUDIO EVENTS** | `_wordTick()` (rAF word highlight, uses `syncOffset`), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate throttled ~4fps + unsigned-right-shift binary search `>>> 1` for sentence with `bestSent=curSent` initial value, ended/play/pause; uses `syncOffset`) |
 | **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()`, `advanceSent()`, `nudge(n)`, `resync()` (uses `syncOffset`) |
 | **SYNC OFFSET** | `adjustOffset(delta)`, `updateOffsetUI()` — manual transcript timing correction (±0.5s steps) |
 | **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()`, `ttsPause()`, `ttsStop()` |
-| **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()`, `scrollToSent()` (uses cached `_eScroll`), `toggleAS()`, `toggleWordHl()`, `pulseResumeSent()`, `updateSpeedBadge()` |
+| **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()`, `_cacheScrollMetrics()` (caches `_scrollEl`/`_scrollElH`/`_scrollElTop` from `_eScroll` rect; called at init and on resize), `scrollToSent()` (uses cached scroll metrics, only calls `getBoundingClientRect` on sentence el), `toggleAS()`, `toggleWordHl()`, `pulseResumeSent()`, `updateSpeedBadge()` |
 | **TOC** | `toggleToc()`, `buildToc()` (populates `_tocItems[]`), `updateTocActive()` (uses cached `_tocItems`/`_prevTocActive` to skip redundant DOM work) |
 | **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `updateThemeColor()`, `setFont()`, `setFS/LH/MW()`, `setAlign()`, `setDefaultWpmFromSlider()`, `setDefaultWpmFromInput()`, `updateWpmLabel()`, `setSentPause()`, scroll-pause IIFE (rAF-throttled), click-outside handler |
 | **TRANSCRIPT** | `loadTranscriptData()` (handles segment-level Whisper JSON without word_timestamps), `setBannerState()`, `_timingWorkerFn()` (serialised into Blob Worker), `getTimingWorker()`, `buildSentenceTimings()` (worker dispatch), `buildTimingsFromPlainText()` (worker dispatch), `_buildSentenceTimingsSync()` (fallback), `_buildTimingsFromPlainTextSync()` (fallback), `similarity()`, `updateTranscriptUI()`; after timing is built, `transcriptWords` and `transcriptText` are nulled (both worker onmessage path and sync fallback) |
@@ -226,7 +226,10 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 | `_readProg` | Cached `#readProg` element |
 | `_tCur` | Cached `#tCur` time display |
 | `_seekBar` | Cached `#seekBar` element |
-| `_eScroll` | Cached `#eScroll` element (used by `scrollToSent`) |
+| `_eScroll` | Cached `#eScroll` element (used by `_cacheScrollMetrics`) |
+| `_scrollEl` | Alias for `_eScroll` set by `_cacheScrollMetrics`; `scrollToSent` guards on this |
+| `_scrollElH` | Cached `_eScroll` client height (px); refreshed on resize |
+| `_scrollElTop` | Cached `_eScroll` viewport top (px); refreshed on resize |
 | `_pProg` | Cached `#pProg` progress text element (used by `updateProg`) |
 | `_rafId` | rAF ID for `_wordTick` |
 | `_activeSentEl` | Currently highlighted sentence DOM element |
@@ -376,8 +379,9 @@ advanceSent()  (TTS scroll engine — WPM-based, not used during speechSynthesis
   └── calculates ms from char count + wpm + sentPauseMs → setTimeout → curSent++ → recurse
 
 wireAudioEvents()
-  └── timeupdate: throttled to ~4fps via `_lastTimeUpdate` timestamp, binary search (O(log n))
-      for current sentence in sentenceTimings[]; ended/play/pause update state.
+  └── timeupdate: throttled to ~4fps via `_lastTimeUpdate` timestamp, unsigned-right-shift binary
+      search (`>>> 1`, `bestSent` initialized to `curSent`) for current sentence in sentenceTimings[];
+      sparse entries (undefined) treated as "go left" (hi = mid-1); ended/play/pause update state.
 
 _wordTick()  (audio mode only)
   └── reads _audio.currentTime + syncOffset → binary search in wordTimings[curSent].starts →

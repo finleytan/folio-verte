@@ -274,12 +274,12 @@ body.theme-night{
 .ebook-h2{font-size:1.22em;margin:1.6em 0 .5em;}
 .ebook-h3{font-size:1.08em;margin:1.3em 0 .4em;}
 .ebook-para{margin-bottom:1em;content-visibility:auto;contain-intrinsic-size:auto 80px;}
-.sent{cursor:pointer;border-radius:4px;padding:2px 0;border-bottom:2px solid transparent;transition:background .18s,border-color .18s;display:inline;}
+.sent{cursor:pointer;border-radius:4px;padding:2px 0;border-bottom:2px solid transparent;display:inline;}
 .sent:hover{background:var(--surface2);}
 .sent.sent-active{background:var(--hl-bg);border-bottom-color:var(--hl-border);}
 @keyframes sent-pulse{0%{box-shadow:0 0 0 0 rgba(91,141,239,.5);}70%{box-shadow:0 0 0 8px rgba(91,141,239,0);}100%{box-shadow:none;}}
 .sent.sent-resume-pulse{animation:sent-pulse .8s ease-out;}
-.word{border-radius:2px;transition:background .1s,color .1s;cursor:pointer;padding:0 1px;}
+.word{border-radius:2px;cursor:pointer;padding:0 1px;}
 .word.word-active{background:var(--word-hl);color:white;border-radius:3px;}
 @keyframes word-flash{0%{background:var(--accent);color:white;box-shadow:0 0 8px rgba(91,141,239,.5);}100%{background:transparent;color:inherit;box-shadow:none;}}
 .word.flashing{animation:word-flash .35s ease;}
@@ -1137,6 +1137,7 @@ function dismissInstall(){
 const $ = id => document.getElementById(id);
 // Populated after DOM ready (called from init)
 let _audio, _playBtn, _eContent, _readProg, _tCur, _seekBar, _eScroll, _pProg;
+let _scrollEl = null, _scrollElH = 0, _scrollElTop = 0;
 function cacheDOM(){
   _audio    = $('audio');
   _playBtn  = $('playBtn');
@@ -1539,6 +1540,7 @@ function goLib(){
   if(_plainTextRetryListener){ _audio.removeEventListener('loadedmetadata',_plainTextRetryListener); _plainTextRetryListener=null; }
   if(_timingWorkerTimeout){ clearTimeout(_timingWorkerTimeout); _timingWorkerTimeout=null; }
   sentences=[]; tocEntries=[];
+  _tocItems=[]; _prevTocActive=-1;
   _activeSentEl=null; _activeWordEl=null;
   releaseWakeLock();
   clearSleepTimer(); _sleepTimerIdx=0;
@@ -1685,16 +1687,14 @@ function wireAudioEvents(){
     }
     if(!sentenceTimings.length || mediaState!=='playing') return;
     const t = this.currentTime + syncOffset;
-    // Binary search for current sentence (O(log n) instead of O(n))
-    let bestSent = 0, lo = 0, hi = sentenceTimings.length - 1;
+    let lo = 0, hi = sentenceTimings.length - 1, bestSent = curSent;
     while(lo <= hi){
-      const mid = (lo + hi) >> 1;
-      // Skip sparse (unmatched) entries — scan backward for nearest defined
-      let m = mid;
-      while(m >= lo && !sentenceTimings[m]) m--;
-      if(m < lo){ lo = mid + 1; continue; }
-      if(t >= sentenceTimings[m].start){ bestSent = m; lo = mid + 1; }
-      else { hi = m - 1; }
+      const mid = (lo + hi) >>> 1;
+      if(sentenceTimings[mid] && t >= sentenceTimings[mid].start){
+        bestSent = mid; lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
     }
     if(bestSent !== curSent){
       curSent = bestSent; curWord = 0;
@@ -1880,15 +1880,20 @@ function updateProg(){
     'Sentence '+(curSent+1)+' / '+sentences.length:'—';
   if(curBookIdx>=0){ library[curBookIdx].totalSents=sentences.length; }
 }
+function _cacheScrollMetrics(){
+  if(!_eScroll) return;
+  _scrollEl = _eScroll;
+  const r = _eScroll.getBoundingClientRect();
+  _scrollElTop = r.top;
+  _scrollElH = r.height;
+}
 function scrollToSent(idx){
   const s=sentences[idx];
-  if(!s||scrollPaused||!_eScroll) return;
+  if(!s||scrollPaused||!_scrollEl) return;
   const rect=s.el.getBoundingClientRect();
-  const vTop=_eScroll.getBoundingClientRect().top;
-  const vH=_eScroll.clientHeight;
-  // Safe zone: middle 40% of the scroll container
-  const safeTop=vTop+vH*0.30;
-  const safeBot=vTop+vH*0.70;
+  // Safe zone: middle 40% of the scroll container (cached metrics)
+  const safeTop=_scrollElTop+_scrollElH*0.30;
+  const safeBot=_scrollElTop+_scrollElH*0.70;
   if(rect.top>=safeTop && rect.bottom<=safeBot) return; // already comfortable — no jump
   s.el.scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -3264,6 +3269,7 @@ if('serviceWorker' in navigator){
 // ══════════════════════════════════════════════════════
 async function init(){
   try{ cacheDOM(); }catch(e){}
+  try{ _cacheScrollMetrics(); window.addEventListener('resize',_cacheScrollMetrics,{passive:true}); }catch(e){}
   try{ wireAudioEvents(); }catch(e){}
   try{ loadDisplayPrefs(); }catch(e){}
   try{ setMediaState('stopped'); }catch(e){}
