@@ -287,6 +287,9 @@ body.theme-night{
 /* ── RATE BUTTON (seek strip) ── */
 .rate-btn-inline{padding:2px 8px;height:24px;border-radius:6px;border:1px solid var(--accent);background:rgba(91,141,239,.1);color:var(--accent);font-family:var(--font-ui);font-size:12px;font-weight:700;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;justify-content:center;min-width:36px;}
 .rate-btn-inline:hover{background:rgba(91,141,239,.2);}
+.speed-strip{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.spd-btn{width:28px;height:24px;border-radius:5px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background-color .12s,border-color .12s,color .12s;}
+.spd-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(91,141,239,.1);}
 
 /* ── RELINK OVERLAY ── */
 .relink-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:flex-end;justify-content:center;z-index:2500;}
@@ -654,7 +657,11 @@ html,body,
         <span class="vol-icon" id="volIcon" onclick="toggleMute()">🔊</span>
         <input type="range" class="vol-slider" id="volBar" min="0" max="1" step="0.02" value="1" oninput="setVol(this.value)">
       </div>
-      <button class="rate-btn-inline" id="rateBtnInline" onclick="toggleOpts();switchOptTab('playback',document.querySelector('.op-tab'))" title="Playback rate">1×</button>
+      <div class="speed-strip">
+        <button class="spd-btn" onclick="changeSpeed(-1)" aria-label="Decrease speed">−</button>
+        <button class="rate-btn-inline" id="rateBtnInline" onclick="toggleOpts();switchOptTab('playback',document.querySelector('.op-tab'))" title="Playback rate">1×</button>
+        <button class="spd-btn" onclick="changeSpeed(1)" aria-label="Increase speed">+</button>
+      </div>
     </div>
   </div>
 
@@ -890,10 +897,17 @@ const PWA_PROG_KEY = 'folio_pwa_progress_v1';
 const DISPLAY_PREFS_KEY = 'folio_display_prefs_v1';
 const IDB_NAME = 'folio_pwa'; const IDB_STORE = 'handles'; const IDB_BLOB_STORE = 'blobs';
 const BLOB_FIELDS = ['ebookData','transcriptData','coverUrl'];
+const SYNC_HINT_KEY = 'folio_sync_hint_v1';
 
 // ══════════════════════════════════════════════════════
 // TOAST NOTIFICATIONS
 // ══════════════════════════════════════════════════════
+function showSyncHintOnce(){
+  if(localStorage.getItem(SYNC_HINT_KEY)) return;
+  if(ttsMode) return;
+  localStorage.setItem(SYNC_HINT_KEY,'1');
+  showToast('Highlight off? Adjust it in Options → Sync offset','info',6000);
+}
 function showToast(msg, type='', duration=2200){
   const container = document.getElementById('toastContainer');
   const el = document.createElement('div');
@@ -1514,16 +1528,17 @@ function openBook(i){
   $('pTitle').textContent=b.title;
   configurePlayerForMode(b, b.audioUrl||null, b.playbackRate||1);
   loadTranscriptData(b);
-  loadEbook(b,()=>{ curSent=b.curSent||0; curWord=b.curWord||0; updateHL(); updateProg(); seekAudioToSentence(); pulseResumeSent(); });
+  loadEbook(b,()=>{ curSent=b.curSent||0; curWord=b.curWord||0; updateHL(); updateProg(); seekAudioToSentence(); pulseResumeSent(true); });
   setupMediaSession();
   updatePageTitle();
 }
 
-function pulseResumeSent(){
+function pulseResumeSent(instant=false){
   if(curSent<=0||!sentences[curSent]) return;
   const el=sentences[curSent].el;
   el.classList.add('sent-resume-pulse');
   el.addEventListener('animationend',()=>el.classList.remove('sent-resume-pulse'),{once:true});
+  scrollToSent(curSent,instant);
 }
 
 function goLib(){
@@ -1597,6 +1612,13 @@ function mediaStop(){
 function skip(s){
   if(ttsMode) return;
   _audio.currentTime=Math.max(0,Math.min(_audio.duration||0,_audio.currentTime+s));
+}
+const RATE_STEPS=[0.5,0.75,1,1.25,1.5,1.75,2,2.5];
+function changeSpeed(dir){
+  const cur=_audio.playbackRate||1;
+  const idx=RATE_STEPS.findIndex(r=>Math.abs(r-cur)<0.05);
+  const next=RATE_STEPS[Math.max(0,Math.min(RATE_STEPS.length-1,(idx===-1?2:idx)+dir))];
+  setRate(next);
 }
 function setRate(v){
   v=parseFloat(v);
@@ -1876,8 +1898,13 @@ function updateHL(){
 function updateProg(){
   const pct=sentences.length>1?curSent/(sentences.length-1)*100:0;
   _readProg.style.width=pct+'%';
-  _pProg.textContent=sentences.length?
-    'Sentence '+(curSent+1)+' / '+sentences.length:'—';
+  let chapterLabel='';
+  if(tocEntries&&tocEntries.length){
+    let active=null;
+    for(let i=tocEntries.length-1;i>=0;i--){if(tocEntries[i].sentIdx<=curSent){active=tocEntries[i];break;}}
+    if(active) chapterLabel=active.text.slice(0,28)+' · ';
+  }
+  _pProg.textContent=sentences.length?chapterLabel+Math.round(pct)+'%':'—';
   if(curBookIdx>=0){ library[curBookIdx].totalSents=sentences.length; }
 }
 function _cacheScrollMetrics(){
@@ -1887,15 +1914,16 @@ function _cacheScrollMetrics(){
   _scrollElTop = r.top;
   _scrollElH = r.height;
 }
-function scrollToSent(idx){
+function scrollToSent(idx,instant=false){
   const s=sentences[idx];
-  if(!s||scrollPaused||!_scrollEl) return;
+  if(!s||!_scrollEl) return;
+  if(!instant&&scrollPaused) return;
   const rect=s.el.getBoundingClientRect();
   // Safe zone: middle 40% of the scroll container (cached metrics)
   const safeTop=_scrollElTop+_scrollElH*0.30;
   const safeBot=_scrollElTop+_scrollElH*0.70;
-  if(rect.top>=safeTop && rect.bottom<=safeBot) return; // already comfortable — no jump
-  s.el.scrollIntoView({behavior:'smooth',block:'center'});
+  if(!instant&&rect.top>=safeTop&&rect.bottom<=safeBot) return; // already comfortable — no jump
+  s.el.scrollIntoView({behavior:instant?'instant':'smooth',block:'center'});
 }
 function toggleAS(){
   autoScroll=!autoScroll;
@@ -2282,6 +2310,7 @@ function getTimingWorker(){
     var matched=sentenceTimings.filter(Boolean).length;
     setBannerState('ready','Transcript synced · Ready to play',
       matched+' sentences matched ('+Math.round(matched/sentences.length*100)+'%)');
+    if(d.type==='buildSentenceTimings') showSyncHintOnce();
   };
   _timingWorker.onerror=function(err){
     console.warn('Timing worker error, falling back to sync:',err);
@@ -2613,9 +2642,15 @@ async function loadEbook(book,onDone){
       wordEl.classList.add('flashing');
       wordEl.addEventListener('animationend',()=>wordEl.classList.remove('flashing'),{once:true});
       const wIdx=parseInt(wordEl.dataset.wi,10);
-      if(!isNaN(wIdx)){curSent=sIdx;curWord=wIdx;updateHL();updateProg();saveBookProgress();return;}
+      if(!isNaN(wIdx)){
+        curSent=sIdx;curWord=wIdx;
+        if(ttsMode){if(mediaState==='playing'){ttsStop();ttsPlay();}else if(mediaState==='paused'){ttsStop();}}
+        updateHL();updateProg();saveBookProgress();return;
+      }
     }
-    curSent=sIdx;curWord=0;updateHL();updateProg();saveBookProgress();
+    curSent=sIdx;curWord=0;
+    if(ttsMode){if(mediaState==='playing'){ttsStop();ttsPlay();}else if(mediaState==='paused'){ttsStop();}}
+    updateHL();updateProg();saveBookProgress();
   };
   content.addEventListener('click',_contentClickHandler);
   buildToc();
@@ -3210,7 +3245,7 @@ async function pwaOpenBook(i){
       else { b.ebookData=await ebookFile.text(); }
     }catch(e){ console.warn('Folio: ebook load failed',e); }
   }
-  loadEbook(b,()=>{ curSent=b.curSent||0; curWord=b.curWord||0; updateHL(); updateProg(); seekAudioToSentence(); pulseResumeSent(); });
+  loadEbook(b,()=>{ curSent=b.curSent||0; curWord=b.curWord||0; updateHL(); updateProg(); seekAudioToSentence(); pulseResumeSent(true); });
   setupMediaSession();
   updatePageTitle();
 }

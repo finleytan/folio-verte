@@ -2,7 +2,7 @@
 
 # Folio — Living Context Document
 
-Single-file HTML PWA (~3,260 lines). Audiobook/ebook reader with synced word-level highlighting.
+Single-file HTML PWA (~3,329 lines). Audiobook/ebook reader with synced word-level highlighting.
 Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default dark, light, night.
 
 ---
@@ -28,7 +28,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | Buttons | `.btn`, `.pill`, `.ipill`, `.toggle` |
 | Top bar | `.top-bar`, `.back-btn`, `.bk-info`, `.ic-btn`, `.play-btn`, `.speed-badge` |
 | Options panel | `.opt-panel`, `.op-tab`, `.op-row`, `.op-slider` |
-| Seek strip | `.seek-strip`, `.seek-row`, `.seek-strip-bar`, `.seek-time`, `.rate-btn-inline`, `.vol-*` |
+| Seek strip | `.seek-strip`, `.seek-row`, `.seek-strip-bar`, `.seek-time`, `.rate-btn-inline`, `.speed-strip`, `.spd-btn`, `.vol-*` |
 | TTS bar | `.tts-bar` |
 | Transcript banner | `.tx-banner` (loading/syncing/ready/error), `.tx-spinner`, shimmer keyframes |
 | Reading progress | `.ebook-area`, `.read-progress-wrap`, `.read-progress-bar` |
@@ -61,7 +61,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | `<audio id="audio">` | Hidden audio element |
 | `.top-bar` | Back button, title (`#pTitle`), progress text (`#pProg`), play button (`#playBtn`), speed badge (`#speedBadge`), option/TOC/transcript buttons |
 | `#optPanel` | Flyout options: 3 tabs (Playback, Display, Advanced) with sliders/toggles, rate presets, auto-scroll, resync, stop, sync offset (`#offsetRow`) |
-| `#seekStrip` | Single-row: time label, seek bar, time label, rate button, volume (vol hidden on mobile; all hidden in TTS mode). ~30px tall on mobile (4px 12px padding) |
+| `#seekStrip` | Single-row: time label, seek bar, time label, `.speed-strip` (−/rate/+ buttons), volume (vol hidden on mobile; all hidden in TTS mode). ~30px tall on mobile (4px 12px padding) |
 | `#ttsBar` | TTS voice picker, rate slider (shown in TTS mode) |
 | `#txBanner` | Transcript status banner (loading/syncing/ready/error) |
 | `.read-progress-wrap` | Sentence-based reading progress bar (`#readProg`) |
@@ -72,7 +72,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | Section | Key functions |
 |---|---|
 | **STATE** | All global variable declarations and constants (incl. `_fontBody/_fontSize/_lineHeight/_maxWidth`) |
-| **TOAST** | `showToast(msg, type, duration)` |
+| **TOAST** | `showToast(msg, type, duration)`, `showSyncHintOnce()` (one-time Whisper sync hint; guarded by `SYNC_HINT_KEY` localStorage flag + `ttsMode` check) |
 | **WAKE LOCK** | `acquireWakeLock()`, `releaseWakeLock()`, visibilitychange re-acquire |
 | **MEDIA SESSION** | `setupMediaSession()`, `updateMediaSessionState(playing)` |
 | **DEBOUNCED SAVE** | `saveBookProgressDebounced()` — 500ms timer |
@@ -88,16 +88,16 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | **LIBRARY UI** | `renderLib()`, `renameBook()`, `deleteBook()` (inline confirm, calls `_deleteBlobsFor`), `configurePlayerForMode()` |
 | **PLAYER CONFIG** | `configurePlayerForMode(b, audioSrc, rate)` — decides ttsMode, shows/hides seek strip vs TTS bar; revokes previous `blob:` URL on `_audio.src` before assigning new src |
 | **OPEN BOOK / GO LIB** | `openBook(i)` (calls `pulseResumeSent()`), `goLib()` (resets `transcriptWords`, `transcriptText`, `sentenceTimings`, `wordTimings`, `sentences`, `tocEntries`, `_tocItems`, `_prevTocActive`, `syncOffset`, `_pendingTimingBookIdx`; also cancels `_plainTextRetryListener` and `_timingWorkerTimeout`) |
-| **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()` (calls `updateSpeedBadge()`), `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()` (uses `syncOffset`), `onSeekInput()`, `onSeekChange()` |
+| **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()` (calls `updateSpeedBadge()`), `changeSpeed(dir)` (steps ±1 through `RATE_STEPS` array), `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()` (uses `syncOffset`), `onSeekInput()`, `onSeekChange()` |
 | **AUDIO EVENTS** | `_wordTick()` (rAF word highlight, uses `syncOffset`), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate throttled ~4fps + unsigned-right-shift binary search `>>> 1` for sentence with `bestSent=curSent` initial value, ended/play/pause; uses `syncOffset`) |
 | **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()`, `advanceSent()`, `nudge(n)`, `resync()` (uses `syncOffset`) |
 | **SYNC OFFSET** | `adjustOffset(delta)`, `updateOffsetUI()` — manual transcript timing correction (±0.5s steps) |
 | **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()`, `ttsPause()`, `ttsStop()` |
-| **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()`, `_cacheScrollMetrics()` (caches `_scrollEl`/`_scrollElH`/`_scrollElTop` from `_eScroll` rect; called at init and on resize), `scrollToSent()` (uses cached scroll metrics, only calls `getBoundingClientRect` on sentence el), `toggleAS()`, `toggleWordHl()`, `pulseResumeSent()`, `updateSpeedBadge()` |
+| **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()` (shows `Chapter · pct%` using `tocEntries`; falls back to `pct%` if no TOC), `_cacheScrollMetrics()` (caches `_scrollEl`/`_scrollElH`/`_scrollElTop` from `_eScroll` rect; called at init and on resize), `scrollToSent(idx, instant=false)` (instant=true skips `scrollPaused` guard and safe-zone check, uses `behavior:'instant'`), `toggleAS()`, `toggleWordHl()`, `pulseResumeSent(instant=false)` (calls `scrollToSent` with instant flag), `updateSpeedBadge()` |
 | **TOC** | `toggleToc()`, `buildToc()` (populates `_tocItems[]`), `updateTocActive()` (uses cached `_tocItems`/`_prevTocActive` to skip redundant DOM work) |
 | **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `updateThemeColor()`, `setFont()`, `setFS/LH/MW()`, `setAlign()`, `setDefaultWpmFromSlider()`, `setDefaultWpmFromInput()`, `updateWpmLabel()`, `setSentPause()`, scroll-pause IIFE (rAF-throttled), click-outside handler |
-| **TRANSCRIPT** | `loadTranscriptData()` (handles segment-level Whisper JSON without word_timestamps), `setBannerState()`, `_timingWorkerFn()` (serialised into Blob Worker), `getTimingWorker()`, `buildSentenceTimings()` (worker dispatch), `buildTimingsFromPlainText()` (worker dispatch), `_buildSentenceTimingsSync()` (fallback), `_buildTimingsFromPlainTextSync()` (fallback), `similarity()`, `updateTranscriptUI()`; after timing is built, `transcriptWords` and `transcriptText` are nulled (both worker onmessage path and sync fallback) |
-| **EBOOK LOADING** | `yieldToMain()` (prefers `scheduler.postTask` with `'background'` priority, falls back to `setTimeout`), `loadEbook(book, onDone)` (chunked DOM build with progress banner via `setBannerState`, delegated click handler via module-level `_contentClickHandler`) |
+| **TRANSCRIPT** | `loadTranscriptData()` (handles segment-level Whisper JSON without word_timestamps), `setBannerState()`, `_timingWorkerFn()` (serialised into Blob Worker), `getTimingWorker()`, `buildSentenceTimings()` (worker dispatch), `buildTimingsFromPlainText()` (worker dispatch), `_buildSentenceTimingsSync()` (fallback), `_buildTimingsFromPlainTextSync()` (fallback), `similarity()`, `updateTranscriptUI()`; after timing is built, `transcriptWords` and `transcriptText` are nulled (both worker onmessage path and sync fallback); worker onmessage calls `showSyncHintOnce()` only on `type==='buildSentenceTimings'` (Whisper word-level), not plain-text path |
+| **EBOOK LOADING** | `yieldToMain()` (prefers `scheduler.postTask` with `'background'` priority, falls back to `setTimeout`), `loadEbook(book, onDone)` (chunked DOM build with progress banner via `setBannerState`, delegated click handler via module-level `_contentClickHandler`; click handler is TTS-aware: playing→`ttsStop()+ttsPlay()`, paused→`ttsStop()` only, audio mode unchanged) |
 | **SENTENCE SPLITTER** | `splitSentences(text)` |
 | **EBOOK PARSERS** | `parseTxt()`, `parseMd()`, `parseHtml()`, `extractFromDom()`, `parseEpub()`, `loadScript()`, `arrayBufferToBase64()` |
 | **ADD BOOK MODAL** | `openModal()`, `closeModal()`, file/folder handlers, `folderAssign()`, `addBook()` |
@@ -263,6 +263,8 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 | `IDB_BLOB_STORE` | `'blobs'` — IDB object store for book data blobs |
 | `BLOB_FIELDS` | `['ebookData','transcriptData','coverUrl']` — fields saved to IDB |
 | `SLEEP_OPTIONS` | `[0, 15, 30, 45, 60]` — minutes |
+| `SYNC_HINT_KEY` | `'folio_sync_hint_v1'` — localStorage flag; prevents repeat sync-offset hint toast |
+| `RATE_STEPS` | `[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5]` — speed steps for `changeSpeed(dir)` |
 
 ---
 
@@ -330,7 +332,7 @@ loadEbook(book, onDone)
       populates sentences[] (data-si/data-wi attributes on .sent/.word spans) →
       setBannerState('hidden') → attaches delegated _contentClickHandler on content →
       buildToc() → buildSentenceTimings() (if transcript) → onDone()
-      (onDone in openBook/pwaOpenBook restores curSent then calls seekAudioToSentence())
+      (onDone in openBook/pwaOpenBook restores curSent then calls seekAudioToSentence() + pulseResumeSent(true))
 
 loadTranscriptData(b)
   └── setBannerState('loading') → parses JSON/TXT → setBannerState('ready') →
@@ -351,7 +353,8 @@ buildSentenceTimings()
       onmessage handler: clears _timingWorkerTimeout, stale-guard (bookIdx===_pendingTimingBookIdx —
       mismatch shows toast + console.warn instead of silent discard),
       length-guard (sentences still match), then applies sentenceTimings[] +
-      wordTimings[] → nulls transcriptWords + transcriptText → setBannerState('ready').
+      wordTimings[] → nulls transcriptWords + transcriptText → setBannerState('ready') →
+      showSyncHintOnce() (Whisper word-level path only; not called for plain-text).
       try/catch falls back to _buildSentenceTimingsSync() (file:// or worker error);
       sync fallback uses same window formula (sWords.length*20+200), YIELD_EVERY=30.
       buildTimingsFromPlainText() dispatches plain-text timing to the same worker with
@@ -371,9 +374,14 @@ updateHL()
   └── removes previous sent-active/word-active → applies to sentences[curSent] →
       applies word-active to words[curWord] if wordHlOn → updateTocActive()
 
-scrollToSent(idx)
-  └── early-returns if scrollPaused or !_eScroll → checks if sentence is in safe zone (middle 40%) →
-      scrollIntoView({smooth, center}) if outside
+scrollToSent(idx, instant=false)
+  └── if instant: skips scrollPaused guard + safe-zone check → scrollIntoView({behavior:'instant', block:'center'})
+      if !instant: early-returns if scrollPaused or !_eScroll → checks safe zone (middle 40%) →
+      scrollIntoView({behavior:'smooth', block:'center'}) if outside
+
+pulseResumeSent(instant=false)
+  └── adds sent-resume-pulse animation to sentences[curSent].el → calls scrollToSent(curSent, instant)
+      Called with instant=true from onDone callbacks in openBook/pwaOpenBook
 
 advanceSent()  (TTS scroll engine — WPM-based, not used during speechSynthesis)
   └── calculates ms from char count + wpm + sentPauseMs → setTimeout → curSent++ → recurse
