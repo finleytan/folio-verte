@@ -7,7 +7,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Folio</title>
 <link rel="manifest" href="manifest.json">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"></noscript>
 <style>
 :root{
   --bg:#111318; --bg2:#1a1d24; --surface:#1e2128; --surface2:#252830;
@@ -941,6 +944,10 @@ let ttsVoice = null; let ttsPaused = false;
 let txPending = null; let laPending = null;
 let pwaRootHandle = null;
 let folderFiles = [];
+let _fontBody = "'Lora',Georgia,serif";
+let _fontSize = 18;
+let _lineHeight = 1.88;
+let _maxWidth = 680;
 
 const IS_PWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const CAN_FS = 'showDirectoryPicker' in window;
@@ -1132,6 +1139,7 @@ document.addEventListener('keydown', function(e){
 // PWA INSTALL PROMPT
 // ══════════════════════════════════════════════════════
 let _installPromptEvent = null;
+let _idb = null;
 window.addEventListener('beforeinstallprompt', e=>{
   e.preventDefault();
   _installPromptEvent = e;
@@ -1185,6 +1193,7 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 // INDEXEDDB (PWA folder handle storage)
 // ══════════════════════════════════════════════════════
 function idbOpen(){
+  if(_idb) return Promise.resolve(_idb);
   return new Promise((res,rej)=>{
     const req=indexedDB.open(IDB_NAME,2);
     req.onupgradeneeded=e=>{
@@ -1192,7 +1201,7 @@ function idbOpen(){
       if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
       if(!db.objectStoreNames.contains(IDB_BLOB_STORE)) db.createObjectStore(IDB_BLOB_STORE);
     };
-    req.onsuccess=e=>res(e.target.result);
+    req.onsuccess=e=>{ _idb=e.target.result; res(_idb); };
     req.onerror=rej;
   });
 }
@@ -1358,11 +1367,11 @@ window.addEventListener('pagehide',function(){ flushPositionSync(); },{passive:t
 function saveDisplayPrefs(){
   const prefs={
     theme:document.body.className.replace('theme-',''),
-    fontBody:getComputedStyle(document.documentElement).getPropertyValue('--font-body').trim(),
+    fontBody:_fontBody,
     fontKey: document.querySelector('.pill.active[id^=fontPill]')?.id?.replace('fontPill-','') || 'lora',
-    fontSize:getComputedStyle(document.documentElement).getPropertyValue('--font-size').trim(),
-    lineHeight:getComputedStyle(document.documentElement).getPropertyValue('--line-height').trim(),
-    maxWidth:getComputedStyle(document.documentElement).getPropertyValue('--max-width').trim(),
+    fontSize:_fontSize+'px',
+    lineHeight:String(_lineHeight),
+    maxWidth:_maxWidth+'px',
     textAlign:document.getElementById('eContent')?.style.textAlign||'left',
     wordHl:wordHlOn, wpm, sentPauseMs,
   };
@@ -1378,13 +1387,14 @@ function loadDisplayPrefs(){
       document.getElementById(tid)?.classList.add('active');
     }
     if(p.fontBody){
+      _fontBody=p.fontBody;
       document.documentElement.style.setProperty('--font-body',p.fontBody);
       document.querySelectorAll('[id^=fontPill]').forEach(b=>b.classList.remove('active'));
       if(p.fontKey) document.getElementById('fontPill-'+p.fontKey)?.classList.add('active');
     }
-    if(p.fontSize){ document.documentElement.style.setProperty('--font-size',p.fontSize); const v=parseInt(p.fontSize); document.getElementById('fsSlider').value=v; document.getElementById('fsLbl').textContent=p.fontSize; }
-    if(p.lineHeight){ document.documentElement.style.setProperty('--line-height',p.lineHeight); document.getElementById('lhSlider').value=parseFloat(p.lineHeight); document.getElementById('lhLbl').textContent=parseFloat(p.lineHeight).toFixed(2); }
-    if(p.maxWidth){ document.documentElement.style.setProperty('--max-width',p.maxWidth); const v=parseInt(p.maxWidth); document.getElementById('mwSlider').value=v; document.getElementById('mwLbl').textContent=p.maxWidth; }
+    if(p.fontSize){ _fontSize=parseInt(p.fontSize); document.documentElement.style.setProperty('--font-size',p.fontSize); const v=parseInt(p.fontSize); document.getElementById('fsSlider').value=v; document.getElementById('fsLbl').textContent=p.fontSize; }
+    if(p.lineHeight){ _lineHeight=parseFloat(p.lineHeight); document.documentElement.style.setProperty('--line-height',p.lineHeight); document.getElementById('lhSlider').value=parseFloat(p.lineHeight); document.getElementById('lhLbl').textContent=parseFloat(p.lineHeight).toFixed(2); }
+    if(p.maxWidth){ _maxWidth=parseInt(p.maxWidth); document.documentElement.style.setProperty('--max-width',p.maxWidth); const v=parseInt(p.maxWidth); document.getElementById('mwSlider').value=v; document.getElementById('mwLbl').textContent=p.maxWidth; }
     if(p.textAlign){ const ec=document.getElementById('eContent'); if(ec) ec.style.textAlign=p.textAlign; document.querySelectorAll('[id^=alignPill]').forEach(b=>b.classList.remove('active')); document.getElementById('alignPill-'+p.textAlign)?.classList.add('active'); }
     if(p.wordHl!==undefined){ wordHlOn=p.wordHl; document.getElementById('wordHlToggle')?.classList.toggle('on',wordHlOn); }
     if(p.wpm){ wpm=p.wpm; document.getElementById('defWpmSlider').value=wpm; document.getElementById('defWpmInput').value=wpm; updateWpmLabel(); }
@@ -1976,14 +1986,15 @@ function setTheme(t,btn){
   saveDisplayPrefs();
 }
 function setFont(f,key,btn){
+  _fontBody=f;
   document.documentElement.style.setProperty('--font-body',f);
   document.querySelectorAll('[id^=fontPill]').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   saveDisplayPrefs();
 }
-function setFS(v){ document.documentElement.style.setProperty('--font-size',v+'px'); document.getElementById('fsLbl').textContent=v+'px'; saveDisplayPrefs(); }
-function setLH(v){ document.documentElement.style.setProperty('--line-height',v); document.getElementById('lhLbl').textContent=parseFloat(v).toFixed(2); saveDisplayPrefs(); }
-function setMW(v){ document.documentElement.style.setProperty('--max-width',v+'px'); document.getElementById('mwLbl').textContent=v+'px'; saveDisplayPrefs(); }
+function setFS(v){ _fontSize=parseInt(v); document.documentElement.style.setProperty('--font-size',v+'px'); document.getElementById('fsLbl').textContent=v+'px'; saveDisplayPrefs(); }
+function setLH(v){ _lineHeight=parseFloat(v); document.documentElement.style.setProperty('--line-height',v); document.getElementById('lhLbl').textContent=parseFloat(v).toFixed(2); saveDisplayPrefs(); }
+function setMW(v){ _maxWidth=parseInt(v); document.documentElement.style.setProperty('--max-width',v+'px'); document.getElementById('mwLbl').textContent=v+'px'; saveDisplayPrefs(); }
 function setAlign(a,btn){
   const ec=document.getElementById('eContent'); if(ec) ec.style.textAlign=a;
   document.querySelectorAll('[id^=alignPill]').forEach(b=>b.classList.remove('active'));

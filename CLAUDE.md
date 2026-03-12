@@ -1,12 +1,12 @@
 # Folio
 
 Single-file HTML PWA (~3k lines): audiobook/ebook reader with synced highlighting.
-File: indexnew.html — <style>, static HTML (4 screens + 5 modals), <script>.
+File: index.html — <style>, static HTML (4 screens + 5 modals), <script>.
 
 ## File structure
-- CSS: lines 11–505
-- HTML: lines 506–921
-- JS: lines 922–2981
+- CSS: lines 14–509
+- HTML: lines 510–924
+- JS: lines 925–2991
 
 ## Two playback modes (set by configurePlayerForMode)
 - Audio mode: <audio> drives playback, _wordTick() at rAF for word highlights
@@ -19,7 +19,7 @@ curSent/curWord = reading position. mediaState = 'stopped'|'playing'|'paused'.
 ## Constraints
 - Do not refactor or restructure unless asked
 - Read each target function in full before editing
-- Run `node --check indexnew.html` to verify syntax after changes
+- Run `node --check index.html` to verify syntax after changes
 - State updates must always include: setPlayBtnIcon, setMediaState,
   acquireWakeLock/releaseWakeLock, updatePageTitle
 

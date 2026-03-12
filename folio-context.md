@@ -7,110 +7,110 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 
 ---
 
-## File Layout (line ranges)
+## File Layout
 
-| Range | Zone |
+| Zone | Contents |
 |---|---|
-| 1–10 | `<head>`, meta, manifest, font import |
-| 11–505 | `<style>` — all CSS |
-| 506–921 | `<body>` — static HTML (screens, modals, overlays) |
-| 922–2981 | `<script>` — all JS |
+| `<head>` | Meta, manifest, font preconnect/preload |
+| `<style>` | All CSS |
+| `<body>` | Static HTML (4 screens + 5 modals) |
+| `<script>` | All JS |
 
-### CSS Sections (inside `<style>`, lines 11–505)
+### CSS Sections
 
-| Lines | Section | What it styles |
-|---|---|---|
-| 12–20 | `:root` | CSS custom properties (colors, fonts, spacing) |
-| 24–35 | Themes | `.theme-light`, `.theme-night` variable overrides |
-| 36–41 | Screens | `#pwaFirstRun`, `#pwaRegrant`, `#library`, `#player` |
-| 42–97 | Library | `.lib-header`, `.lib-grid`, `.book-card`, `.add-card`, `.book-cover-*` |
-| 98–147 | Modals | `.modal-overlay`, `.modal`, `.dropzone`, `.file-pill`, `.binfo-*` |
-| 148–165 | Buttons | `.btn`, `.pill`, `.ipill`, `.toggle` |
-| 166–179 | Top bar | `.top-bar`, `.back-btn`, `.bk-info`, `.ic-btn`, `.play-btn` |
-| 180–200 | Options panel | `.opt-panel`, `.op-tab`, `.op-row`, `.op-slider` |
-| 201–221 | Seek strip | `.seek-strip`, `.seek-strip-bar`, `.rate-preset-btn`, `.vol-*` |
-| 222–224 | TTS bar | `.tts-bar` |
-| 225–243 | Transcript banner | `.tx-banner` (loading/syncing/ready/error), `.tx-spinner`, shimmer keyframes |
-| 244–248 | `.ebook-area`, Reading progress | `.read-progress-wrap`, `.read-progress-bar` |
-| 249–279 | Reader body | `.reader-body`, `.toc-sidebar`, `.toc-item`, `.ebook-scroll`, `.ebook-content`, `.sent`, `.word` |
-| 280–317 | Bottom bar | `.bottom-bar`, `.bb-row`, `.state-badge`, `.m-btn`, `.nudge-btn`, `.wpm-*`, `.sync-*` |
-| 318–326 | Relink overlay | `.relink-overlay`, `.relink-sheet` |
-| 327–344 | PWA screens | `.pwa-setup-card`, `.pwa-regrant-card` |
-| 345–424 | Media queries | `@media(min-width:640px)` desktop, `@media(max-width:639px)` mobile |
-| 425–505 | Misc | Theme transitions, button feedback, toasts, inline delete confirm, sleep badge, install banner, backdrop-filter |
+| Section | What it styles |
+|---|---|
+| `:root` | CSS custom properties (colors, fonts, spacing) |
+| Themes | `.theme-light`, `.theme-night` variable overrides |
+| Screens | `#pwaFirstRun`, `#pwaRegrant`, `#library`, `#player` |
+| Library | `.lib-header`, `.lib-grid`, `.book-card`, `.add-card`, `.book-cover-*` |
+| Modals | `.modal-overlay`, `.modal`, `.dropzone`, `.file-pill`, `.binfo-*` |
+| Buttons | `.btn`, `.pill`, `.ipill`, `.toggle` |
+| Top bar | `.top-bar`, `.back-btn`, `.bk-info`, `.ic-btn`, `.play-btn` |
+| Options panel | `.opt-panel`, `.op-tab`, `.op-row`, `.op-slider` |
+| Seek strip | `.seek-strip`, `.seek-strip-bar`, `.rate-preset-btn`, `.vol-*` |
+| TTS bar | `.tts-bar` |
+| Transcript banner | `.tx-banner` (loading/syncing/ready/error), `.tx-spinner`, shimmer keyframes |
+| Reading progress | `.ebook-area`, `.read-progress-wrap`, `.read-progress-bar` |
+| Reader body | `.reader-body`, `.toc-sidebar`, `.toc-item`, `.ebook-scroll`, `.ebook-content`, `.sent`, `.word` |
+| Bottom bar | `.bottom-bar`, `.bb-row`, `.state-badge`, `.m-btn`, `.nudge-btn`, `.wpm-*`, `.sync-*` |
+| Relink overlay | `.relink-overlay`, `.relink-sheet` |
+| PWA screens | `.pwa-setup-card`, `.pwa-regrant-card` |
+| Media queries | `@media(min-width:640px)` desktop, `@media(max-width:639px)` mobile |
+| Misc | Theme transitions, button feedback, toasts, inline delete confirm, sleep badge, install banner, backdrop-filter |
 
-### HTML Structure (lines 506–921)
+### HTML Structure
 
-| Lines | Element | Purpose |
-|---|---|---|
-| 509 | `#toastContainer` | Toast notification mount point |
-| 510–518 | `#installBanner` | PWA install prompt banner |
-| 521–541 | `#pwaFirstRun` | First-run screen: folder picker setup |
-| 542–555 | `#pwaRegrant` | Re-grant permissions screen |
-| 556–563 | `#library` | Library screen: header + `#libGrid` card grid |
-| 566–777 | `#player` | **Main player screen** (see breakdown below) |
-| 780–837 | `#modal` | Add Book modal (dropzone, file pills, folder assign) |
-| 839–862 | `#txModal` | Transcript modal (add/replace transcript) |
-| 864–887 | `#linkAudioModal` | Link Audio modal (add audio to ebook-only book) |
-| 888–905 | `#bookInfoModal` | Book Info modal (view/reassign files) |
-| 906–920 | `#relinkOverlay` | Relink audio overlay (handle expired audio URL) |
+| Element | Purpose |
+|---|---|
+| `#toastContainer` | Toast notification mount point |
+| `#installBanner` | PWA install prompt banner |
+| `#pwaFirstRun` | First-run screen: folder picker setup |
+| `#pwaRegrant` | Re-grant permissions screen |
+| `#library` | Library screen: header + `#libGrid` card grid |
+| `#player` | **Main player screen** (see breakdown below) |
+| `#modal` | Add Book modal (dropzone, file pills, folder assign) |
+| `#txModal` | Transcript modal (add/replace transcript) |
+| `#linkAudioModal` | Link Audio modal (add audio to ebook-only book) |
+| `#bookInfoModal` | Book Info modal (view/reassign files) |
+| `#relinkOverlay` | Relink audio overlay (handle expired audio URL) |
 
-**Player screen breakdown (`#player`, lines 566–777):**
+**Player screen breakdown (`#player`):**
 
-| Lines | Element | Role |
-|---|---|---|
-| 567 | `<audio id="audio">` | Hidden audio element |
-| 568–588 | `.top-bar` | Back button, title (`#pTitle`), progress text (`#pProg`), play button (`#playBtn`), option/TOC/transcript buttons |
-| 589–657 | `#optPanel` | Flyout options: 3 tabs (Playback, Display, Advanced) with sliders/toggles |
-| 658–683 | `#seekStrip` | Audio seek bar, time labels, rate presets, volume (hidden in TTS mode) |
-| 685–701 | `#ttsBar` | TTS voice picker, rate slider (shown in TTS mode) |
-| 702–709 | `#txBanner` | Transcript status banner (loading/syncing/ready/error) |
-| 710 | `.read-progress-wrap` | Sentence-based reading progress bar (`#readProg`) |
-| 711–727 | `.reader-body` | TOC sidebar (`#tocSidebar` + `#tocList`) and ebook scroll area (`#eScroll` > `#eContent`) |
-| 728–777 | `.bottom-bar` | State badge, play/pause/stop/skip/nudge buttons, WPM controls, auto-scroll toggle, sync panel |
+| Element | Role |
+|---|---|
+| `<audio id="audio">` | Hidden audio element |
+| `.top-bar` | Back button, title (`#pTitle`), progress text (`#pProg`), play button (`#playBtn`), option/TOC/transcript buttons |
+| `#optPanel` | Flyout options: 3 tabs (Playback, Display, Advanced) with sliders/toggles |
+| `#seekStrip` | Audio seek bar, time labels, rate presets, volume (hidden in TTS mode) |
+| `#ttsBar` | TTS voice picker, rate slider (shown in TTS mode) |
+| `#txBanner` | Transcript status banner (loading/syncing/ready/error) |
+| `.read-progress-wrap` | Sentence-based reading progress bar (`#readProg`) |
+| `.reader-body` | TOC sidebar (`#tocSidebar` + `#tocList`) and ebook scroll area (`#eScroll` > `#eContent`) |
+| `.bottom-bar` | State badge, play/pause/stop/skip/nudge buttons, WPM controls, auto-scroll toggle, sync panel |
 
-### JavaScript Sections (lines 922–2981)
+### JavaScript Sections
 
-| Lines | Section | Key functions |
-|---|---|---|
-| 925–954 | **STATE** | All global variable declarations and constants |
-| 959–970 | **TOAST** | `showToast(msg, type, duration)` |
-| 976–990 | **WAKE LOCK** | `acquireWakeLock()`, `releaseWakeLock()`, visibilitychange re-acquire |
-| 995–1016 | **MEDIA SESSION** | `setupMediaSession()`, `updateMediaSessionState(playing)` |
-| 1023–1026 | **DEBOUNCED SAVE** | `saveBookProgressDebounced()` — 500ms timer |
-| 1031–1036 | **PAGE TITLE** | `updatePageTitle()` |
-| 1040–1078 | **SLEEP TIMER** | `cycleSleepTimer()`, `clearSleepTimer()`, `_updateSleepBadge()` |
-| 1084–1129 | **KEYBOARD SHORTCUTS** | `keydown` listener: Space, arrows, `[`/`]`, `f`, `m` |
-| 1135–1157 | **PWA INSTALL** | `installPWA()`, `dismissInstall()`, `beforeinstallprompt` handler |
-| 1160–1182 | **DOM CACHE & UTILS** | `$()`, `cacheDOM()`, `setPlayBtnIcon()`, `xh()`, `fmt()`, `uid()` |
-| 1187–1215 | **INDEXEDDB** | `idbOpen()`, `idbSet(key,val)`, `idbGet(key)` |
-| 1220–1353 | **LIBRARY PERSISTENCE** | `saveLibrary()`, `loadLibrary()`, `saveBookProgress()`, `flushPositionSync()`, blob save/load helpers |
-| 1358–1393 | **DISPLAY PREFERENCES** | `saveDisplayPrefs()`, `loadDisplayPrefs()` |
-| 1398–1495 | **LIBRARY UI** | `renderLib()`, `renameBook()`, `deleteBook()`, `configurePlayerForMode()` |
-| 1497–1512 | **PLAYER CONFIG** | `configurePlayerForMode(b, audioSrc, rate)` — decides ttsMode, shows/hides seek strip vs TTS bar |
-| 1517–1550 | **OPEN BOOK / GO LIB** | `openBook(i)`, `goLib()` |
-| 1555–1630 | **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()`, `setVol()`, `toggleMute()`, seek handlers |
-| 1637–1713 | **AUDIO EVENTS** | `_wordTick()` (rAF word highlight), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate/ended/play/pause) |
-| 1718–1756 | **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()`, `advanceSent()`, `nudge(n)`, `resync()` |
-| 1762–1833 | **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()`, `ttsPause()`, `ttsStop()` |
-| 1839–1873 | **SYNC ANCHORS** | `setAudioAnchor()`, `setTextAnchor()`, `clearAnchors()`, `updateAnchorUI()`, `toggleSyncPanel()` |
-| 1882–1921 | **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()`, `scrollToSent()`, `toggleAS()`, `toggleWordHl()` |
-| 1927–1957 | **TOC** | `toggleToc()`, `buildToc()`, `updateTocActive()` |
-| 1963–2025 | **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `setFont()`, `setFS/LH/MW()`, `setAlign()`, WPM helpers, scroll-pause IIFE, click-outside handler |
-| 2030–2227 | **TRANSCRIPT** | `loadTranscriptData()`, `setBannerState()`, `buildSentenceTimings()`, `buildTimingsFromPlainText()`, `similarity()`, `updateTranscriptUI()` |
-| 2232–2317 | **EBOOK LOADING** | `yieldToMain()`, `loadEbook(book, onDone)` |
-| 2323–2337 | **SENTENCE SPLITTER** | `splitSentences(text)` |
-| 2342–2427 | **EBOOK PARSERS** | `parseTxt()`, `parseMd()`, `parseHtml()`, `extractFromDom()`, `parseEpub()`, `loadScript()`, `arrayBufferToBase64()` |
-| 2432–2561 | **ADD BOOK MODAL** | `openModal()`, `closeModal()`, file/folder handlers, `addBook()` |
-| 2566–2611 | **TRANSCRIPT MODAL** | `openTranscriptModal()`, `saveTranscript()`, `removeTranscript()` |
-| 2616–2649 | **LINK AUDIO MODAL** | `openLinkAudioModal()`, `saveLinkAudio()` |
-| 2653–2736 | **BOOK INFO MODAL** | `openBookInfoModal()`, `closeBookInfoModal()`, `biReassign()` |
-| 2741–2763 | **RELINK** | `showRelink()`, `closeRelink()`, `rlLoad()` |
-| 2767–2857 | **PWA FILE SYSTEM** | `pwaPickFolder()`, `pwaRegrantAccess()`, `pwaScanAndRender()`, `pwaScanBookFolder()`, `getPwaProgress()`, `savePwaProgress()`, `pwaOpenBook()` |
-| 2909–2933 | **SCREEN ROUTER** | `showScreen(id)`, `pwaShowFirstRun()`, `pwaCheckOnLaunch()` |
-| 2938–2946 | **SWIPE GESTURES** | Touchstart/move/end IIFE on `#eScroll` |
-| 2951–2953 | **SERVICE WORKER** | `navigator.serviceWorker.register()` |
-| 2958–2981 | **INIT** | `init()` — calls cacheDOM, wireAudioEvents, loadDisplayPrefs, setMediaState, getTtsVoices, routing |
+| Section | Key functions |
+|---|---|
+| **STATE** | All global variable declarations and constants (incl. `_fontBody/_fontSize/_lineHeight/_maxWidth`) |
+| **TOAST** | `showToast(msg, type, duration)` |
+| **WAKE LOCK** | `acquireWakeLock()`, `releaseWakeLock()`, visibilitychange re-acquire |
+| **MEDIA SESSION** | `setupMediaSession()`, `updateMediaSessionState(playing)` |
+| **DEBOUNCED SAVE** | `saveBookProgressDebounced()` — 500ms timer |
+| **PAGE TITLE** | `updatePageTitle()` |
+| **SLEEP TIMER** | `cycleSleepTimer()`, `clearSleepTimer()`, `_updateSleepBadge()` |
+| **KEYBOARD SHORTCUTS** | `keydown` listener: Space, arrows, `[`/`]`, `f`, `m` |
+| **PWA INSTALL** | `installPWA()`, `dismissInstall()`, `beforeinstallprompt` handler |
+| **DOM CACHE & UTILS** | `$()`, `cacheDOM()`, `setPlayBtnIcon()`, `xh()`, `fmt()`, `uid()` |
+| **INDEXEDDB** | `idbOpen()` (caches connection in `_idb`), `idbSet(key,val)`, `idbGet(key)` |
+| **LIBRARY PERSISTENCE** | `saveLibrary()`, `loadLibrary()`, `saveBookProgress()`, `flushPositionSync()`, blob save/load helpers |
+| **DISPLAY PREFERENCES** | `saveDisplayPrefs()` (reads `_fontBody/_fontSize/_lineHeight/_maxWidth`; no `getComputedStyle`), `loadDisplayPrefs()` |
+| **LIBRARY UI** | `renderLib()`, `renameBook()`, `deleteBook()`, `configurePlayerForMode()` |
+| **PLAYER CONFIG** | `configurePlayerForMode(b, audioSrc, rate)` — decides ttsMode, shows/hides seek strip vs TTS bar |
+| **OPEN BOOK / GO LIB** | `openBook(i)`, `goLib()` |
+| **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()`, `setVol()`, `toggleMute()`, seek handlers |
+| **AUDIO EVENTS** | `_wordTick()` (rAF word highlight), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate/ended/play/pause) |
+| **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()`, `advanceSent()`, `nudge(n)`, `resync()` |
+| **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()`, `ttsPause()`, `ttsStop()` |
+| **SYNC ANCHORS** | `setAudioAnchor()`, `setTextAnchor()`, `clearAnchors()`, `updateAnchorUI()`, `toggleSyncPanel()` |
+| **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()`, `scrollToSent()`, `toggleAS()`, `toggleWordHl()` |
+| **TOC** | `toggleToc()`, `buildToc()`, `updateTocActive()` |
+| **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `setFont()`, `setFS/LH/MW()`, `setAlign()`, WPM helpers, scroll-pause IIFE, click-outside handler |
+| **TRANSCRIPT** | `loadTranscriptData()`, `setBannerState()`, `buildSentenceTimings()`, `buildTimingsFromPlainText()`, `similarity()`, `updateTranscriptUI()` |
+| **EBOOK LOADING** | `yieldToMain()`, `loadEbook(book, onDone)` |
+| **SENTENCE SPLITTER** | `splitSentences(text)` |
+| **EBOOK PARSERS** | `parseTxt()`, `parseMd()`, `parseHtml()`, `extractFromDom()`, `parseEpub()`, `loadScript()`, `arrayBufferToBase64()` |
+| **ADD BOOK MODAL** | `openModal()`, `closeModal()`, file/folder handlers, `addBook()` |
+| **TRANSCRIPT MODAL** | `openTranscriptModal()`, `saveTranscript()`, `removeTranscript()` |
+| **LINK AUDIO MODAL** | `openLinkAudioModal()`, `saveLinkAudio()` |
+| **BOOK INFO MODAL** | `openBookInfoModal()`, `closeBookInfoModal()`, `biReassign()` |
+| **RELINK** | `showRelink()`, `closeRelink()`, `rlLoad()` |
+| **PWA FILE SYSTEM** | `pwaPickFolder()`, `pwaRegrantAccess()`, `pwaScanAndRender()`, `pwaScanBookFolder()`, `getPwaProgress()`, `savePwaProgress()`, `pwaOpenBook()` |
+| **SCREEN ROUTER** | `showScreen(id)`, `pwaShowFirstRun()`, `pwaCheckOnLaunch()` |
+| **SWIPE GESTURES** | Touchstart/move/end IIFE on `#eScroll` |
+| **SERVICE WORKER** | `navigator.serviceWorker.register()` |
+| **INIT** | `init()` — calls cacheDOM, wireAudioEvents, loadDisplayPrefs, setMediaState, getTtsVoices, routing |
 
 ---
 
@@ -145,7 +145,7 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 
 ---
 
-## Global State Variables (lines 928–954)
+## Global State Variables
 
 ### Core reading state
 | Variable | Type | Description |
@@ -193,6 +193,10 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 |---|---|---|
 | `tocOpen` | `boolean` | TOC sidebar expanded |
 | `wordHlOn` | `boolean` | Word-level highlighting enabled |
+| `_fontBody` | `string` | Cached `--font-body` value; kept in sync by `setFont` / `loadDisplayPrefs` |
+| `_fontSize` | `number` | Cached `--font-size` (px integer); kept in sync by `setFS` / `loadDisplayPrefs` |
+| `_lineHeight` | `number` | Cached `--line-height` float; kept in sync by `setLH` / `loadDisplayPrefs` |
+| `_maxWidth` | `number` | Cached `--max-width` (px integer); kept in sync by `setMW` / `loadDisplayPrefs` |
 
 ### Modal pending state
 | Variable | Type | Description |
@@ -200,7 +204,7 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 | `txPending` | `File\|null` | Pending file in transcript modal |
 | `laPending` | `File\|null` | Pending file in link-audio modal |
 | `folderFiles` | `Array` | Files from folder picker in add-book modal |
-| `upData` | `{audio,ebook,transcript,cover}` | Staged files in add-book modal (const, line 2431) |
+| `upData` | `{audio,ebook,transcript,cover}` | Staged files in add-book modal |
 
 ### PWA
 | Variable | Type | Description |
@@ -208,41 +212,42 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 | `pwaRootHandle` | `FileSystemDirectoryHandle\|null` | Root folder handle |
 
 ### Private module-level variables
-| Variable | Line | Description |
-|---|---|---|
-| `_wakeLock` | 975 | Screen wake lock sentinel |
-| `_saveTimer` | 1022 | Debounce timer for `saveBookProgressDebounced` |
-| `_sleepTimerIdx` | 1042 | Index into `SLEEP_OPTIONS` array |
-| `_sleepTimerId` | 1043 | setTimeout ID for sleep timer |
-| `_sleepEndTime` | 1044 | Epoch ms when sleep timer expires |
-| `_sleepTickId` | 1045 | setInterval ID for badge countdown |
-| `_installPromptEvent` | 1134 | Deferred `beforeinstallprompt` event |
-| `_audio` | 1162 | Cached `<audio>` element |
-| `_playBtn` | 1162 | Cached play button element |
-| `_eContent` | 1162 | Cached `#eContent` element |
-| `_readProg` | 1162 | Cached `#readProg` element |
-| `_tCur` | 1162 | Cached `#tCur` time display |
-| `_seekBar` | 1162 | Cached `#seekBar` element |
-| `_rafId` | 1636 | rAF ID for `_wordTick` |
-| `_activeSentEl` | 1879 | Currently highlighted sentence DOM element |
-| `_activeWordEl` | 1880 | Currently highlighted word DOM element |
+| Variable | Description |
+|---|---|
+| `_wakeLock` | Screen wake lock sentinel |
+| `_saveTimer` | Debounce timer for `saveBookProgressDebounced` |
+| `_sleepTimerIdx` | Index into `SLEEP_OPTIONS` array |
+| `_sleepTimerId` | setTimeout ID for sleep timer |
+| `_sleepEndTime` | Epoch ms when sleep timer expires |
+| `_sleepTickId` | setInterval ID for badge countdown |
+| `_installPromptEvent` | Deferred `beforeinstallprompt` event |
+| `_idb` | Cached IndexedDB connection (`null` until first `idbOpen()`) |
+| `_audio` | Cached `<audio>` element |
+| `_playBtn` | Cached play button element |
+| `_eContent` | Cached `#eContent` element |
+| `_readProg` | Cached `#readProg` element |
+| `_tCur` | Cached `#tCur` time display |
+| `_seekBar` | Cached `#seekBar` element |
+| `_rafId` | rAF ID for `_wordTick` |
+| `_activeSentEl` | Currently highlighted sentence DOM element |
+| `_activeWordEl` | Currently highlighted word DOM element |
 
 ### Constants
-| Name | Line | Value/Purpose |
-|---|---|---|
-| `IS_PWA` | 945 | `true` if running as installed PWA |
-| `CAN_FS` | 946 | `true` if File System Access API available |
-| `AUDIO_EXTS` | 947 | Set of recognized audio extensions |
-| `EBOOK_EXTS` | 948 | Set of recognized ebook extensions |
-| `IMAGE_EXTS` | 949 | Set of recognized image extensions |
-| `LS_KEY` | 950 | `'folio_library_v2'` — localStorage key for library metadata |
-| `PWA_PROG_KEY` | 951 | `'folio_pwa_progress_v1'` — localStorage key for PWA progress |
-| `DISPLAY_PREFS_KEY` | 952 | `'folio_display_prefs_v1'` — localStorage key for display settings |
-| `IDB_NAME` | 953 | `'folio_pwa'` — IndexedDB database name |
-| `IDB_STORE` | 953 | `'handles'` — IDB object store for file handles |
-| `IDB_BLOB_STORE` | 953 | `'blobs'` — IDB object store for book data blobs |
-| `BLOB_FIELDS` | 954 | `['ebookData','transcriptData','coverUrl']` — fields saved to IDB |
-| `SLEEP_OPTIONS` | 1041 | `[0, 5, 15, 30, 60, 90]` — minutes |
+| Name | Value/Purpose |
+|---|---|
+| `IS_PWA` | `true` if running as installed PWA |
+| `CAN_FS` | `true` if File System Access API available |
+| `AUDIO_EXTS` | Set of recognized audio extensions |
+| `EBOOK_EXTS` | Set of recognized ebook extensions |
+| `IMAGE_EXTS` | Set of recognized image extensions |
+| `LS_KEY` | `'folio_library_v2'` — localStorage key for library metadata |
+| `PWA_PROG_KEY` | `'folio_pwa_progress_v1'` — localStorage key for PWA progress |
+| `DISPLAY_PREFS_KEY` | `'folio_display_prefs_v1'` — localStorage key for display settings |
+| `IDB_NAME` | `'folio_pwa'` — IndexedDB database name |
+| `IDB_STORE` | `'handles'` — IDB object store for file handles |
+| `IDB_BLOB_STORE` | `'blobs'` — IDB object store for book data blobs |
+| `BLOB_FIELDS` | `['ebookData','transcriptData','coverUrl']` — fields saved to IDB |
+| `SLEEP_OPTIONS` | `[0, 15, 30, 45, 60]` — minutes |
 
 ---
 
@@ -251,23 +256,23 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 ### Playback Control Chain
 
 ```
-togglePlay() [1561]
+togglePlay()
   ├── ttsMode=true  → ttsSpeaking ? ttsPause() : ttsPlay()
   └── ttsMode=false → _audio.paused ? mediaPlay() : mediaPause()
 
-mediaPlay() [1565]       → ttsMode redirects to ttsPlay()
+mediaPlay()       → ttsMode redirects to ttsPlay()
   └── _audio.play() → then: setPlayBtnIcon(true), setMediaState('playing'),
       startScrollEngine(), startWordTicker(), acquireWakeLock(), updatePageTitle()
 
-mediaPause() [1576]      → ttsMode redirects to ttsPause()
+mediaPause()      → ttsMode redirects to ttsPause()
   └── _audio.pause(), stopWordTicker(), setPlayBtnIcon(false), setMediaState('paused'),
       releaseWakeLock(), updatePageTitle()
 
-mediaStop() [1585]       → ttsMode redirects to ttsStop()
+mediaStop()       → ttsMode redirects to ttsStop()
   └── _audio.pause(), currentTime=0, stopWordTicker(), setPlayBtnIcon(false),
       setMediaState('stopped'), stopScrollEngine(), releaseWakeLock(), updatePageTitle()
 
-ttsPlay() [1783]
+ttsPlay()
   ├── resume path (ttsPaused && ttsUtterance): speechSynthesis.resume(),
   │   setPlayBtnIcon(true), setMediaState('playing'), acquireWakeLock(), updatePageTitle()
   └── fresh path: setPlayBtnIcon(true), setMediaState('playing'), ttsSpeaking=true,
@@ -277,10 +282,10 @@ ttsPlay() [1783]
           ├── utt.onend → curSent++, curWord=0, speak() again
           └── exit: setPlayBtnIcon(false), setMediaState(), stopScrollEngine(), releaseWakeLock()
 
-ttsPause() [1825]  → speechSynthesis.pause(), setPlayBtnIcon(false), stopScrollEngine(),
-                     releaseWakeLock(), updatePageTitle()
-ttsStop()  [1830]  → speechSynthesis.cancel(), setPlayBtnIcon(false), stopScrollEngine(),
-                     releaseWakeLock(), updatePageTitle()
+ttsPause()  → speechSynthesis.pause(), setPlayBtnIcon(false), stopScrollEngine(),
+               releaseWakeLock(), updatePageTitle()
+ttsStop()   → speechSynthesis.cancel(), setPlayBtnIcon(false), stopScrollEngine(),
+               releaseWakeLock(), updatePageTitle()
 ```
 
 ### State Update Functions (these should ALWAYS be called together)
@@ -292,27 +297,27 @@ Stopped: `setPlayBtnIcon(false)`, `setMediaState('stopped')`, `stopScrollEngine(
 ### Book Open Flow
 
 ```
-openBook(i) [1517]
-  ├── IS_PWA && CAN_FS → pwaOpenBook(i) [2859]
+openBook(i)
+  ├── IS_PWA && CAN_FS → pwaOpenBook(i)
   │   └── resolves file handles → configurePlayerForMode() → loadTranscriptData()
   │       → loadEbook() → setupMediaSession() → updatePageTitle()
   └── browser mode:
       └── configurePlayerForMode() → loadTranscriptData() → loadEbook(onDone) →
           setupMediaSession() → updatePageTitle()
 
-configurePlayerForMode(b, audioSrc, rate) [1497]
+configurePlayerForMode(b, audioSrc, rate)
   └── sets ttsMode, shows/hides seekStrip vs ttsBar, loads audio if present
 
-loadEbook(book, onDone) [2236]
+loadEbook(book, onDone)
   └── clears _activeSentEl/_activeWordEl → wipes #eContent → parses ebook format →
       builds DOM in chunks (DocumentFragment + yieldToMain) → populates sentences[] →
       buildToc() → buildSentenceTimings() (if transcript) → onDone()
 
-loadTranscriptData(b) [2030]
+loadTranscriptData(b)
   └── setBannerState('loading') → parses JSON/TXT → setBannerState('ready') →
       buildSentenceTimings() (if sentences already loaded)
 
-buildSentenceTimings() [2087]
+buildSentenceTimings()
   └── setBannerState('syncing') → greedy forward Jaccard match: ebook sentences →
       transcript word runs → populates sentenceTimings[] + wordTimings[] →
       setBannerState('ready')
@@ -321,18 +326,18 @@ buildSentenceTimings() [2087]
 ### Highlighting & Scroll
 
 ```
-updateHL() [1882]
+updateHL()
   └── removes previous sent-active/word-active → applies to sentences[curSent] →
       applies word-active to words[curWord] if wordHlOn → updateTocActive()
 
-scrollToSent(idx) [1899]
+scrollToSent(idx)
   └── early-returns if scrollPaused → checks if sentence is in safe zone (middle 40%) →
       scrollIntoView({smooth, center}) if outside
 
-advanceSent() [1727]  (TTS scroll engine — WPM-based, not used during speechSynthesis)
+advanceSent()  (TTS scroll engine — WPM-based, not used during speechSynthesis)
   └── calculates ms from char count + wpm + sentPauseMs → setTimeout → curSent++ → recurse
 
-_wordTick() [1637]  (audio mode only)
+_wordTick()  (audio mode only)
   └── reads _audio.currentTime → binary search in wordTimings[curSent].starts →
       updates curWord + word-active class → requestAnimationFrame(self)
 ```
@@ -340,20 +345,20 @@ _wordTick() [1637]  (audio mode only)
 ### Save/Load Chain
 
 ```
-saveBookProgress() [1306]
+saveBookProgress()
   └── updates library[curBookIdx] fields → saveLibrary()
 
-saveLibrary() [1225]
+saveLibrary()
   └── _stripBlobs() all books → JSON.stringify → localStorage.setItem(LS_KEY) →
       fire-and-forget _saveBlobs()
 
-_saveBlobs() [1233]
+_saveBlobs()
   └── for each book with blob fields → idbSet to IDB_BLOB_STORE
 
-loadLibrary() [1270]
+loadLibrary()
   └── JSON.parse from localStorage → hydrate blobs from IDB → auto-migrate old format
 
-flushPositionSync() [1321]
+flushPositionSync()
   └── sync-only emergency save on visibilitychange/pagehide (critical for iOS)
       PWA: savePwaProgress() + direct localStorage write
       Browser: synchronous localStorage only (no IDB)
@@ -361,13 +366,13 @@ flushPositionSync() [1321]
 
 ### Modal Functions
 
-| Modal | Open | Close | Save | Lines |
-|---|---|---|---|---|
-| Add Book | `openModal()` | `closeModal()` | `addBook()` | 2432–2561 |
-| Transcript | `openTranscriptModal()` | `closeTxModal()` | `saveTranscript()` / `removeTranscript()` | 2566–2611 |
-| Link Audio | `openLinkAudioModal()` | `closeLinkAudioModal()` | `saveLinkAudio()` | 2616–2649 |
-| Book Info | `openBookInfoModal()` | `closeBookInfoModal()` | `biReassign()` | 2653–2736 |
-| Relink | `showRelink(i)` | `closeRelink()` | `rlLoad()` | 2741–2763 |
+| Modal | Open | Close | Save |
+|---|---|---|---|
+| Add Book | `openModal()` | `closeModal()` | `addBook()` |
+| Transcript | `openTranscriptModal()` | `closeTxModal()` | `saveTranscript()` / `removeTranscript()` |
+| Link Audio | `openLinkAudioModal()` | `closeLinkAudioModal()` | `saveLinkAudio()` |
+| Book Info | `openBookInfoModal()` | `closeBookInfoModal()` | `biReassign()` |
+| Relink | `showRelink(i)` | `closeRelink()` | `rlLoad()` |
 
 ---
 
@@ -432,7 +437,7 @@ Blobs stripped via `_stripBlobs()` before every write.
 
 ---
 
-## Keyboard Shortcuts (line 1084)
+## Keyboard Shortcuts
 
 | Key | Action |
 |---|---|
@@ -450,12 +455,12 @@ Blobs stripped via `_stripBlobs()` before every write.
 
 ## IIFEs and Inline Listeners
 
-| Lines | What | Trigger |
-|---|---|---|
-| 988–990 | visibilitychange → re-acquire wake lock if playing | auto |
-| 2001–2016 | scroll-pause detection on `#eScroll` | user scroll → sets `scrollPaused=true` for 2s |
-| 2018–2025 | click-outside handler for options panel | any document click |
-| 2938–2946 | swipe gesture detection on `#eScroll` | touch events → `nudge(±1)` |
+| What | Trigger |
+|---|---|
+| visibilitychange → re-acquire wake lock if playing | auto |
+| scroll-pause detection on `#eScroll` | user scroll → sets `scrollPaused=true` for 2s |
+| click-outside handler for options panel | any document click |
+| swipe gesture detection on `#eScroll` | touch events → `nudge(±1)` |
 
 ---
 
@@ -467,5 +472,5 @@ Blobs stripped via `_stripBlobs()` before every write.
 4. **Sync window cap**: `buildSentenceTimings` search window is capped — long audio intros not in ebook can desync cursor.
 5. **PWA folder hash**: book.id = folder name hash — renaming folder loses all saved progress.
 6. **No audio persistence**: blob URLs are runtime-only. Browser mode reload = must re-link audio.
-7. **`scrollTimer` dual use**: `scrollTimer` is used both by the scroll-pause IIFE (line 2012) and by `advanceSent()` (line 1734 via `stopScrollEngine`). Clearing it in one context can affect the other.
+7. **`scrollTimer` dual use**: `scrollTimer` is used both by the scroll-pause IIFE and by `advanceSent()` via `stopScrollEngine`. Clearing it in one context can affect the other.
 8. **`togglePlay` TTS check**: `togglePlay()` checks `ttsSpeaking` to decide play vs pause, but if `ttsPaused` is true and `ttsSpeaking` is false, it correctly calls `ttsPlay()` which hits the resume path.
