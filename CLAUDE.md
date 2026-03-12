@@ -1,12 +1,12 @@
 # Folio
 
-Single-file HTML PWA (~2.9k lines): audiobook/ebook reader with synced highlighting.
+Single-file HTML PWA (~3k lines): audiobook/ebook reader with synced highlighting.
 File: index.html — <style>, static HTML (4 screens + 5 modals), <script>.
 
 ## File structure
-- CSS: lines 14–452
-- HTML: lines 454–832
-- JS: lines 833–2863
+- CSS: lines 15–463
+- HTML: lines 465–851
+- JS: lines 852–2996
 
 ## Two playback modes (set by configurePlayerForMode)
 - Audio mode: <audio> drives playback, _wordTick() at rAF for word highlights

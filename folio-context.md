@@ -2,7 +2,7 @@
 
 # Folio — Living Context Document
 
-Single-file HTML PWA (~2,865 lines). Audiobook/ebook reader with synced word-level highlighting.
+Single-file HTML PWA (~2,998 lines). Audiobook/ebook reader with synced word-level highlighting.
 Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default dark, light, night.
 
 ---
@@ -26,13 +26,13 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | Library | `.lib-header`, `.lib-grid`, `.book-card`, `.add-card`, `.book-cover-*` |
 | Modals | `.modal-overlay`, `.modal`, `.dropzone`, `.file-pill`, `.binfo-*` |
 | Buttons | `.btn`, `.pill`, `.ipill`, `.toggle` |
-| Top bar | `.top-bar`, `.back-btn`, `.bk-info`, `.ic-btn`, `.play-btn` |
+| Top bar | `.top-bar`, `.back-btn`, `.bk-info`, `.ic-btn`, `.play-btn`, `.speed-badge` |
 | Options panel | `.opt-panel`, `.op-tab`, `.op-row`, `.op-slider` |
 | Seek strip | `.seek-strip`, `.seek-row`, `.seek-strip-bar`, `.seek-time`, `.rate-btn-inline`, `.vol-*` |
 | TTS bar | `.tts-bar` |
 | Transcript banner | `.tx-banner` (loading/syncing/ready/error), `.tx-spinner`, shimmer keyframes |
 | Reading progress | `.ebook-area`, `.read-progress-wrap`, `.read-progress-bar` |
-| Reader body | `.reader-body`, `.toc-sidebar`, `.toc-item`, `.ebook-scroll`, `.ebook-content`, `.sent`, `.word` |
+| Reader body | `.reader-body`, `.toc-sidebar`, `.toc-item`, `.ebook-scroll`, `.ebook-content`, `.sent`, `.word`, `.sent-resume-pulse` + `@keyframes sent-pulse` |
 | Relink overlay | `.relink-overlay`, `.relink-sheet` |
 | PWA screens | `.pwa-setup-card`, `.pwa-regrant-card` |
 | Media queries | `@media(min-width:640px)` desktop, `@media(max-width:639px)` mobile |
@@ -59,8 +59,8 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | Element | Role |
 |---|---|
 | `<audio id="audio">` | Hidden audio element |
-| `.top-bar` | Back button, title (`#pTitle`), progress text (`#pProg`), play button (`#playBtn`), option/TOC/transcript buttons |
-| `#optPanel` | Flyout options: 3 tabs (Playback, Display, Advanced) with sliders/toggles, rate presets, auto-scroll, resync, stop |
+| `.top-bar` | Back button, title (`#pTitle`), progress text (`#pProg`), play button (`#playBtn`), speed badge (`#speedBadge`), option/TOC/transcript buttons |
+| `#optPanel` | Flyout options: 3 tabs (Playback, Display, Advanced) with sliders/toggles, rate presets, auto-scroll, resync, stop, sync offset (`#offsetRow`) |
 | `#seekStrip` | Single-row: time label, seek bar, time label, rate button, volume (vol hidden on mobile; all hidden in TTS mode). ~30px tall on mobile (4px 12px padding) |
 | `#ttsBar` | TTS voice picker, rate slider (shown in TTS mode) |
 | `#txBanner` | Transcript status banner (loading/syncing/ready/error) |
@@ -80,18 +80,20 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | **SLEEP TIMER** | `cycleSleepTimer()`, `clearSleepTimer()`, `_updateSleepBadge()` |
 | **KEYBOARD SHORTCUTS** | `keydown` listener: Space, arrows, `[`/`]`, `f`, `m` |
 | **PWA INSTALL** | `installPWA()`, `dismissInstall()`, `beforeinstallprompt` handler |
+| **MODAL HELPERS** | `_openModalEl(id)`, `_closeModalRestore()` — focus management + Escape/Tab trap for accessibility |
 | **DOM CACHE & UTILS** | `$()`, `cacheDOM()`, `setPlayBtnIcon()`, `xh()`, `fmt()`, `uid()` |
 | **INDEXEDDB** | `idbOpen()` (caches connection in `_idb`), `idbSet(key,val)`, `idbGet(key)` |
 | **LIBRARY PERSISTENCE** | `saveLibrary()`, `loadLibrary()`, `saveBookProgress()`, `flushPositionSync()`, blob save/load helpers |
 | **DISPLAY PREFERENCES** | `saveDisplayPrefs()` (reads `_fontBody/_fontSize/_lineHeight/_maxWidth`; no `getComputedStyle`), `loadDisplayPrefs()` |
 | **LIBRARY UI** | `renderLib()`, `renameBook()`, `deleteBook()`, `configurePlayerForMode()` |
 | **PLAYER CONFIG** | `configurePlayerForMode(b, audioSrc, rate)` — decides ttsMode, shows/hides seek strip vs TTS bar |
-| **OPEN BOOK / GO LIB** | `openBook(i)`, `goLib()` |
-| **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()`, `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()`, seek handlers |
-| **AUDIO EVENTS** | `_wordTick()` (rAF word highlight), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate/ended/play/pause) |
-| **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()`, `advanceSent()`, `nudge(n)`, `resync()` |
+| **OPEN BOOK / GO LIB** | `openBook(i)` (now calls `pulseResumeSent()`), `goLib()` |
+| **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()` (now calls `updateSpeedBadge()`), `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()` (uses `syncOffset`), seek handlers |
+| **AUDIO EVENTS** | `_wordTick()` (rAF word highlight, uses `syncOffset`), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate/ended/play/pause, uses `syncOffset`) |
+| **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()`, `advanceSent()`, `nudge(n)`, `resync()` (uses `syncOffset`) |
+| **SYNC OFFSET** | `adjustOffset(delta)`, `updateOffsetUI()` — manual transcript timing correction (±0.5s steps) |
 | **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()`, `ttsPause()`, `ttsStop()` |
-| **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()`, `scrollToSent()`, `toggleAS()`, `toggleWordHl()` |
+| **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()`, `scrollToSent()`, `toggleAS()`, `toggleWordHl()`, `pulseResumeSent()`, `updateSpeedBadge()` |
 | **TOC** | `toggleToc()`, `buildToc()`, `updateTocActive()` |
 | **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `setFont()`, `setFS/LH/MW()`, `setAlign()`, WPM helpers, scroll-pause IIFE, click-outside handler |
 | **TRANSCRIPT** | `loadTranscriptData()`, `setBannerState()`, `buildSentenceTimings()`, `buildTimingsFromPlainText()`, `similarity()`, `updateTranscriptUI()` |
@@ -122,7 +124,7 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 **Audio mode** (`ttsMode === false`):
 - `<audio>` element drives playback.
 - `timeupdate` event advances `curSent` via `sentenceTimings[]`.
-- Word-level highlight via `_wordTick()` at rAF using `wordTimings[]` + `_audio.currentTime`.
+- Word-level highlight via `_wordTick()` at rAF using `wordTimings[]` + `_audio.currentTime` + `syncOffset`.
 - Seek strip visible; TTS bar hidden.
 - State updates: audio `play`/`pause`/`ended` events call `setPlayBtnIcon`, `setMediaState`, `startWordTicker`/`stopWordTicker`, wake lock, media session, page title.
 
@@ -182,6 +184,7 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 | `wordTimings` | `Array<{starts,count}\|undefined>` | Per-sentence word-level timestamps (sparse) |
 | `transcriptWords` | `Array<{word,start,end}>\|null` | Raw Whisper word entries |
 | `transcriptText` | `string\|null` | Plain-text transcript (no timestamps) |
+| `syncOffset` | `number` | Manual transcript sync offset in seconds (persisted per-book) |
 
 ### UI state
 | Variable | Type | Description |
@@ -226,6 +229,10 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 | `_rafId` | rAF ID for `_wordTick` |
 | `_activeSentEl` | Currently highlighted sentence DOM element |
 | `_activeWordEl` | Currently highlighted word DOM element |
+| `_prevFocus` | Modal focus restoration target |
+| `_modalIds` | Array of modal element IDs |
+| `_modalClosers` | Object mapping modal IDs → close functions |
+| `_pendingBlobSave` | IDB blob save tracking |
 
 ### Constants
 | Name | Value/Purpose |
@@ -295,10 +302,10 @@ Stopped: `setPlayBtnIcon(false)`, `setMediaState('stopped')`, `stopScrollEngine(
 openBook(i)
   ├── IS_PWA && CAN_FS → pwaOpenBook(i)
   │   └── resolves file handles → configurePlayerForMode() → loadTranscriptData()
-  │       → loadEbook() → setupMediaSession() → updatePageTitle()
+  │       → loadEbook() → setupMediaSession() → updatePageTitle() → pulseResumeSent()
   └── browser mode:
       └── configurePlayerForMode() → loadTranscriptData() → loadEbook(onDone) →
-          setupMediaSession() → updatePageTitle()
+          setupMediaSession() → updatePageTitle() → pulseResumeSent()
 
 configurePlayerForMode(b, audioSrc, rate)
   └── sets ttsMode, shows/hides seekStrip vs ttsBar, loads audio if present
@@ -320,7 +327,7 @@ buildSentenceTimings()
 
 seekAudioToSentence()
   └── if audio mode && curSent > 0 && sentenceTimings exists:
-      seek _audio.currentTime to sentenceTimings[curSent].start
+      seek _audio.currentTime to sentenceTimings[curSent].start - syncOffset
       (sparse fallback: scans backward for nearest matched sentence)
 ```
 
@@ -339,7 +346,7 @@ advanceSent()  (TTS scroll engine — WPM-based, not used during speechSynthesis
   └── calculates ms from char count + wpm + sentPauseMs → setTimeout → curSent++ → recurse
 
 _wordTick()  (audio mode only)
-  └── reads _audio.currentTime → binary search in wordTimings[curSent].starts →
+  └── reads _audio.currentTime + syncOffset → binary search in wordTimings[curSent].starts →
       updates curWord + word-active class → requestAnimationFrame(self)
 ```
 
@@ -410,6 +417,7 @@ Blobs stripped via `_stripBlobs()` before every write.
   coverUrl, coverName,               // cover image data URL
   curSent, curWord, audioTime,       // saved progress
   wpm, sentPauseMs, playbackRate,    // per-book playback settings
+  syncOffset,                        // manual transcript sync offset (seconds)
   totalSents,                        // for progress display on library card
   // PWA-only additional fields:
   audioHandle, ebookHandle, transcriptHandle, coverHandle  // File System Access handles
@@ -466,6 +474,7 @@ Blobs stripped via `_stripBlobs()` before every write.
 | scroll-pause detection on `#eScroll` | user scroll → sets `scrollPaused=true` for 2s |
 | click-outside handler for options panel | any document click |
 | swipe gesture detection on `#eScroll` | touch events → `nudge(±1)` |
+| modal keyboard trap (Escape to close, Tab focus trap) | keydown on open modals |
 
 ---
 

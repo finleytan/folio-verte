@@ -1133,7 +1133,7 @@ function dismissInstall(){
 
 const $ = id => document.getElementById(id);
 // Populated after DOM ready (called from init)
-let _audio, _playBtn, _eContent, _readProg, _tCur, _seekBar;
+let _audio, _playBtn, _eContent, _readProg, _tCur, _seekBar, _eScroll, _pProg;
 function cacheDOM(){
   _audio    = $('audio');
   _playBtn  = $('playBtn');
@@ -1141,6 +1141,8 @@ function cacheDOM(){
   _readProg = $('readProg');
   _tCur     = $('tCur');
   _seekBar  = $('seekBar');
+  _eScroll  = $('eScroll');
+  _pProg    = $('pProg');
 }
 
 // ══════════════════════════════════════════════════════
@@ -1670,16 +1672,22 @@ function wireAudioEvents(){
       // Only update seek bar UI at ~4fps — sufficient for display, cheap on mobile
       if(now-_lastTimeUpdate>=250){
         _lastTimeUpdate=now;
-        document.getElementById('tCur').textContent=fmt(this.currentTime);
-        if(this.duration) document.getElementById('seekBar').value=(this.currentTime/this.duration)*100;
+        _tCur.textContent=fmt(this.currentTime);
+        if(this.duration) _seekBar.value=(this.currentTime/this.duration)*100;
       }
     }
     if(!sentenceTimings.length || mediaState!=='playing') return;
     const t = this.currentTime + syncOffset;
-    let bestSent = 0;
-    for(let i = 0; i < sentenceTimings.length; i++){
-      if(sentenceTimings[i] && t >= sentenceTimings[i].start) bestSent = i;
-      else if(sentenceTimings[i] && t < sentenceTimings[i].start) break;
+    // Binary search for current sentence (O(log n) instead of O(n))
+    let bestSent = 0, lo = 0, hi = sentenceTimings.length - 1;
+    while(lo <= hi){
+      const mid = (lo + hi) >> 1;
+      // Skip sparse (unmatched) entries — scan backward for nearest defined
+      let m = mid;
+      while(m >= lo && !sentenceTimings[m]) m--;
+      if(m < lo){ lo = mid + 1; continue; }
+      if(t >= sentenceTimings[m].start){ bestSent = m; lo = mid + 1; }
+      else { hi = m - 1; }
     }
     if(bestSent !== curSent){
       curSent = bestSent; curWord = 0;
@@ -1860,19 +1868,17 @@ function updateHL(){
 }
 function updateProg(){
   const pct=sentences.length>1?curSent/(sentences.length-1)*100:0;
-  document.getElementById('readProg').style.width=pct+'%';
-  document.getElementById('pProg').textContent=sentences.length?
+  _readProg.style.width=pct+'%';
+  _pProg.textContent=sentences.length?
     'Sentence '+(curSent+1)+' / '+sentences.length:'—';
   if(curBookIdx>=0){ library[curBookIdx].totalSents=sentences.length; }
 }
 function scrollToSent(idx){
   const s=sentences[idx];
-  if(!s||scrollPaused) return;
-  const scrollEl=document.getElementById('eScroll');
-  if(!scrollEl) return;
+  if(!s||scrollPaused||!_eScroll) return;
   const rect=s.el.getBoundingClientRect();
-  const vTop=scrollEl.getBoundingClientRect().top;
-  const vH=scrollEl.clientHeight;
+  const vTop=_eScroll.getBoundingClientRect().top;
+  const vH=_eScroll.clientHeight;
   // Safe zone: middle 40% of the scroll container
   const safeTop=vTop+vH*0.30;
   const safeBot=vTop+vH*0.70;
@@ -1901,29 +1907,34 @@ function toggleToc(){
 function buildToc(){
   const list=document.getElementById('tocList');
   list.innerHTML='';
+  _tocItems=[]; _prevTocActive=-1;
   if(!tocEntries.length){ list.innerHTML='<div class="toc-empty">No headings found</div>'; return; }
   tocEntries.forEach((entry,i)=>{
     const btn=document.createElement('button');
     btn.className=`toc-item lv${entry.level}`;
     btn.innerHTML=`<span class="toc-num">${i+1}.</span>${xh(entry.text)}`;
     btn.title=entry.text;
+    _tocItems.push(btn);
     btn.addEventListener('click',()=>{
       curSent=entry.sentIdx; curWord=0;
       updateHL(); updateProg(); saveBookProgress();
       scrollPaused = false;
       scrollToSent(curSent);
-      document.querySelectorAll('.toc-item').forEach(b=>b.classList.remove('toc-active'));
-      btn.classList.add('toc-active');
       // Close TOC on mobile after selection
       if(window.innerWidth<=700) toggleToc();
     });
     list.appendChild(btn);
   });
 }
+let _tocItems=[];  // cached TOC button elements
+let _prevTocActive=-1;
 function updateTocActive(){
   let best=-1;
   tocEntries.forEach((e,i)=>{ if(e.sentIdx<=curSent) best=i; });
-  document.querySelectorAll('.toc-item').forEach((b,i)=>b.classList.toggle('toc-active',i===best));
+  if(best===_prevTocActive) return; // no change — skip DOM work
+  if(_prevTocActive>=0&&_tocItems[_prevTocActive]) _tocItems[_prevTocActive].classList.remove('toc-active');
+  if(best>=0&&_tocItems[best]) _tocItems[best].classList.add('toc-active');
+  _prevTocActive=best;
 }
 
 // ══════════════════════════════════════════════════════
@@ -2066,7 +2077,10 @@ async function buildSentenceTimings(){
   await yieldToMain();
   sentenceTimings = new Array(sentences.length);
   wordTimings = new Array(sentences.length);
-  if(!transcriptWords||!transcriptWords.length) return;
+  if(!transcriptWords||!transcriptWords.length){
+    if(transcriptText) await buildTimingsFromPlainText();
+    return;
+  }
 
   // Build a flat array of cleaned transcript words with original indices
   const tw = transcriptWords.map((w,i)=>({
@@ -2075,16 +2089,24 @@ async function buildSentenceTimings(){
   })).filter(w=>w.word.length>0);
 
   // Helper: Jaccard-match an ebook sentence against a transcript window
+  // Uses incremental Set with a word-frequency map to avoid per-iteration allocations
   function findMatch(sWords, sSet, lo, hi, earlyStop){
     let bestScore=0, bestStart=-1, bestEnd=-1;
+    const sSize=sSet.size;
+    const minRunLen=Math.max(1,sWords.length-2);
+    const maxRunLen=sWords.length*3;
     for(let wi=lo;wi<=hi;wi++){
-      let run=[];
-      for(let wj=wi;wj<tw.length&&run.length<sWords.length*3;wj++){
-        run.push(tw[wj]);
-        if(run.length>=Math.max(1,sWords.length-2)){
-          const runSet=new Set(run.map(r=>r.word));
-          let inter=0; sSet.forEach(w=>{ if(runSet.has(w)) inter++; });
-          const union=new Set([...sSet,...runSet]).size;
+      // Incremental run: track word frequencies to compute Jaccard without new Sets
+      const runFreq=new Map();
+      let runDistinct=0, inter=0;
+      for(let wj=wi;wj<tw.length&&(wj-wi)<maxRunLen;wj++){
+        const w=tw[wj].word;
+        const prev=runFreq.get(w)||0;
+        runFreq.set(w,prev+1);
+        if(prev===0){ runDistinct++; if(sSet.has(w)) inter++; }
+        const runLen=wj-wi+1;
+        if(runLen>=minRunLen){
+          const union=sSize+runDistinct-inter;
           const score=union?inter/union:0;
           if(score>bestScore){ bestScore=score; bestStart=wi; bestEnd=wj; }
           if(score>earlyStop) break;
@@ -2140,11 +2162,13 @@ async function buildSentenceTimings(){
   });
 
   // ── Pass 1: Anchor pass — high-confidence matches only ──
+  // Yield every YIELD_EVERY sentences to keep UI responsive
+  const YIELD_EVERY=80;
   let searchFrom=0;
   const anchorTwIdx=[]; // anchorTwIdx[si] = bestStart index in tw (for anchors only)
-  sentences.forEach((s,si)=>{
+  for(let si=0;si<sentences.length;si++){
     const {sWords,sSet}=sentTokens[si];
-    if(!sWords.length) return;
+    if(!sWords.length) continue;
     const windowLen=Math.max(sWords.length*2,10);
     const lo=Math.max(0,searchFrom-5);
     const hi=Math.min(tw.length-sWords.length,lo+windowLen*8);
@@ -2154,18 +2178,18 @@ async function buildSentenceTimings(){
       anchorTwIdx[si]=bestStart;
       searchFrom=Math.max(searchFrom,bestStart+1);
     }
-  });
+    if(si%YIELD_EVERY===0) await yieldToMain();
+  }
 
   // ── Pass 2: Fill pass — match remaining sentences between anchors ──
-  sentences.forEach((s,si)=>{
-    if(sentenceTimings[si]) return; // already matched
+  for(let si=0;si<sentences.length;si++){
+    if(sentenceTimings[si]) continue; // already matched
     const {sWords,sSet}=sentTokens[si];
-    if(!sWords.length) return;
+    if(!sWords.length) continue;
     // Find nearest previous and next anchors
     let prevTwEnd=0;
     for(let j=si-1;j>=0;j--){
       if(anchorTwIdx[j]!=null){
-        const prevMatch=tw.slice(anchorTwIdx[j]);
         // Start after the previous anchor's matched region
         const prevSentEnd=sentenceTimings[j];
         for(let k=anchorTwIdx[j];k<tw.length;k++){
@@ -2180,12 +2204,13 @@ async function buildSentenceTimings(){
     }
     const lo=Math.max(0,prevTwEnd);
     const hi=Math.min(tw.length-sWords.length,nextTwStart);
-    if(lo>hi) return;
+    if(lo>hi) continue;
     const {bestScore,bestStart,bestEnd}=findMatch(sWords,sSet,lo,hi,0.85);
     if(bestStart>=0&&bestScore>0.35){
       acceptMatch(si,bestStart,bestEnd);
     }
-  });
+    if(si%YIELD_EVERY===0) await yieldToMain();
+  }
 
   const matched = sentenceTimings.filter(Boolean).length;
   setBannerState('ready','Transcript synced · Ready to play',
@@ -2224,7 +2249,7 @@ function similarity(a,b){
   const wa=new Set(a.split(/\s+/).filter(Boolean));
   const wb=new Set(b.split(/\s+/).filter(Boolean));
   let inter=0; wa.forEach(w=>{if(wb.has(w))inter++;});
-  const union=new Set([...wa,...wb]).size;
+  const union=wa.size+wb.size-inter;
   return union?inter/union:0;
 }
 function updateTranscriptUI(){
