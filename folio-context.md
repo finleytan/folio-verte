@@ -2,7 +2,7 @@
 
 # Folio — Living Context Document
 
-Single-file HTML PWA (~3,329 lines). Audiobook/ebook reader with synced word-level highlighting.
+Single-file HTML PWA (~3,339 lines). Audiobook/ebook reader with synced word-level highlighting.
 Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default dark, light, night.
 
 ---
@@ -27,7 +27,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | Modals | `.modal-overlay`, `.modal`, `.dropzone`, `.file-pill`, `.binfo-*` |
 | Buttons | `.btn`, `.pill`, `.ipill`, `.toggle` |
 | Top bar | `.top-bar`, `.back-btn`, `.bk-info`, `.ic-btn`, `.play-btn`, `.speed-badge` |
-| Options panel | `.opt-panel`, `.op-tab`, `.op-row`, `.op-slider` |
+| Options panel | `.opt-panel`, `.op-tab`, `.op-row`, `.op-slider`, `.op-info-btn` (ⓘ icon), `.op-desc` (inline help text, hidden by default) |
 | Seek strip | `.seek-strip`, `.seek-row`, `.seek-strip-bar`, `.seek-time`, `.rate-btn-inline`, `.speed-strip`, `.spd-btn`, `.vol-*` |
 | TTS bar | `.tts-bar` |
 | Transcript banner | `.tx-banner` (loading/syncing/ready/error), `.tx-spinner`, shimmer keyframes |
@@ -60,7 +60,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 |---|---|
 | `<audio id="audio">` | Hidden audio element |
 | `.top-bar` | Back button, title (`#pTitle`), progress text (`#pProg`), play button (`#playBtn`), speed badge (`#speedBadge`), option/TOC/transcript buttons |
-| `#optPanel` | Flyout options: 3 tabs (Playback, Display, Advanced) with sliders/toggles, rate presets, auto-scroll, resync, stop, sync offset (`#offsetRow`) |
+| `#optPanel` | Flyout options: 3 tabs (Playback, Display, Advanced) with sliders/toggles, rate presets, auto-scroll, resync, stop, sync offset (`#offsetRow`). Settings with ⓘ icons show inline `.op-desc` help text on tap via `toggleOpInfo()` |
 | `#seekStrip` | Single-row: time label, seek bar, time label, `.speed-strip` (−/rate/+ buttons), volume (vol hidden on mobile; all hidden in TTS mode). ~30px tall on mobile (4px 12px padding) |
 | `#ttsBar` | TTS voice picker, rate slider (shown in TTS mode) |
 | `#txBanner` | Transcript status banner (loading/syncing/ready/error) |
@@ -95,7 +95,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()`, `ttsPause()`, `ttsStop()` |
 | **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()` (shows `Chapter · pct%` using `tocEntries`; falls back to `pct%` if no TOC), `_cacheScrollMetrics()` (caches `_scrollEl`/`_scrollElH`/`_scrollElTop` from `_eScroll` rect; called at init and on resize), `scrollToSent(idx, instant=false)` (instant=true skips `scrollPaused` guard and safe-zone check, uses `behavior:'instant'`), `toggleAS()`, `toggleWordHl()`, `pulseResumeSent(instant=false)` (calls `scrollToSent` with instant flag), `updateSpeedBadge()` |
 | **TOC** | `toggleToc()`, `buildToc()` (populates `_tocItems[]`), `updateTocActive()` (uses cached `_tocItems`/`_prevTocActive` to skip redundant DOM work) |
-| **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `updateThemeColor()`, `setFont()`, `setFS/LH/MW()`, `setAlign()`, `setDefaultWpmFromSlider()`, `setDefaultWpmFromInput()`, `updateWpmLabel()`, `setSentPause()`, scroll-pause IIFE (rAF-throttled), click-outside handler |
+| **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `updateThemeColor()`, `setFont()`, `setFS/LH/MW()`, `setAlign()`, `setDefaultWpmFromSlider()`, `setDefaultWpmFromInput()`, `updateWpmLabel()`, `setSentPause()`, `toggleOpInfo(el)` (toggles `.op-desc` sibling of nearest `.op-ttl`/`.op-row` ancestor), scroll-pause IIFE (rAF-throttled), click-outside handler |
 | **TRANSCRIPT** | `loadTranscriptData()` (handles segment-level Whisper JSON without word_timestamps), `setBannerState()`, `_timingWorkerFn()` (serialised into Blob Worker), `getTimingWorker()`, `buildSentenceTimings()` (worker dispatch), `buildTimingsFromPlainText()` (worker dispatch), `_buildSentenceTimingsSync()` (fallback), `_buildTimingsFromPlainTextSync()` (fallback), `similarity()`, `updateTranscriptUI()`; after timing is built, `transcriptWords` and `transcriptText` are nulled (both worker onmessage path and sync fallback); worker onmessage calls `showSyncHintOnce()` only on `type==='buildSentenceTimings'` (Whisper word-level), not plain-text path |
 | **EBOOK LOADING** | `yieldToMain()` (prefers `scheduler.postTask` with `'background'` priority, falls back to `setTimeout`), `loadEbook(book, onDone)` (chunked DOM build with progress banner via `setBannerState`, delegated click handler via module-level `_contentClickHandler`; click handler is TTS-aware: playing→`ttsStop()+ttsPlay()`, paused→`ttsStop()` only, audio mode unchanged) |
 | **SENTENCE SPLITTER** | `splitSentences(text)` |

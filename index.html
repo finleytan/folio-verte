@@ -203,6 +203,9 @@ body.theme-night{
 .op-lbl{font-size:13px;color:var(--text2);flex:1;}
 .op-val{font-size:12px;color:var(--accent);font-weight:600;min-width:38px;text-align:right;flex-shrink:0;}
 .op-slider{flex:1;accent-color:var(--accent);cursor:pointer;}
+.op-info-btn{font-size:11px;color:var(--text3);cursor:pointer;margin-left:4px;vertical-align:middle;user-select:none;}
+.op-info-btn:hover{color:var(--accent);}
+.op-desc{font-size:12px;color:var(--text3);line-height:1.5;padding:0 0 6px;font-style:italic;}
 .rate-sel{background:var(--bg2);border:1px solid var(--border);color:var(--text);font-family:var(--font-ui);font-size:12px;padding:5px 8px;border-radius:var(--radius-sm);cursor:pointer;outline:none;}
 
 /* ── SEEK STRIP ── */
@@ -562,7 +565,8 @@ html,body,
           </div>
         </div>
         <div class="op-sec">
-          <div class="op-ttl">Text Scroll Speed (WPM)</div>
+          <div class="op-ttl">Text Scroll Speed (WPM) <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></div>
+          <div class="op-desc" style="display:none">Controls how fast the ebook scrolls during TTS when no audio transcript is linked.</div>
           <div class="op-row" style="gap:8px">
             <input type="range" class="op-slider" id="defWpmSlider" min="30" max="600" value="150" oninput="setDefaultWpmFromSlider(this.value)">
             <input type="number" id="defWpmInput" value="150" min="30" max="600" class="rate-custom-input"
@@ -571,15 +575,18 @@ html,body,
           <div class="op-row"><span class="spd-lbl" id="wpmSpeedLbl" style="font-size:11px;color:var(--accent)">Normal</span></div>
         </div>
         <div class="op-sec">
-          <div class="op-ttl">Sentence Pause</div>
+          <div class="op-ttl">Sentence Pause <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></div>
+          <div class="op-desc" style="display:none">Adds a gap between sentences during TTS playback. Has no effect in audio mode.</div>
           <div class="op-row"><span class="op-val" id="sentPauseLbl">500ms</span><input type="range" class="op-slider" min="0" max="2000" step="50" value="500" oninput="setSentPause(this.value)"></div>
         </div>
         <div class="op-sec">
-          <div class="op-ttl">Word Highlight</div>
+          <div class="op-ttl">Word Highlight <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></div>
+          <div class="op-desc" style="display:none">Underlines the current word as it's read aloud.</div>
           <div class="op-row"><span class="op-lbl">Show current word</span><button class="toggle on" id="wordHlToggle" onclick="toggleWordHl()"></button></div>
         </div>
         <div class="op-sec">
-          <div class="op-ttl">Playback Rate</div>
+          <div class="op-ttl">Playback Rate <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></div>
+          <div class="op-desc" style="display:none">Speed multiplier for audio and TTS playback. 1× is normal speed.</div>
           <div class="op-row">
             <div class="rate-presets">
               <button class="rate-preset-btn" onclick="setRate(0.75)">0.75×</button>
@@ -594,19 +601,21 @@ html,body,
         </div>
         <div class="op-sec">
           <div class="op-ttl">Controls</div>
-          <div class="op-row"><span class="op-lbl">Auto-scroll</span><button class="toggle on" id="asToggle" onclick="toggleAS()"></button></div>
+          <div class="op-row"><span class="op-lbl">Auto-scroll <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></span><button class="toggle on" id="asToggle" onclick="toggleAS()"></button></div>
+          <div class="op-desc" style="display:none">Keeps the current sentence in view during playback.</div>
           <div class="op-row" style="gap:8px">
             <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px" id="resyncBtn" onclick="resync()">↺ Resync</button>
             <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px" onclick="mediaStop()">⏹ Stop</button>
           </div>
           <div class="op-row" id="offsetRow" style="display:none">
-            <span class="op-lbl">Sync offset</span>
+            <span class="op-lbl">Sync offset <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></span>
             <div style="display:flex;align-items:center;gap:6px">
               <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="adjustOffset(-0.5)">-0.5s</button>
               <span id="offsetVal" style="font-size:13px;min-width:48px;text-align:center">0.0s</span>
               <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="adjustOffset(+0.5)">+0.5s</button>
             </div>
           </div>
+          <div class="op-desc" id="offsetDescRow" style="display:none">Shifts highlighting earlier or later to correct misalignment with the audio.</div>
         </div>
       </div>
       <div class="op-tab-body" id="opTab-display" style="display:none">
@@ -2023,6 +2032,7 @@ function updateWpmLabel(){
   lbl.textContent=wpm<80?'Very slow':wpm<120?'Slow':wpm<180?'Normal':wpm<250?'Fast':wpm<350?'Very fast':'Speed reader';
 }
 function setSentPause(v){ sentPauseMs=parseInt(v); document.getElementById('sentPauseLbl').textContent=v+'ms'; saveDisplayPrefs(); }
+function toggleOpInfo(el){ const parent=el.closest('.op-ttl')||el.closest('.op-row'); const desc=parent?parent.nextElementSibling:null; if(desc&&desc.classList.contains('op-desc')) desc.style.display=desc.style.display==='none'?'block':'none'; }
 
 // ── Scroll-pause detection: passive listener, throttled via rAF ──
 (function(){
