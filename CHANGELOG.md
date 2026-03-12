@@ -2,6 +2,18 @@
 
 ---
 
+## v1.2 — 2026-03-12
+
+### Fixed
+- TTS play/pause no longer starts a second voice after the first `advanceSent` cycle fires
+- TTS auto-scroll no longer stalls after TOC navigation or nudge — sentence advancement restarts correctly
+- Programmatic scrolls no longer trigger the 2-second manual-scroll cooldown
+- Table of contents now populates correctly for EPUB and HTML books
+- Paragraphs containing bold, italic, or linked text now render as a single block instead of fragments
+- Seek bar now updates the highlighted sentence immediately when dragged while paused
+
+---
+
 ## v1.1 — 2026-03-11
 Phase 1 core polish, performance architecture upgrades, and multiple
 bug fixes. The app is now stable for large libraries and long books.

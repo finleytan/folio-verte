@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Folio — Prompt Library</title>
+<style>
+:root {
+  --bg:#0d1117; --surface:#161b22; --surface2:#21262d;
+  --border:#30363d; --text:#e6edf3; --text2:#8b949e; --text3:#484f58;
+  --accent:#5b8def; --green:#3fb950; --yellow:#d29922; --red:#f85149;
+  --radius:10px; --font:'DM Sans',system-ui,sans-serif; --mono:'Courier New',monospace;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; }
+
+.page { max-width:760px; margin:0 auto; padding:40px 20px 80px; }
+.page-header { margin-bottom:32px; }
+.page-title { font-size:20px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.page-sub { font-size:13px; color:var(--text2); }
+
+/* Stats row */
+.stats-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:28px; }
+.stat {
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:8px 14px; display:flex; align-items:center; gap:8px;
+}
+.stat-num { font-size:18px; font-weight:700; }
+.stat-num.active { color:var(--accent); }
+.stat-num.done   { color:var(--green); }
+.stat-num.defer  { color:var(--text3); }
+.stat-label { font-size:11px; color:var(--text2); line-height:1.3; }
+
+/* Filter bar */
+.filter-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:28px; }
+.filter-btn {
+  padding:5px 14px; border-radius:20px; border:1px solid var(--border);
+  background:transparent; color:var(--text2); font-family:var(--font);
+  font-size:12px; font-weight:500; cursor:pointer; transition:all .15s;
+}
+.filter-btn:hover { border-color:var(--accent); color:var(--accent); }
+.filter-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.filter-btn.done-btn.active { background:var(--green); border-color:var(--green); color:#fff; }
+
+/* Section heading */
+.section-heading {
+  font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--text3); margin:32px 0 12px; display:flex; align-items:center; gap:10px;
+}
+.section-heading::after { content:''; flex:1; height:1px; background:var(--border); }
+.section-heading:first-child { margin-top:0; }
+
+/* Prompt card */
+.prompt-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); margin-bottom:12px; transition:border-color .15s;
+}
+.prompt-card:hover { border-color:var(--text3); }
+.prompt-card.done-card { opacity:.55; }
+.prompt-card.done-card:hover { opacity:1; border-color:rgba(63,185,80,.35); }
+.prompt-card.backlog-card { opacity:.65; border-style: dashed; }
+.prompt-card.backlog-card:hover { opacity:1; border-color:rgba(210,153,34,.4); border-style:solid; }
+
+.card-header {
+  display:flex; align-items:center; gap:10px; padding:14px 16px;
+  cursor:pointer; user-select:none;
+}
+.prompt-card.open .card-header { border-bottom:1px solid var(--border); }
+.card-header:hover .card-title { color:var(--accent); }
+.done-card .card-header:hover .card-title { color:var(--green); }
+
+.card-num {
+  width:26px; height:26px; border-radius:6px; background:var(--surface2);
+  border:1px solid var(--border); font-size:11px; font-weight:700;
+  color:var(--text2); display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; letter-spacing:-.02em;
+}
+.done-card .card-num {
+  background:rgba(63,185,80,.1); border-color:rgba(63,185,80,.3); color:var(--green);
+}
+.card-meta { flex:1; min-width:0; }
+.card-title { font-size:14px; font-weight:600; color:var(--text); transition:color .15s; }
+.card-tags { display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
+
+.tag {
+  font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  padding:2px 8px; border-radius:20px;
+}
+.tag-fix    { background:rgba(248,81,73,.12);  color:#f85149; border:1px solid rgba(248,81,73,.2); }
+.tag-feat   { background:rgba(63,185,80,.12);  color:#3fb950; border:1px solid rgba(63,185,80,.2); }
+.tag-sonnet { background:rgba(91,141,239,.12); color:var(--accent); border:1px solid rgba(91,141,239,.2); }
+.tag-done   { background:rgba(63,185,80,.1);   color:var(--green); border:1px solid rgba(63,185,80,.25); }
+.tag-defer  { background:rgba(72,79,88,.2); color:#8b949e; border:1px solid #30363d; }
+.tag-backlog{ background:rgba(210,153,34,.1); color:var(--yellow); border:1px solid rgba(210,153,34,.25); }
+
+.card-chevron { font-size:12px; color:var(--text3); transition:transform .2s; flex-shrink:0; }
+.prompt-card.open .card-chevron { transform:rotate(180deg); }
+
+.card-body { display:none; }
+.prompt-card.open .card-body { display:block; }
+
+.card-desc { padding:14px 16px 0; font-size:13px; color:var(--text2); line-height:1.6; }
+
+.prompt-wrap { position:relative; margin:12px 16px 16px; }
+.prompt-text {
+  background:#0d1117; border:1px solid var(--border); border-radius:8px;
+  padding:16px 16px 48px; font-family:var(--mono); font-size:12px; line-height:1.7;
+  color:#c9d1d9; white-space:pre-wrap; word-break:break-word;
+  max-height:400px; overflow-y:auto;
+}
+.copy-bar {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(transparent, #0d1117 40%);
+  padding:20px 12px 10px; display:flex; justify-content:flex-end;
+  border-radius:0 0 8px 8px; pointer-events:none;
+}
+.copy-btn {
+  pointer-events:all; display:flex; align-items:center; gap:6px;
+  padding:7px 16px; border-radius:6px; background:var(--surface2);
+  border:1px solid var(--border); color:var(--text); font-family:var(--font);
+  font-size:12px; font-weight:600; cursor:pointer; transition:all .15s;
+}
+.copy-btn:hover { background:var(--accent); border-color:var(--accent); color:#fff; }
+.copy-btn.copied { background:rgba(63,185,80,.15); border-color:rgba(63,185,80,.4); color:#3fb950; }
+.copy-icon { font-size:13px; }
+
+.empty { text-align:center; padding:60px 20px; color:var(--text3); font-size:14px; display:none; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="page">
+
+  <div class="page-header">
+    <div class="page-title">Folio — Prompt Library</div>
+    <div class="page-sub">Click a card to expand · Copy button grabs the full prompt</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><span class="stat-num active" id="statActive">0</span><span class="stat-label">Active</span></div>
+    <div class="stat"><span class="stat-num done"   id="statDone">0</span><span class="stat-label">Completed</span></div>
+    <div class="stat"><span class="stat-num" style="color:var(--yellow)" id="statBacklog">0</span><span class="stat-label">Backlog</span></div>
+    <div class="stat"><span class="stat-num defer"  id="statDefer">0</span><span class="stat-label">Deferred</span></div>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active"   onclick="filter('all',this)">All</button>
+    <button class="filter-btn"          onclick="filter('active',this)">Active</button>
+    <button class="filter-btn done-btn" onclick="filter('done',this)">Completed</button>
+    <button class="filter-btn"          onclick="filter('backlog',this)">Backlog</button>
+    <button class="filter-btn"          onclick="filter('fix',this)">Fixes</button>
+    <button class="filter-btn"          onclick="filter('feat',this)">Features</button>
+  </div>
+
+  <div id="cards"></div>
+  <div class="empty" id="empty">No prompts match this filter.</div>
+
+</div>
+<script>
+// ╔══════════════════════════════════════════════════════════╗
+// ║  PROMPT DATA — only edit between these two markers       ║
+// ║  status: 'active' | 'done' | 'deferred'                  ║
+// ╚══════════════════════════════════════════════════════════╝
+const PROMPTS = [
+
+  // ── ACTIVE — in priority order ─────────────────────────
+  {
+    num:'1', status:'active', type:'feat', model:'sonnet',
+    title:'Progress bar tap/scrub for TTS navigation',
+    desc:"Makes the thin reading progress bar tappable in TTS mode. Tapping at 40% of the bar jumps to 40% through the sentences and restarts TTS from that point. Audio mode is unchanged.",
+    prompt:
+`# Feature: Reading progress bar as TTS scrubber in index.html
+
+## Goal
+Make the thin reading progress bar (.read-progress-wrap / #readProg)
+tappable in TTS mode. Tapping to a position jumps to the corresponding
+sentence, restarting TTS from that point. In audio mode the bar stays
+purely decorative — no change to existing behaviour.
+
+## How it works
+A click or touch at x% of the bar's width maps to:
+  Math.round(pct * (sentences.length - 1))
+as the target sentence index. Jump to that sentence and restart TTS
+if playing.
+
+## 1. CSS — increase hit target in TTS mode
+  .read-progress-wrap {
+    height: 3px;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: height .15s;
+  }
+  .read-progress-wrap.scrubbing {
+    height: 12px;
+    cursor: pointer;
+  }
+  .read-progress-wrap.scrubbing .read-progress-bar {
+    border-radius: 0 6px 6px 0;
+  }
+
+Toggle .scrubbing in configurePlayerForMode() — add:
+  document.querySelector('.read-progress-wrap')
+    .classList.toggle('scrubbing', ttsMode);
+
+## 2. JS — add scrub handler
+  function scrubToPosition(ev) {
+    if(!ttsMode || !sentences.length) return;
+    const wrap = ev.currentTarget;
+    const rect = wrap.getBoundingClientRect();
+    const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const target = Math.round(pct * (sentences.length - 1));
+    if(target === curSent) return;
+    curSent = target; curWord = 0;
+    updateHL(); updateProg(); saveBookProgressDebounced();
+    if(autoScroll) scrollToSent(curSent, true); // instant scroll
+    if(mediaState === 'playing') { ttsStop(); ttsPlay(); }
+  }
+
+## 3. Wire up once in init() after cacheDOM()
+  const progWrap = _readProg.parentElement;
+  progWrap.addEventListener('click', scrubToPosition);
+  progWrap.addEventListener('touchend', scrubToPosition);
+
+Do NOT attach inside loadEbook — attach once in init() so listeners
+survive book changes without stacking duplicates.
+
+## Constraints
+- scrubToPosition must no-op if !ttsMode
+- Use instant=true for scrollToSent so the reader doesn't smooth-scroll
+  across the whole book
+- Do not modify updateProg(), _readProg, or the progress bar width logic
+
+Run node --check index.html when done.`
+  },
+
+  {
+    num:'2', status:'active', type:'fix', model:'sonnet',
+    title:'Remove transcript pill from add-book modal + remove WPM UI',
+    desc:"Two UI cleanups: (1) remove the redundant transcript file-pill from the add-book modal, (2) remove the WPM slider from the options panel. WPM logic stays — only the UI elements are removed.",
+    prompt:
+`# Cleanup: Remove transcript upload pill + remove WPM UI in index.html
+
+## Change 1 — Remove transcript file-pill from add-book modal
+The transcript upload pill in the add-book modal is superseded by the
+book info panel transcript slot. Remove the entire pill block that
+contains id="transcriptPill", id="transcriptInput", id="transcriptName".
+
+It sits between the ebook pill and the cover pill in the modal HTML.
+Remove the full <div class="file-pill" id="transcriptPill"> block.
+
+Also find fileChosen() and remove or guard any references to
+'transcriptPill', 'transcriptInput', 'transcriptName' in that
+function only. Do NOT touch transcript handling logic used elsewhere
+(txModal, biReassign, saveTranscript, removeTranscript, etc.).
+
+## Change 2 — Remove WPM section from options panel
+The "Text Scroll Speed (WPM)" section in the playback tab is
+redundant. Remove from the HTML options panel (playback tab):
+- The entire op-sec containing the "Text Scroll Speed (WPM)" op-ttl
+- Its op-row with #defWpmSlider and #defWpmInput
+- Its op-row with #wpmSpeedLbl
+
+KEEP the JS functions setDefaultWpmFromSlider(), setDefaultWpmFromInput(),
+updateWpmLabel() — they are called from loadDisplayPrefs() and
+saveDisplayPrefs() and control TTS scroll timing internally.
+Only remove the three HTML elements listed above.
+
+Keep the "Sentence Pause" op-sec directly below WPM — only remove
+the WPM section itself.
+
+## Verification
+After changes:
+- Add-book modal shows: Audio, Ebook, Cover pills only
+- Options playback tab shows: Volume, Sentence Pause, Word Highlight,
+  Playback Rate, Controls — no WPM section
+
+Run node --check index.html when done.`
+  },
+
+  {
+    num:'3', status:'active', type:'feat', model:'sonnet',
+    title:'Tap rate display to cycle speed presets',
+    desc:"Tapping #rateBtnInline on the seek strip cycles through RATE_STEPS presets. Long-press (400ms) still opens the options panel. Adds a brief flash animation on cycle.",
+    prompt:
+`# Feature: Tap rate display to cycle speed presets in index.html
+
+## Goal
+Tapping the #rateBtnInline display on the seek strip cycles through
+RATE_STEPS presets instead of opening the options panel. Long-press
+(400ms+) still opens options for full control.
+
+## 1. Remove onclick from #rateBtnInline in HTML
+The button currently has:
+  onclick="toggleOpts();switchOptTab('playback',document.querySelector('.op-tab'))"
+Remove that onclick attribute entirely.
+
+## 2. Add press-duration handler in JS
+Add near the other rate/speed functions:
+
+  function _initRateBtnBehaviour(){
+    const btn = document.getElementById('rateBtnInline');
+    if(!btn) return;
+    let t = 0;
+    btn.addEventListener('pointerdown', () => { t = Date.now(); });
+    btn.addEventListener('pointerup', () => {
+      const dur = Date.now() - t;
+      t = 0;
+      if(dur < 400){
+        changeSpeed(1);
+      } else {
+        toggleOpts();
+        switchOptTab('playback', document.querySelector('.op-tab'));
+      }
+    });
+    btn.addEventListener('pointercancel', () => { t = 0; });
+  }
+
+Call _initRateBtnBehaviour() once in init() after cacheDOM().
+
+## 3. Visual flash on cycle
+In changeSpeed(), after calling setRate(next), briefly flash the button:
+
+  const b = document.getElementById('rateBtnInline');
+  if(b){ b.classList.add('rate-flash');
+    setTimeout(() => b.classList.remove('rate-flash'), 180); }
+
+Add to stylesheet:
+  .rate-flash { background: var(--accent) !important;
+                color: #fff !important;
+                transition: none !important; }
+
+## Notes
+- changeSpeed() and setRate() already exist — no changes needed there
+- Do not remove the rate presets from the options panel
+- Do not add onclick back — the pointerdown/up pair handles both tap and long-press
+
+Run node --check index.html when done.`
+  },
+
+  {
+    num:'4', status:'active', type:'feat', model:'sonnet',
+    title:'Add OpenDyslexic font option',
+    desc:"Adds OpenDyslexic as a selectable body font in Display options. Loads from CDN on demand only — no impact on initial page load.",
+    prompt:
+`# Feature: Add OpenDyslexic font option in index.html
+
+## Goal
+Add OpenDyslexic as a selectable body font alongside Lora, Georgia,
+Sans, Mono. Load from CDN only when selected.
+
+## 1. Add font pill to HTML
+In the Font pills section (Display tab, op-sec containing fontPill-lora),
+add after the Mono pill:
+
+  <button class="pill" id="fontPill-dyslexic"
+    onclick="setFont('OpenDyslexic,sans-serif','dyslexic',this)">
+    Dyslexic
+  </button>
+
+## 2. Load font on demand in setFont()
+Find setFont(f, key, btn) and add CDN injection when key is 'dyslexic',
+before the existing logic:
+
+  if(key === 'dyslexic' && !document.getElementById('font-opendyslexic')){
+    const link = document.createElement('link');
+    link.id = 'font-opendyslexic';
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.cdnfonts.com/css/open-dyslexic';
+    document.head.appendChild(link);
+  }
+
+Only add these lines at the top of setFont() — do not change anything
+else in that function.
+
+## 3. No changes needed to saveDisplayPrefs() or loadDisplayPrefs()
+fontKey is already saved generically from the active fontPill id.
+'dyslexic' will round-trip correctly. loadDisplayPrefs() restores via
+setFont() which will re-inject the CDN link if needed.
+
+## Notes
+- CDN: https://fonts.cdnfonts.com/css/open-dyslexic (free, no key)
+- Guard with getElementById to avoid duplicate link injection
+- Demand-load only — do not preload
+
+Run node --check index.html when done.`
+  },
+
+  // ── DEFERRED ──────────────────────────────────────────
+  {
+    num:'D', status:'deferred', type:'fix', model:'sonnet',
+    title:'DEFERRED: Confidence-aware sync correction',
+    desc:"Stores Jaccard confidence scores during matching and re-matches low-confidence sentences at playback time using a ±5 sentence window. Deferred — do not build until explicitly requested.",
+    prompt:
+`# DEFERRED FEATURE: Confidence-Aware Sync Correction
+# Status: NOT implemented. Deliberately deferred.
+# Do not build until explicitly requested.
+
+## The Problem
+buildSentenceTimings matches ebook sentences to transcript word runs via
+Jaccard similarity in two passes. The fill pass accepts weak matches
+(bestScore > 0.35). During playback, timeupdate blindly trusts these
+timestamps, which can cause highlight drift at poorly-matched sections.
+
+## The Approach (when ready to build)
+Use Option B: keep transcriptWords alive conditionally, store confidence
+scores alongside sentenceTimings, and add correctSyncDrift(audioTime)
+that binary-searches transcriptWords by time, windows ~10 words, and
+re-checks similarity against +-5 ebook sentences around curSent.
+
+## Full spec
+
+1. Store bestScore in a parallel sentenceConfidence[] array in
+   buildSentenceTimings / _buildSentenceTimingsSync / worker
+   doSentenceTimings. Include in worker postMessage payload.
+
+2. Add: const SYNC_CONFIDENCE_THRESHOLD = 0.3;
+
+3. Only null transcriptWords if all confidence scores are above
+   threshold. If any are weak, keep transcriptWords alive.
+
+4. Add correctSyncDrift(audioTime): binary search transcriptWords for
+   word at audioTime, window ~10 words, run similarity() against
+   sentences[curSent-5..curSent+5], return best index or curSent.
+
+5. In timeupdate: if bestSent !== curSent AND confidence below
+   threshold, call correctSyncDrift(t) and use result instead.
+   High-confidence path must have zero additional overhead.
+
+6. Toast "Sync corrected" debounced to 30s between toasts.
+
+7. Update folio-context.md with sentenceConfidence,
+   _lastCorrectionToast, correctSyncDrift.
+
+8. Run node --check index.html when done.
+
+## Known limitation
+Only helps when original match was weak due to OCR noise or minor text
+differences. Won't help with genuine ebook/transcript divergence.`
+  },
+
+  // ── COMPLETED ─────────────────────────────────────────
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'Seek bar updates ebook position while paused',
+    desc:"Added binary search in onSeekChange() to immediately update the sentence highlight and scroll position when the seek bar is dragged while paused or stopped.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'EPUB paragraph fragmentation fix',
+    desc:"Rewrote extractFromDom() to collect text at block element boundaries, fixing paragraph fragmentation from inline elements in EPUB/HTML. Also fixed empty TOC for EPUBs where headings are nested inside div containers.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'TTS auto-scroll stops working after navigation',
+    desc:"Added _programmaticScroll flag to prevent programmatic scroll events from triggering the 2s auto-scroll cooldown; TOC click now restarts advanceSent() when TTS is playing.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'TTS play/pause unresponsive after pausing',
+    desc:"Removed ttsSpeaking=false from stopScrollEngine() to fix TTS play/pause state corruption caused by the scroll engine timer firing during active playback.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'Two speed controls visible in TTS mode + TTS rate not synced',
+    desc:"Hidden speed-strip in TTS mode by adding explicit hide in configurePlayerForMode(). Unified rate state by routing setTtsRate() through setRate() and syncing #ttsRateLbl / #ttsRateSlider from setRate().",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'TTS sentence highlight off by one after click',
+    desc:"Added re-anchor guard inside utt.onboundary: if _activeSentEl has drifted from the current sentence element, it is corrected before the word highlight updates.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'TTS sentence skip on click',
+    desc:"Added _ttsGeneration counter. onend/onerror closures capture gen at speak() time and bail out if gen !== _ttsGeneration, preventing stale cancel callbacks from advancing curSent.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'TTS play button unresponsive after returning to app',
+    desc:"Expanded the visibilitychange wake-lock handler to detect a dead SpeechSynthesis engine on return from background and reset ttsSpeaking/mediaState to stopped so play works on the first press.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'TTS → audiobook position lost on mode switch',
+    desc:"Guarded audioTime writes in saveBookProgress() and flushPositionSync() with !ttsMode. Added sentenceTimings fallback seek in configurePlayerForMode()'s loadedmetadata handler when audioTime is 0.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'TTS click navigation',
+    desc:"Clicking a sentence in TTS mode now stops the current utterance and restarts speech from the tapped sentence. Both word-click and sentence-click paths updated.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'fix', model:'sonnet',
+    title:'Instant scroll to resume position on book open',
+    desc:"Book open now scrolls instantly to the saved sentence position. scrollToSent() gained an instant=true parameter; pulseResumeSent(true) is passed from both openBook and pwaOpenBook.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'feat', model:'sonnet',
+    title:'Inline speed controls on seek strip',
+    desc:"− / rate / + buttons sit directly on the seek strip. Mobile users can change speed without opening the options panel. RATE_STEPS array and changeSpeed() function added.",
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'feat', model:'sonnet',
+    title:'Progress percentage in top bar',
+    desc:'Top bar now shows "Chapter 3 · 15%" instead of the raw sentence count. Chapter label is derived from tocEntries[] and truncated to 28 chars.',
+    prompt:''
+  },
+  {
+    num:'✓', status:'done', type:'feat', model:'sonnet',
+    title:'Sync offset hint toast',
+    desc:"One-time toast appears after the first Whisper transcript sync pointing users to Options > Sync offset. Guarded by folio_sync_hint_v1 localStorage flag.",
+    prompt:''
+  },
+
+  // ── BACKLOG — in priority order ────────────────────────
+  {
+    num:'B-1', status:'backlog', type:'fix', model:'sonnet',
+    title:'Audiobook + ebook with no transcript — undefined UX',
+    desc:"No defined behaviour for when an audiobook and ebook are loaded but no transcript is present. Should show a banner explaining the state and surface the transcript upload action. High risk of confusing new users.",
+    prompt:''
+  },
+  {
+    num:'B-2', status:'backlog', type:'fix', model:'sonnet',
+    title:'TOC double-click required to navigate',
+    desc:"TOC sometimes requires two clicks to reach the correct position. Likely a race between toggleToc() closing the sidebar and scrollToSent() firing on mobile. Needs investigation before prompt can be written.",
+    prompt:''
+  },
+  {
+    num:'B-3', status:'backlog', type:'fix', model:'sonnet',
+    title:'UI element drift (icons shift between books)',
+    desc:"Icons like the options button shift position slightly depending on the book. Likely a flexbox/layout issue caused by variable content in the player bar. Needs investigation.",
+    prompt:''
+  },
+  {
+    num:'B-4', status:'backlog', type:'fix', model:'sonnet',
+    title:'Can\'t assign file types individually (folder-only)',
+    desc:"File type assignment only works when uploading an entire folder. Individual file picker path does not exist. Needs a new file assignment flow in the book info panel.",
+    prompt:''
+  },
+  {
+    num:'B-5', status:'backlog', type:'fix', model:'sonnet',
+    title:'No auto-link audiobook on mobile',
+    desc:"Should auto-link an audiobook if one is present in the selected folder on mobile. No matching logic exists yet.",
+    prompt:''
+  },
+  {
+    num:'B-6', status:'backlog', type:'fix', model:'sonnet',
+    title:'Ebook formatting polish',
+    desc:"General ebook formatting still needs work beyond the paragraph fragmentation fix. Specific issues to be identified during testing.",
+    prompt:''
+  },
+  {
+    num:'B-7', status:'backlog', type:'feat', model:'sonnet',
+    title:'Faster audiobook relinking (remember filepath)',
+    desc:"Relinking an audiobook requires re-uploading. Should remember the filename/path so relinking is quicker — especially for PWA mode where file handles are available.",
+    prompt:''
+  },
+  {
+    num:'B-8', status:'backlog', type:'fix', model:'sonnet',
+    title:'No way to cancel folder selection on mobile',
+    desc:"Once folder selection begins on mobile there is no cancel step. Needs a confirmation or cancel affordance before committing the folder.",
+    prompt:''
+  },
+  {
+    num:'B-9', status:'backlog', type:'feat', model:'sonnet',
+    title:'Settings accessible from library screen',
+    desc:"Options menu is only accessible from inside the reader. Should be reachable from the library view without opening a book.",
+    prompt:''
+  },
+  {
+    num:'B-10', status:'backlog', type:'feat', model:'sonnet',
+    title:'Manage files from library screen',
+    desc:"No way to edit or remove book files from the library view — user must open the book first. Should support edit/remove from the library card or a long-press menu.",
+    prompt:''
+  },
+  {
+    num:'B-11', status:'backlog', type:'feat', model:'sonnet',
+    title:'High-contrast themes',
+    desc:"Add high-contrast and white-on-black themes to the theme picker. Currently only Parchment, Dark, and Night exist.",
+    prompt:''
+  },
+
+];
+// ══════════════════════════════════════════════════════════╝
+
+function matches(p, f) {
+  if(f === 'all')     return true;
+  if(f === 'active')  return p.status === 'active' || p.status === 'deferred';
+  if(f === 'done')    return p.status === 'done';
+  if(f === 'backlog') return p.status === 'backlog';
+  if(f === 'fix')     return p.type === 'fix';
+  if(f === 'feat')    return p.type === 'feat';
+  return true;
+}
+
+function renderAll(f) {
+  const container = document.getElementById('cards');
+  container.innerHTML = '';
+
+  const active   = PROMPTS.filter(p => (p.status==='active'||p.status==='deferred') && matches(p,f));
+  const done     = PROMPTS.filter(p => p.status==='done' && matches(p,f));
+  const backlog  = PROMPTS.filter(p => p.status==='backlog' && matches(p,f));
+  const total    = active.length + done.length + backlog.length;
+
+  document.getElementById('empty').style.display = total === 0 ? 'block' : 'none';
+  if(active.length)  appendSection('Active', active, container);
+  if(backlog.length) appendSection('Backlog — prompts not yet written', backlog, container);
+  if(done.length)    appendSection('Completed', done, container);
+}
+
+function appendSection(label, items, container) {
+  const h = document.createElement('div');
+  h.className = 'section-heading';
+  h.textContent = label;
+  container.appendChild(h);
+
+  items.forEach((p, i) => {
+    const isDone     = p.status === 'done';
+    const isDeferred = p.status === 'deferred';
+    const isBacklog  = p.status === 'backlog';
+    const uid        = p.status + '_' + i;
+
+    const typTag   = p.type==='fix' ? '<span class="tag tag-fix">Fix</span>' : '<span class="tag tag-feat">Feature</span>';
+    const modelTag = '<span class="tag tag-sonnet">Sonnet</span>';
+    const extraTag = isDone     ? '<span class="tag tag-done">Done</span>'
+                   : isDeferred ? '<span class="tag tag-defer">Deferred</span>'
+                   : isBacklog  ? '<span class="tag tag-backlog">Needs prompt</span>'
+                   : '';
+
+    const bodyInner = (isDone || isBacklog)
+      ? `<div class="card-desc" style="padding-bottom:14px">${p.desc}</div>`
+      : `<div class="card-desc">${p.desc}</div>
+         <div class="prompt-wrap">
+           <div class="prompt-text">${escHtml(p.prompt)}</div>
+           <div class="copy-bar">
+             <button class="copy-btn" onclick="copyText(this)">
+               <span class="copy-icon">&#x2398;</span> Copy prompt
+             </button>
+           </div>
+         </div>`;
+
+    const card = document.createElement('div');
+    card.className = 'prompt-card' + (isDone ? ' done-card' : '') + (isBacklog ? ' backlog-card' : '');
+    card.innerHTML = `
+      <div class="card-header" onclick="this.closest('.prompt-card').classList.toggle('open')">
+        <div class="card-num">${escHtml(p.num)}</div>
+        <div class="card-meta">
+          <div class="card-title">${p.title}</div>
+          <div class="card-tags">${typTag}${modelTag}${extraTag}</div>
+        </div>
+        <span class="card-chevron">&#9660;</span>
+      </div>
+      <div class="card-body">${bodyInner}</div>`;
+    container.appendChild(card);
+    // Store raw prompt text directly on the DOM node — avoids all attribute-escaping issues with backticks etc.
+    const copyBtn = card.querySelector('.copy-btn');
+    if(copyBtn) copyBtn._promptText = p.prompt;
+  });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyText(btn) {
+  const text = btn._promptText || '';
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<span class="copy-icon">&#10003;</span> Copied!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<span class="copy-icon">&#x2398;</span> Copy prompt';
+    }, 2000);
+  });
+}
+
+function filter(f, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll(f);
+}
+
+// Populate stats
+document.getElementById('statActive').textContent =
+  PROMPTS.filter(p => p.status==='active').length;
+document.getElementById('statDone').textContent =
+  PROMPTS.filter(p => p.status==='done').length;
+document.getElementById('statBacklog').textContent =
+  PROMPTS.filter(p => p.status==='backlog').length;
+document.getElementById('statDefer').textContent =
+  PROMPTS.filter(p => p.status==='deferred').length;
+
+renderAll('all');
+</script>
+</body>
+</html>

@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Folio — Workflow Prompts</title>
+<style>
+:root {
+  --bg:#0d1117; --surface:#161b22; --surface2:#21262d;
+  --border:#30363d; --text:#e6edf3; --text2:#8b949e; --text3:#484f58;
+  --accent:#5b8def; --green:#3fb950; --yellow:#d29922; --red:#f85149;
+  --orange:#f0883e;
+  --radius:10px; --font:'DM Sans',system-ui,sans-serif; --mono:'Courier New',monospace;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; }
+
+.page { max-width:760px; margin:0 auto; padding:40px 20px 80px; }
+.page-header { margin-bottom:32px; }
+.page-title { font-size:20px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.page-sub { font-size:13px; color:var(--text2); line-height:1.7; }
+.page-sub strong { color:var(--accent); }
+
+.section-heading {
+  font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--text3); margin:32px 0 12px; display:flex; align-items:center; gap:10px;
+}
+.section-heading::after { content:''; flex:1; height:1px; background:var(--border); }
+.section-heading:first-child { margin-top:0; }
+
+.prompt-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); margin-bottom:12px; transition:border-color .15s;
+}
+.prompt-card:hover { border-color:var(--text3); }
+.prompt-card.selected { border-color:var(--accent); }
+.prompt-card.selected .card-header { background:rgba(91,141,239,.06); border-radius:var(--radius); }
+.prompt-card.selected.open .card-header { border-radius:var(--radius) var(--radius) 0 0; }
+
+.card-header {
+  display:flex; align-items:center; gap:10px; padding:14px 16px;
+  cursor:pointer; user-select:none;
+}
+.prompt-card.open .card-header { border-bottom:1px solid var(--border); }
+.card-header:hover .card-title { color:var(--accent); }
+
+.card-select {
+  width:20px; height:20px; border-radius:4px; flex-shrink:0;
+  border:1px solid var(--border); background:var(--surface2);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .15s;
+}
+.card-select:hover { border-color:var(--accent); }
+.card-select .sel-check { display:none; color:#fff; font-size:11px; font-weight:700; line-height:1; }
+.card-select.active { background:var(--accent); border-color:var(--accent); }
+.card-select.active .sel-check { display:block; }
+
+.card-icon {
+  width:30px; height:30px; border-radius:8px; background:var(--surface2);
+  border:1px solid var(--border); font-size:14px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.card-meta { flex:1; min-width:0; }
+.card-title { font-size:14px; font-weight:600; color:var(--text); transition:color .15s; }
+.card-subtitle { font-size:12px; color:var(--text2); margin-top:3px; }
+.card-chevron { font-size:12px; color:var(--text3); transition:transform .2s; flex-shrink:0; }
+.prompt-card.open .card-chevron { transform:rotate(180deg); }
+
+.card-body { display:none; padding:0 16px 16px; }
+.prompt-card.open .card-body { display:block; }
+
+/* Variant tabs */
+.variant-tabs {
+  display:flex; margin:14px 0 0; border-bottom:1px solid var(--border);
+}
+.vtab {
+  padding:7px 16px; font-size:12px; font-weight:600; cursor:pointer;
+  color:var(--text2); border:none; border-bottom:2px solid transparent;
+  margin-bottom:-1px; transition:all .15s; background:none; font-family:var(--font);
+}
+.vtab:hover { color:var(--text); }
+.vtab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.vtab.quick-tab.active { color:var(--green); border-bottom-color:var(--green); }
+
+.variant-panel { display:none; }
+.variant-panel.active { display:block; }
+
+.prompt-wrap { position:relative; margin:12px 0 0; }
+.prompt-text {
+  background:#0d1117; border:1px solid var(--border); border-radius:8px;
+  padding:16px 16px 48px; font-family:var(--mono); font-size:12px; line-height:1.7;
+  color:#c9d1d9; white-space:pre-wrap; word-break:break-word;
+  max-height:380px; overflow-y:auto;
+}
+.copy-bar {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(transparent, #0d1117 40%);
+  padding:20px 12px 10px; display:flex; justify-content:flex-end;
+  border-radius:0 0 8px 8px; pointer-events:none;
+}
+.copy-btn {
+  pointer-events:all; display:flex; align-items:center; gap:6px;
+  padding:7px 16px; border-radius:6px; background:var(--surface2);
+  border:1px solid var(--border); color:var(--text); font-family:var(--font);
+  font-size:12px; font-weight:600; cursor:pointer; transition:all .15s;
+}
+.copy-btn:hover { background:var(--accent); border-color:var(--accent); color:#fff; }
+.copy-btn.copied { background:rgba(63,185,80,.15); border-color:rgba(63,185,80,.4); color:#3fb950; }
+.copy-icon { font-size:13px; }
+
+/* Combine bar */
+.combine-bar {
+  position:fixed; bottom:0; left:0; right:0;
+  background:var(--surface); border-top:1px solid var(--border);
+  padding:12px 24px; display:flex; align-items:center; gap:12px;
+  transform:translateY(100%); transition:transform .25s cubic-bezier(.4,0,.2,1);
+  z-index:100; box-shadow:0 -4px 24px rgba(0,0,0,.4);
+}
+.combine-bar.visible { transform:translateY(0); }
+.combine-count { font-size:13px; color:var(--text2); flex:1; }
+.combine-count strong { color:var(--text); }
+.combine-hint { font-size:11px; color:var(--text3); }
+.clear-btn {
+  padding:8px 16px; border-radius:6px; font-family:var(--font);
+  font-size:12px; font-weight:600; cursor:pointer; transition:all .15s;
+  background:none; border:1px solid var(--border); color:var(--text2);
+}
+.clear-btn:hover { border-color:var(--text3); color:var(--text); }
+.combine-copy-btn {
+  display:flex; align-items:center; gap:6px;
+  padding:8px 18px; border-radius:6px; font-family:var(--font);
+  font-size:12px; font-weight:600; cursor:pointer; transition:all .15s;
+  background:var(--accent); border:1px solid var(--accent); color:#fff;
+}
+.combine-copy-btn:hover { opacity:.85; }
+.combine-copy-btn.copied { background:rgba(63,185,80,.15); border-color:rgba(63,185,80,.4); color:#3fb950; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="page">
+
+  <div class="page-header">
+    <div class="page-title">Folio — Workflow Prompts</div>
+    <div class="page-sub">Reusable Claude Code prompts for every stage of a session.<br>
+    <strong>Detailed</strong> = full guardrails, use for risky or complex tasks. &nbsp;
+    <strong style="color:var(--green)">Quick</strong> = paste-and-go for routine sessions.<br>
+    <strong style="color:var(--accent)">Check the box</strong> on multiple prompts to combine them into one copy.</div>
+  </div>
+
+  <div id="cards"></div>
+</div>
+
+<div class="combine-bar" id="combineBar">
+  <div class="combine-count" id="combineCount"></div>
+  <span class="combine-hint">Combines the active tab (Detailed/Quick) from each card</span>
+  <button class="clear-btn" onclick="clearSelections()">Clear</button>
+  <button class="combine-copy-btn" id="combineCopyBtn" onclick="copyCombined()">
+    <span>⊕</span> Copy combined
+  </button>
+</div>
+
+<script>
+const PROMPTS = [
+
+  // ── SESSION START ─────────────────────────────────────
+  {
+    icon:'🚀', stage:'start',
+    title:'Start a new session',
+    subtitle:'Orient Claude to the codebase before any task',
+    detailed:
+`Read CLAUDE.md, then read folio-context.md in full.
+
+Confirm you understand:
+- The single-file architecture (CSS → HTML → JS, all in index.html)
+- The two playback modes and how configurePlayerForMode() switches between them
+- The key state variables (sentences[], curSent, curWord, mediaState, ttsMode)
+- The fragile areas listed at the bottom of folio-context.md
+
+Do not make any changes yet. Just confirm you're ready and summarise the architecture in 3–4 sentences.`,
+    quick:
+`Read CLAUDE.md and folio-context.md. Confirm you understand the architecture and you're ready for tasks.`
+  },
+
+  // ── BEFORE CODING ────────────────────────────────────
+  {
+    icon:'🗺️', stage:'before',
+    title:'Plan before touching code',
+    subtitle:'Get a full change plan approved before any edits land',
+    detailed:
+`Plan this change before writing any code.
+
+For each function you'll modify, tell me:
+1. The current behaviour
+2. What you'll change and why
+3. Any state variables affected
+4. Risk of side effects on other functions
+
+Also flag:
+- Whether this touches sentences[], DOM refs, or mediaState transitions
+- Whether the scroll engine, wake lock, or page title need updating
+- Any fragile areas from folio-context.md that are nearby
+
+Do not edit anything until I approve the plan.`,
+    quick:
+`Plan this change before writing any code. List every function you'll modify, what you'll change in each, and any risks or side effects. Don't edit anything until I approve the plan.`
+  },
+
+  {
+    icon:'🔍', stage:'before',
+    title:'Diagnose before fixing',
+    subtitle:'Full root cause trace — no edits until confirmed',
+    detailed:
+`Diagnose this issue before making any changes.
+
+Trace the full code path:
+1. What triggers the problem (user action or event)
+2. Which functions are called in sequence
+3. What state each function reads and writes
+4. Where the state diverges from what's expected
+
+Pay particular attention to:
+- Race conditions between TTS events (onend, onboundary, onerror)
+- Stale DOM refs in sentences[]
+- mediaState / ttsSpeaking / ttsPaused getting out of sync
+- The scroll engine timer (scrollTimer) interfering with TTS state
+- Backgrounding / visibilitychange scenarios
+
+Tell me the root cause and your proposed fix. Do not edit anything until I confirm.`,
+    quick:
+`Diagnose this issue before making any changes. Trace the full code path involved. Tell me what you find and the root cause. Don't edit anything until I confirm.`
+  },
+
+  // ── DURING CODING ─────────────────────────────────────
+  {
+    icon:'✅', stage:'during',
+    title:'Syntax check after edits',
+    subtitle:'Confirm zero JS errors before moving on',
+    detailed:
+`Run the syntax check and confirm zero errors:
+
+node -e "const fs=require('fs'),html=fs.readFileSync('index.html','utf8'),m=html.match(/<script>([\s\S]*?)<\/script>/);try{new Function(m[1]);console.log('OK');}catch(e){console.error(e.message);}"
+
+If there are errors, fix them before doing anything else. Show me the error message and your fix.`,
+    quick:
+`Run node -e "const fs=require('fs'),html=fs.readFileSync('index.html','utf8'),m=html.match(/<script>([\s\S]*?)<\/script>/);try{new Function(m[1]);console.log('OK');}catch(e){console.error(e.message);}" and confirm zero errors.`
+  },
+
+  {
+    icon:'🔎', stage:'during',
+    title:'Review work in progress',
+    subtitle:'Ask Claude to read back and justify its changes',
+    detailed:
+`Read back the changes you just made.
+
+For each function you edited:
+1. Quote the key lines you changed
+2. Explain what the old behaviour was and what the new behaviour is
+3. Flag anything you're unsure about
+
+If you touched any state transitions, confirm the full required set of updates is present:
+setPlayBtnIcon · setMediaState · acquireWakeLock/releaseWakeLock · updatePageTitle`,
+    quick:
+`Read back the changes you just made. For each function you edited, explain what you changed and why. Flag anything you're unsure about.`
+  },
+
+  // ── AFTER CODING ──────────────────────────────────────
+  {
+    icon:'📋', stage:'after',
+    title:'Generate a testing checklist',
+    subtitle:'Smoke test, targeted tests, regressions, and edge cases',
+    detailed:
+`Generate a testing checklist for the changes you just made. Include:
+
+1. SMOKE TEST — minimum steps to confirm nothing is broken
+   (open book, play, highlight works, TOC works, progress saves)
+
+2. TARGETED TESTS — specific tests for each function you changed,
+   with exact steps and expected outcome
+
+3. REGRESSION RISKS — anything that could have broken as a side
+   effect. Focus on: TTS/audio mode parity, scroll engine behaviour,
+   mediaState transitions, DOM ref integrity after book changes.
+
+4. EDGE CASES:
+   - Empty transcript
+   - Very long book (500+ sentences)
+   - Switching books rapidly
+   - Backgrounding mid-playback, then returning
+   - TOC navigation while playing
+
+Mark each test with the book type needed:
+[AUDIO+TX] = audiobook + Whisper transcript
+[TTS]      = ebook only, TTS mode
+[EITHER]   = works with any book
+
+Format as a numbered checklist.`,
+    quick:
+`Generate a testing checklist for the changes you just made. Include: smoke test, targeted tests, regression risks, edge cases. Mark which book type each test needs. Format as a numbered checklist.`
+  },
+
+  {
+    icon:'📝', stage:'after',
+    title:'Update context docs',
+    subtitle:'Keep CLAUDE.md and folio-context.md accurate after every session',
+    detailed:
+`Update CLAUDE.md and folio-context.md to reflect the changes you just made.
+
+Specifically:
+- Fix any line ranges that have shifted
+- Add any new state variables (name, type, purpose)
+- Update function descriptions where behaviour changed
+- Add new fragile areas or gotchas you discovered
+- If a new IIFE or event listener was added, add it to the IIFEs table
+
+After updating, briefly summarise what changed in the docs so I can verify nothing was missed.`,
+    quick:
+`Update CLAUDE.md and folio-context.md to reflect the changes you just made. Fix any line ranges, add new state variables, update any function descriptions that changed.`
+  },
+
+  {
+    icon:'💬', stage:'after',
+    title:'Write a commit message',
+    subtitle:'Conventional commit format, ready to paste into git',
+    detailed:
+`Write a commit message for the changes in this session.
+
+Format:
+- First line: conventional commit type (feat/fix/refactor/perf/chore) + short summary, max 72 chars
+- Blank line
+- Bullet list of what changed, one bullet per logical change
+- If a bug was fixed, one line describing the root cause
+
+Then write a 2–3 sentence plain-English summary suitable for a PR description or release note.`,
+    quick:
+`Write a commit message for the changes in this session. Use conventional commit format (feat/fix/refactor/chore). Summary line under 72 chars, then a bullet list of what changed.`
+  },
+
+  {
+    icon:'🧾', stage:'after',
+    title:'Plain-English explanation',
+    subtitle:'For release notes, PR descriptions, or sanity checks',
+    detailed:
+`In plain English, explain:
+1. What was broken or missing before
+2. What you changed and how it fixes it
+3. Anything the user will notice that's different
+
+Keep it non-technical — assume the reader hasn't seen the code.
+Then suggest a one-sentence changelog entry.`,
+    quick:
+`In simple terms explain what changes you made and what I should put for the commit summary/description.`
+  },
+
+  // ── RELEASE & SHIP ────────────────────────────────────
+  {
+    icon:'📒', stage:'release',
+    title:'Update the changelog',
+    subtitle:'Add a versioned entry to CHANGELOG.md for this session',
+    detailed:
+`Update CHANGELOG.md to reflect the changes made in this session.
+
+Steps:
+1. Read CHANGELOG.md in full to understand the current format and latest version
+2. Determine the correct version bump based on what changed:
+   - patch (x.x.N+1): bug fixes only, no new features
+   - minor (x.N+1.0): any new user-facing feature or behaviour change
+3. Draft a new version entry using today's date in YYYY-MM-DD format
+4. Organise changes under the appropriate sections (use only what apply):
+   - ### Added — new features or capabilities
+   - ### Changed — behaviour changes to existing features
+   - ### Fixed — bug fixes
+   - ### Performance — measurable perf improvements
+5. Write short, factual bullet points — one per logical change
+   Do not pad, do not use marketing language, do not repeat what's in the commit message verbatim
+
+Show me the proposed entry and wait for my approval before writing to the file.`,
+    quick:
+`Update CHANGELOG.md for this session's changes. Read the file first to match the existing format. Determine whether this is a patch or minor bump. Draft the new version entry with today's date and bullet points under Added/Changed/Fixed as needed. Show me the draft before writing it.`
+  },
+
+  {
+    icon:'🚢', stage:'release',
+    title:'Commit and push to git',
+    subtitle:'Stage, commit, and push — with review before each step',
+    detailed:
+`Commit and push all changes from this session to git.
+
+Follow these steps in order, pausing for my approval between steps 3 and 4:
+
+1. Run git status to see all modified and untracked files
+2. Run git diff on each changed file to confirm the diff looks correct and nothing unexpected is included
+3. Show me the list of files you plan to stage and the proposed commit message, then wait for approval
+4. Stage only the files that are part of this session's work — do not stage unrelated files or files that were already tracked before the session
+5. Create the commit using conventional commit format:
+   - First line: type(scope): short summary — max 72 chars
+   - Blank line
+   - Bullet list of changes, one per logical item
+6. Run git status again to confirm the commit succeeded
+7. Ask me to confirm before pushing
+8. Push to the current branch
+
+Do not use --no-verify or any flag that bypasses hooks.
+Do not amend any existing commit.
+Do not push unless I explicitly confirm in step 7.`,
+    quick:
+`Commit and push this session's changes to git. First run git status and show me the diff. Stage only session-related files. Show me the staged files and commit message and wait for my approval before committing. After committing, ask me to confirm before pushing.`
+  },
+
+  // ── PROMPT LIBRARY MAINTENANCE ────────────────────────
+  {
+    icon:'✅', stage:'maintenance',
+    title:'Mark prompts as completed',
+    subtitle:'Update folio-prompts.html after finishing active items',
+    detailed:
+`Update folio-prompts.html to mark completed prompts as done.
+
+I'll tell you which prompt numbers are complete. For each one:
+
+1. Change  status:'active'  to  status:'done'
+2. Change  num:'N'  to  num:'✓'
+3. Replace the prompt template literal with  prompt:''
+4. Update the desc to a past-tense one-line summary of what was
+   implemented (e.g. "Added X to fix Y" rather than "X is broken")
+5. Move the entry to the Completed section, which starts with the
+   comment:  // ── COMPLETED ─────────────────────────────────────────
+   Place it at the top of that section (most recent first).
+
+After moving completed entries, renumber the remaining active
+prompts sequentially from 1 so there are no gaps.
+
+Do not change any backlog, deferred, or already-done entries.
+Do not modify the JS render logic or any CSS.
+
+Confirm when done by listing: which numbers were marked done,
+their new desc summaries, and the updated active queue order.`,
+    quick:
+`In folio-prompts.html, mark the following prompt numbers as done: [LIST NUMBERS].
+
+For each: set status to 'done', num to '✓', clear the prompt to '',
+and update desc to a past-tense summary of what was built.
+Move each entry to the top of the Completed section.
+Then renumber remaining active prompts from 1 with no gaps.`
+  },
+
+  {
+    icon:'➕', stage:'maintenance',
+    title:'Add a new prompt to the library',
+    subtitle:'Insert a fully formed entry into folio-prompts.html',
+    detailed:
+`Add a new prompt entry to folio-prompts.html.
+
+Place it in the Active section at the priority position I specify
+(or at the end of Active if no position given). After inserting,
+renumber all active prompts sequentially from 1 so there are no gaps.
+
+The entry must follow this exact structure:
+  {
+    num:'N', status:'active', type:'fix'|'feat', model:'sonnet'|'opus',
+    title:'Short title shown on the card',
+    desc:"One sentence describing the problem or goal. Present tense.",
+    prompt:
+\`# Type: Short title in index.html
+
+## Problem / Goal
+[What is wrong or what needs to be built]
+
+## Fix / Approach
+[Specific implementation steps with any key code snippets]
+
+## Notes
+- Any constraints or things NOT to change
+- Any related functions to be aware of
+
+Run the syntax check after the change:
+node -e "const fs=require('fs'),html=fs.readFileSync('index.html','utf8'),m=html.match(/<script>([\\s\\S]*?)<\\/script>/);try{new Function(m[1]);console.log('OK');}catch(e){console.error(e.message);}"\`
+  },
+
+Use type:'opus' only if the change involves complex restructuring
+or multi-function architectural work. Use type:'sonnet' for all
+targeted, mechanical changes.
+
+Do not modify any existing entries, the render logic, or any CSS.
+
+Confirm when done by showing the inserted entry and the updated
+active queue order.`,
+    quick:
+`Add a new prompt entry to folio-prompts.html at active position [N].
+
+Title: [TITLE]
+Type: fix | feat
+Model: sonnet | opus
+Desc: [one sentence problem/goal description]
+Prompt: [prompt text]
+
+Follow the exact {num, status, type, model, title, desc, prompt} structure.
+Renumber remaining active prompts so there are no gaps.`
+  },
+
+];
+
+// ── Render ────────────────────────────────────────────
+const STAGE_META = {
+  start:       'Session Start',
+  before:      'Before Coding',
+  during:      'During Coding',
+  after:       'After Coding',
+  release:     'Release & Ship',
+  maintenance: 'Prompt Library Maintenance',
+};
+const STAGE_ORDER = ['start','before','during','after','release','maintenance'];
+
+const _selected = new Set();
+const _activeVariant = {};  // uid -> 'detailed' | 'quick'
+
+function render(){
+  const container = document.getElementById('cards');
+  const groups = {};
+  STAGE_ORDER.forEach(s => { groups[s] = []; });
+  PROMPTS.forEach(p => { if(groups[p.stage]) groups[p.stage].push(p); });
+
+  STAGE_ORDER.forEach(stage => {
+    const items = groups[stage];
+    if(!items.length) return;
+
+    const h = document.createElement('div');
+    h.className = 'section-heading';
+    h.textContent = STAGE_META[stage];
+    container.appendChild(h);
+
+    items.forEach((p, i) => {
+      const uid = stage + '_' + i;
+      _activeVariant[uid] = 'detailed';
+
+      const card = document.createElement('div');
+      card.className = 'prompt-card';
+      card.innerHTML = `
+        <div class="card-header" onclick="toggleCard('${uid}')">
+          <div class="card-select" id="sel_${uid}" onclick="event.stopPropagation(); toggleSelect('${uid}')">
+            <span class="sel-check">✓</span>
+          </div>
+          <div class="card-icon">${p.icon}</div>
+          <div class="card-meta">
+            <div class="card-title">${escHtml(p.title)}</div>
+            <div class="card-subtitle">${escHtml(p.subtitle)}</div>
+          </div>
+          <span class="card-chevron">&#9660;</span>
+        </div>
+        <div class="card-body" id="body_${uid}">
+          <div class="variant-tabs">
+            <button class="vtab active"    onclick="switchTab(event,'${uid}','detailed')">Detailed</button>
+            <button class="vtab quick-tab" onclick="switchTab(event,'${uid}','quick')">Quick</button>
+          </div>
+          <div class="variant-panel active" id="panel_${uid}_detailed">
+            <div class="prompt-wrap">
+              <div class="prompt-text" id="text_${uid}_detailed"></div>
+              <div class="copy-bar">
+                <button class="copy-btn" onclick="copyPrompt(this)">
+                  <span class="copy-icon">&#x2398;</span> Copy prompt
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="variant-panel" id="panel_${uid}_quick">
+            <div class="prompt-wrap">
+              <div class="prompt-text" id="text_${uid}_quick"></div>
+              <div class="copy-bar">
+                <button class="copy-btn" onclick="copyPrompt(this)">
+                  <span class="copy-icon">&#x2398;</span> Copy prompt
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      container.appendChild(card);
+
+      // Store raw text directly on DOM nodes — no attribute escaping issues
+      document.getElementById(`text_${uid}_detailed`).textContent = p.detailed;
+      document.getElementById(`text_${uid}_quick`).textContent    = p.quick;
+
+      // Store prompt text on copy buttons
+      const [detailedBtn, quickBtn] = card.querySelectorAll('.copy-btn');
+      detailedBtn._promptText = p.detailed;
+      quickBtn._promptText    = p.quick;
+    });
+  });
+}
+
+function toggleCard(uid){
+  const body = document.getElementById('body_' + uid);
+  body.closest('.prompt-card').classList.toggle('open');
+}
+
+function switchTab(ev, uid, variant){
+  ev.stopPropagation();
+  _activeVariant[uid] = variant;
+  const body = document.getElementById('body_' + uid);
+  body.querySelectorAll('.vtab').forEach(t => t.classList.remove('active'));
+  body.querySelectorAll('.variant-panel').forEach(p => p.classList.remove('active'));
+  ev.target.classList.add('active');
+  document.getElementById(`panel_${uid}_${variant}`).classList.add('active');
+}
+
+function copyPrompt(btn){
+  const text = btn._promptText || '';
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<span class="copy-icon">&#10003;</span> Copied!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<span class="copy-icon">&#x2398;</span> Copy prompt';
+    }, 2000);
+  });
+}
+
+function toggleSelect(uid){
+  const selEl = document.getElementById('sel_' + uid);
+  const card  = selEl.closest('.prompt-card');
+  if(_selected.has(uid)){
+    _selected.delete(uid);
+    selEl.classList.remove('active');
+    card.classList.remove('selected');
+  } else {
+    _selected.add(uid);
+    selEl.classList.add('active');
+    card.classList.add('selected');
+  }
+  updateCombineBar();
+}
+
+function updateCombineBar(){
+  const bar = document.getElementById('combineBar');
+  const countEl = document.getElementById('combineCount');
+  if(_selected.size === 0){
+    bar.classList.remove('visible');
+  } else {
+    bar.classList.add('visible');
+    const n = _selected.size;
+    countEl.innerHTML = `<strong>${n}</strong> prompt${n===1?'':'s'} selected`;
+  }
+}
+
+function clearSelections(){
+  _selected.forEach(uid => {
+    const selEl = document.getElementById('sel_' + uid);
+    if(selEl){
+      selEl.classList.remove('active');
+      selEl.closest('.prompt-card').classList.remove('selected');
+    }
+  });
+  _selected.clear();
+  updateCombineBar();
+}
+
+function copyCombined(){
+  const btn = document.getElementById('combineCopyBtn');
+  const texts = [];
+  // Iterate in DOM order for consistent output regardless of selection order
+  document.querySelectorAll('.prompt-card.selected').forEach(card => {
+    const selEl = card.querySelector('[id^="sel_"]');
+    if(!selEl) return;
+    const uid = selEl.id.replace('sel_', '');
+    const variant = _activeVariant[uid] || 'detailed';
+    const textEl = document.getElementById(`text_${uid}_${variant}`);
+    if(textEl && textEl.textContent.trim()) texts.push(textEl.textContent.trim());
+  });
+  if(!texts.length) return;
+  const combined = texts.join('\n\n---\n\n');
+  navigator.clipboard.writeText(combined).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<span>✓</span> Copied!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<span>⊕</span> Copy combined';
+    }, 2000);
+  });
+}
+
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+render();
+</script>
+</body>
+</html>

@@ -877,7 +877,7 @@ let curBookIdx = -1;
 let sentences = [];
 let tocEntries = [];
 let curSent = 0; let curWord = 0;
-let autoScroll = true; let scrollPaused = false; let scrollTimer = null;
+let autoScroll = true; let scrollPaused = false; let scrollTimer = null; let _programmaticScroll = false;
 let lastAdvanceTime = 0; let wpm = 150; let sentPauseMs = 500;
 let mediaState = 'stopped'; let tocOpen = false; let wordHlOn = true;
 let isSeeking = false;
@@ -886,7 +886,7 @@ let syncOffset = 0;
 let transcriptWords = null; let transcriptText = null;
 let _timingWorker = null; let _timingWorkerBlobUrl = null; let _pendingTimingBookIdx = -1; let _timingWorkerTimeout = null; let _plainTextRetryListener = null;
 let ttsMode = false; let ttsSpeaking = false; let ttsUtterance = null;
-let ttsVoice = null; let ttsPaused = false;
+let ttsVoice = null; let ttsPaused = false; let _ttsGeneration = 0;
 let txPending = null; let laPending = null;
 let pwaRootHandle = null;
 let _contentClickHandler = null;
@@ -947,7 +947,14 @@ function releaseWakeLock(){
 }
 // Re-acquire when page becomes visible again (screen lock can release it)
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible' && mediaState==='playing') acquireWakeLock();
+  if(document.visibilityState==='visible' && mediaState==='playing'){
+    acquireWakeLock();
+    if(ttsMode && !speechSynthesis.speaking && !speechSynthesis.pending){
+      ttsSpeaking=false; ttsPaused=false; ttsUtterance=null;
+      setMediaState('stopped'); setPlayBtnIcon(false);
+      stopScrollEngine(); releaseWakeLock(); updatePageTitle();
+    }
+  }
 });
 
 // ══════════════════════════════════════════════════════
@@ -1313,7 +1320,7 @@ function saveBookProgress(){
   if(curBookIdx<0) return;
   const b=library[curBookIdx];
   b.curSent=curSent; b.curWord=curWord;
-  b.audioTime=isFinite(_audio.currentTime)?_audio.currentTime:0;
+  if(!ttsMode) b.audioTime=isFinite(_audio.currentTime)?_audio.currentTime:0;
   b.wpm=wpm; b.sentPauseMs=sentPauseMs;
   b.playbackRate=_audio.playbackRate||1;
   b.totalSents=sentences.length||b.totalSents||1;
@@ -1337,7 +1344,7 @@ function flushPositionSync(){
       if(curBookIdx<0) return;
       const b=library[curBookIdx];
       b.curSent=curSent; b.curWord=curWord;
-      b.audioTime=isFinite(_audio.currentTime)?_audio.currentTime:0;
+      if(!ttsMode) b.audioTime=isFinite(_audio.currentTime)?_audio.currentTime:0;
       b.wpm=wpm; b.sentPauseMs=sentPauseMs;
       b.playbackRate=_audio.playbackRate||1;
       b.totalSents=sentences.length||b.totalSents||1;
@@ -1509,13 +1516,19 @@ function configurePlayerForMode(b, audioSrc, rate){
   ttsMode = audioSrc === null && !b.audioHandle;
   $('seekStrip').style.display = ttsMode ? 'none' : '';
   $('ttsBar').style.display    = ttsMode ? 'flex' : 'none';
+  const _ss = document.querySelector('.speed-strip');
+  if(_ss) _ss.style.display = ttsMode ? 'none' : '';
   if(!ttsMode && audioSrc){
     if(_audio.src && _audio.src.startsWith('blob:')) URL.revokeObjectURL(_audio.src);
     _audio.src = audioSrc;
     _audio.playbackRate = rate;
     _audio.load();
     _audio.addEventListener('loadedmetadata', function restore(){
-      if(b.audioTime) _audio.currentTime = b.audioTime;
+      if(b.audioTime){
+        _audio.currentTime = b.audioTime;
+      } else if(curSent > 0 && sentenceTimings && sentenceTimings[curSent]){
+        _audio.currentTime = Math.max(0, sentenceTimings[curSent].start - syncOffset);
+      }
       _audio.removeEventListener('loadedmetadata', restore);
     });
   }
@@ -1642,6 +1655,10 @@ function setRate(v){
   if(rc) rc.value=v;
   const ri=$('rateBtnInline');
   if(ri) ri.textContent=v+'×';
+  const ttsLbl=document.getElementById('ttsRateLbl');
+  if(ttsLbl) ttsLbl.textContent=v+'×';
+  const ttsSl=document.getElementById('ttsRateSlider');
+  if(ttsSl) ttsSl.value=v;
   updateSpeedBadge(v);
   if(curBookIdx>=0){ library[curBookIdx].playbackRate=v; if(!IS_PWA) saveLibrary(); }
   saveDisplayPrefs();
@@ -1670,7 +1687,20 @@ function toggleMute(){
   $('volIconOpt').textContent=icon;
 }
 function onSeekInput(v){ isSeeking=true; $('tCur').textContent=fmt(_audio.duration*v/100); }
-function onSeekChange(v){ if(isFinite(_audio.duration)) _audio.currentTime=_audio.duration*v/100; isSeeking=false; }
+function onSeekChange(v){
+  if(isFinite(_audio.duration)) _audio.currentTime=_audio.duration*v/100;
+  isSeeking=false;
+  if(mediaState!=='playing' && sentenceTimings.length){
+    const t=_audio.currentTime+syncOffset;
+    let lo=0,hi=sentenceTimings.length-1,best=curSent;
+    while(lo<=hi){
+      const mid=(lo+hi)>>>1;
+      if(sentenceTimings[mid]&&t>=sentenceTimings[mid].start){ best=mid; lo=mid+1; }
+      else{ hi=mid-1; }
+    }
+    if(best!==curSent){ curSent=best; curWord=0; updateHL(); updateProg(); if(autoScroll) scrollToSent(curSent); }
+  }
+}
 
 // ══════════════════════════════════════════════════════
 // AUDIO EVENTS
@@ -1767,7 +1797,6 @@ function startScrollEngine(){
 }
 function stopScrollEngine(){
   if(scrollTimer){ clearTimeout(scrollTimer); scrollTimer=null; }
-  ttsSpeaking=false;
 }
 function advanceSent(){
   if(!ttsMode||mediaState!=='playing') return;
@@ -1832,13 +1861,19 @@ function setTtsVoice(i){
   ttsVoice=speechSynthesis.getVoices()[i]||null;
 }
 function setTtsRate(v){
-  document.getElementById('ttsRateLbl').textContent=parseFloat(v).toFixed(2)+'×';
+  setRate(v);
+  const lbl=document.getElementById('ttsRateLbl');
+  if(lbl) lbl.textContent=parseFloat(v).toFixed(2)+'×';
+  const slider=document.getElementById('ttsRateSlider');
+  if(slider) slider.value=parseFloat(v);
 }
 function ttsPlay(){
   if(ttsPaused&&ttsUtterance){ speechSynthesis.resume(); ttsSpeaking=true; ttsPaused=false;
     setPlayBtnIcon(true); setMediaState('playing');
     acquireWakeLock(); updateMediaSessionState(true); updatePageTitle(); return; }
   if(curSent>=sentences.length) return;
+  _ttsGeneration++;
+  const gen=_ttsGeneration;
   setPlayBtnIcon(true); setMediaState('playing');
   ttsSpeaking=true;
   acquireWakeLock(); updateMediaSessionState(true); updatePageTitle();
@@ -1869,9 +1904,15 @@ function ttsPlay(){
         if(_activeWordEl){ _activeWordEl.classList.remove('word-active'); _activeWordEl=null; }
         if(words[curWord]){ words[curWord].el.classList.add('word-active'); _activeWordEl=words[curWord].el; }
       }
+      // Re-anchor sentence highlight if it drifted (e.g. after click navigation)
+      if(_activeSentEl !== s.el){
+        if(_activeSentEl) _activeSentEl.classList.remove('sent-active');
+        s.el.classList.add('sent-active');
+        _activeSentEl = s.el;
+      }
     };
-    utt.onend=()=>{ if(mediaState!=='playing') return; curSent++; curWord=0; speak(); };
-    utt.onerror=()=>{ curSent++; curWord=0; speak(); };
+    utt.onend=()=>{ if(mediaState!=='playing'||gen!==_ttsGeneration) return; curSent++; curWord=0; speak(); };
+    utt.onerror=()=>{ if(gen!==_ttsGeneration) return; curSent++; curWord=0; speak(); };
     speechSynthesis.speak(utt);
   };
   speak();
@@ -1932,7 +1973,9 @@ function scrollToSent(idx,instant=false){
   const safeTop=_scrollElTop+_scrollElH*0.30;
   const safeBot=_scrollElTop+_scrollElH*0.70;
   if(!instant&&rect.top>=safeTop&&rect.bottom<=safeBot) return; // already comfortable — no jump
+  _programmaticScroll=true;
   s.el.scrollIntoView({behavior:instant?'instant':'smooth',block:'center'});
+  setTimeout(()=>{ _programmaticScroll=false; },100);
 }
 function toggleAS(){
   autoScroll=!autoScroll;
@@ -1969,6 +2012,7 @@ function buildToc(){
       updateHL(); updateProg(); saveBookProgress();
       scrollPaused = false;
       scrollToSent(curSent);
+      if(ttsMode && mediaState==='playing'){ clearTimeout(scrollTimer); advanceSent(); }
       // Close TOC on mobile after selection
       if(window.innerWidth<=700) toggleToc();
     });
@@ -2040,6 +2084,7 @@ function toggleOpInfo(el){ const parent=el.closest('.op-ttl')||el.closest('.op-r
   if(!area) return;
   let _scrollRaf=null;
   area.addEventListener('scroll',function(){
+    if(_programmaticScroll) return;
     if(_scrollRaf) return; // already queued
     _scrollRaf=requestAnimationFrame(()=>{
       _scrollRaf=null;
@@ -2714,19 +2759,20 @@ function parseHtml(data){
   return extractFromDom(doc.body||doc.documentElement);
 }
 function extractFromDom(root){
+  const BLOCK=new Set(['p','li','blockquote','td','dd','dt','figcaption']);
   const items=[];
   const walk=(node)=>{
-    if(node.nodeType===3){
-      const t=node.textContent.replace(/\s+/g,' ').trim();
-      if(t) items.push({type:'text',text:t});
-      return;
-    }
     if(node.nodeType!==1) return;
     const tag=node.tagName.toLowerCase();
-    if(['script','style','head','nav','footer'].includes(tag)) return;
-    if(/^h[1-3]$/.test(tag)){
+    if(['script','style','head','nav','footer','figure'].includes(tag)) return;
+    if(/^h[1-6]$/.test(tag)){
       const t=node.textContent.replace(/\s+/g,' ').trim();
-      if(t) items.push({type:'heading',level:parseInt(tag[1]),text:t});
+      if(t) items.push({type:'heading',level:Math.min(parseInt(tag[1]),3),text:t});
+      return;
+    }
+    if(BLOCK.has(tag)){
+      const t=node.textContent.replace(/\s+/g,' ').trim();
+      if(t) items.push({type:'text',text:t});
       return;
     }
     Array.from(node.childNodes).forEach(walk);

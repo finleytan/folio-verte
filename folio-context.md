@@ -2,7 +2,7 @@
 
 # Folio — Living Context Document
 
-Single-file HTML PWA (~3,339 lines). Audiobook/ebook reader with synced word-level highlighting.
+Single-file HTML PWA (~3,385 lines). Audiobook/ebook reader with synced word-level highlighting.
 Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default dark, light, night.
 
 ---
@@ -88,18 +88,18 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | **LIBRARY UI** | `renderLib()`, `renameBook()`, `deleteBook()` (inline confirm, calls `_deleteBlobsFor`), `configurePlayerForMode()` |
 | **PLAYER CONFIG** | `configurePlayerForMode(b, audioSrc, rate)` — decides ttsMode, shows/hides seek strip vs TTS bar; revokes previous `blob:` URL on `_audio.src` before assigning new src |
 | **OPEN BOOK / GO LIB** | `openBook(i)` (calls `pulseResumeSent()`), `goLib()` (resets `transcriptWords`, `transcriptText`, `sentenceTimings`, `wordTimings`, `sentences`, `tocEntries`, `_tocItems`, `_prevTocActive`, `syncOffset`, `_pendingTimingBookIdx`; also cancels `_plainTextRetryListener` and `_timingWorkerTimeout`) |
-| **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()` (calls `updateSpeedBadge()`), `changeSpeed(dir)` (steps ±1 through `RATE_STEPS` array), `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()` (uses `syncOffset`), `onSeekInput()`, `onSeekChange()` |
+| **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()` (calls `updateSpeedBadge()`), `changeSpeed(dir)` (steps ±1 through `RATE_STEPS` array), `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()` (uses `syncOffset`), `onSeekInput()`, `onSeekChange()` (when paused/stopped: performs `>>> 1` binary search over `sentenceTimings` with `syncOffset`, then calls `updateHL`, `updateProg`, `scrollToSent` if sentence changed) |
 | **AUDIO EVENTS** | `_wordTick()` (rAF word highlight, uses `syncOffset`), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate throttled ~4fps + unsigned-right-shift binary search `>>> 1` for sentence with `bestSent=curSent` initial value, ended/play/pause; uses `syncOffset`) |
-| **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()`, `advanceSent()`, `nudge(n)`, `resync()` (uses `syncOffset`) |
+| **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()` (clears `scrollTimer` only — does NOT touch `ttsSpeaking`), `advanceSent()`, `nudge(n)`, `resync()` (uses `syncOffset`) |
 | **SYNC OFFSET** | `adjustOffset(delta)`, `updateOffsetUI()` — manual transcript timing correction (±0.5s steps) |
 | **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()`, `ttsPause()`, `ttsStop()` |
-| **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()` (shows `Chapter · pct%` using `tocEntries`; falls back to `pct%` if no TOC), `_cacheScrollMetrics()` (caches `_scrollEl`/`_scrollElH`/`_scrollElTop` from `_eScroll` rect; called at init and on resize), `scrollToSent(idx, instant=false)` (instant=true skips `scrollPaused` guard and safe-zone check, uses `behavior:'instant'`), `toggleAS()`, `toggleWordHl()`, `pulseResumeSent(instant=false)` (calls `scrollToSent` with instant flag), `updateSpeedBadge()` |
-| **TOC** | `toggleToc()`, `buildToc()` (populates `_tocItems[]`), `updateTocActive()` (uses cached `_tocItems`/`_prevTocActive` to skip redundant DOM work) |
+| **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()` (shows `Chapter · pct%` using `tocEntries`; falls back to `pct%` if no TOC), `_cacheScrollMetrics()` (caches `_scrollEl`/`_scrollElH`/`_scrollElTop` from `_eScroll` rect; called at init and on resize), `scrollToSent(idx, instant=false)` (sets `_programmaticScroll=true` before `scrollIntoView`, clears after 100ms; instant=true also skips `scrollPaused` guard and safe-zone check), `toggleAS()`, `toggleWordHl()`, `pulseResumeSent(instant=false)` (calls `scrollToSent` with instant flag), `updateSpeedBadge()` |
+| **TOC** | `toggleToc()`, `buildToc()` (populates `_tocItems[]`; TOC item click resets `scrollPaused=false`, calls `scrollToSent`, then restarts `advanceSent()` if `ttsMode && mediaState==='playing'`), `updateTocActive()` (uses cached `_tocItems`/`_prevTocActive` to skip redundant DOM work) |
 | **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `updateThemeColor()`, `setFont()`, `setFS/LH/MW()`, `setAlign()`, `setDefaultWpmFromSlider()`, `setDefaultWpmFromInput()`, `updateWpmLabel()`, `setSentPause()`, `toggleOpInfo(el)` (toggles `.op-desc` sibling of nearest `.op-ttl`/`.op-row` ancestor), scroll-pause IIFE (rAF-throttled), click-outside handler |
 | **TRANSCRIPT** | `loadTranscriptData()` (handles segment-level Whisper JSON without word_timestamps), `setBannerState()`, `_timingWorkerFn()` (serialised into Blob Worker), `getTimingWorker()`, `buildSentenceTimings()` (worker dispatch), `buildTimingsFromPlainText()` (worker dispatch), `_buildSentenceTimingsSync()` (fallback), `_buildTimingsFromPlainTextSync()` (fallback), `similarity()`, `updateTranscriptUI()`; after timing is built, `transcriptWords` and `transcriptText` are nulled (both worker onmessage path and sync fallback); worker onmessage calls `showSyncHintOnce()` only on `type==='buildSentenceTimings'` (Whisper word-level), not plain-text path |
 | **EBOOK LOADING** | `yieldToMain()` (prefers `scheduler.postTask` with `'background'` priority, falls back to `setTimeout`), `loadEbook(book, onDone)` (chunked DOM build with progress banner via `setBannerState`, delegated click handler via module-level `_contentClickHandler`; click handler is TTS-aware: playing→`ttsStop()+ttsPlay()`, paused→`ttsStop()` only, audio mode unchanged) |
 | **SENTENCE SPLITTER** | `splitSentences(text)` |
-| **EBOOK PARSERS** | `parseTxt()`, `parseMd()`, `parseHtml()`, `extractFromDom()`, `parseEpub()`, `loadScript()`, `arrayBufferToBase64()` |
+| **EBOOK PARSERS** | `parseTxt()`, `parseMd()`, `parseHtml()`, `extractFromDom()` (walks element nodes only; BLOCK set = `['p','li','blockquote','td','dd','dt','figcaption']` consumed via `textContent`; container elements `div/section/article/aside` are descended into; headings `h1–h6` emitted with level capped at 3; skips `script/style/head/nav/footer/figure`), `parseEpub()`, `loadScript()`, `arrayBufferToBase64()` |
 | **ADD BOOK MODAL** | `openModal()`, `closeModal()`, file/folder handlers, `folderAssign()`, `addBook()` |
 | **TRANSCRIPT MODAL** | `openTranscriptModal()`, `saveTranscript()`, `removeTranscript()` |
 | **LINK AUDIO MODAL** | `openLinkAudioModal()`, `saveLinkAudio()` |
@@ -161,7 +161,8 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 |---|---|---|
 | `autoScroll` | `boolean` | Auto-scroll to active sentence |
 | `scrollPaused` | `boolean` | Temporarily true (2s) after user manual scroll |
-| `scrollTimer` | `timeout ID` | Used by both scroll-pause and advanceSent |
+| `scrollTimer` | `timeout ID` | Used by both scroll-pause IIFE and advanceSent |
+| `_programmaticScroll` | `boolean` | True for ~100ms while `scrollToSent` is executing; suppresses scroll-pause IIFE so programmatic scrolls don't trigger the 2s cooldown |
 | `lastAdvanceTime` | `number` | Timestamp — unused legacy? |
 | `wpm` | `number` | Words per minute for TTS scroll engine |
 | `sentPauseMs` | `number` | Pause between sentences (TTS scroll engine) |
@@ -375,13 +376,18 @@ updateHL()
       applies word-active to words[curWord] if wordHlOn → updateTocActive()
 
 scrollToSent(idx, instant=false)
-  └── if instant: skips scrollPaused guard + safe-zone check → scrollIntoView({behavior:'instant', block:'center'})
-      if !instant: early-returns if scrollPaused or !_eScroll → checks safe zone (middle 40%) →
-      scrollIntoView({behavior:'smooth', block:'center'}) if outside
+  └── if instant: skips scrollPaused guard + safe-zone check
+      if !instant: early-returns if scrollPaused or !_eScroll → checks safe zone (middle 40%)
+      both paths: sets _programmaticScroll=true → scrollIntoView({behavior:instant?'instant':'smooth', block:'center'})
+                  → setTimeout 100ms → _programmaticScroll=false
+      (prevents scroll event from triggering the 2s scroll-pause cooldown)
 
 pulseResumeSent(instant=false)
   └── adds sent-resume-pulse animation to sentences[curSent].el → calls scrollToSent(curSent, instant)
       Called with instant=true from onDone callbacks in openBook/pwaOpenBook
+
+stopScrollEngine()
+  └── clears scrollTimer only. Does NOT touch ttsSpeaking (owned exclusively by ttsPlay/ttsPause/ttsStop).
 
 advanceSent()  (TTS scroll engine — WPM-based, not used during speechSynthesis)
   └── calculates ms from char count + wpm + sentPauseMs → setTimeout → curSent++ → recurse
@@ -517,7 +523,7 @@ Blobs stripped via `_stripBlobs()` before every write.
 | What | Trigger |
 |---|---|
 | visibilitychange → re-acquire wake lock if playing | auto |
-| scroll-pause detection on `#eScroll` | user scroll → sets `scrollPaused=true` for 2s |
+| scroll-pause detection on `#eScroll` | user scroll → sets `scrollPaused=true` for 2s; early-returns if `_programmaticScroll` is true (suppresses cooldown for `scrollToSent` calls) |
 | click-outside handler for options panel | any document click |
 | swipe gesture detection on `#eScroll` | touch events → `nudge(±1)` |
 | modal keyboard trap (Escape to close, Tab focus trap) | keydown on open modals |
@@ -533,4 +539,5 @@ Blobs stripped via `_stripBlobs()` before every write.
 5. **PWA folder hash**: book.id = folder name hash — renaming folder loses all saved progress.
 6. **No audio persistence**: blob URLs are runtime-only. Browser mode reload = must re-link audio.
 7. **`scrollTimer` dual use**: `scrollTimer` is used both by the scroll-pause IIFE and by `advanceSent()` via `stopScrollEngine`. Clearing it in one context can affect the other.
-8. **`togglePlay` TTS check**: `togglePlay()` checks `ttsSpeaking` to decide play vs pause, but if `ttsPaused` is true and `ttsSpeaking` is false, it correctly calls `ttsPlay()` which hits the resume path.
+8. **`togglePlay` TTS check**: `togglePlay()` checks `ttsSpeaking` to decide play vs pause. `ttsSpeaking` is exclusively owned by `ttsPlay`/`ttsPause`/`ttsStop` — `stopScrollEngine` must not set it. If `ttsPaused` is true and `ttsSpeaking` is false, `togglePlay` correctly calls `ttsPlay()` which hits the resume path.
+9. **`extractFromDom` bare-div text**: `div` is not in BLOCK and is descended into (not consumed atomically). A `<div>` containing only raw text with no block children will have that text silently dropped, since the walker skips `nodeType===3` text nodes. Rare in real EPUBs/HTML, but possible in minimal hand-authored files.
