@@ -359,7 +359,8 @@ body.theme-night{
   .back-btn{width:40px;height:40px;}
   .vol-wrap{display:none;}
   .seek-strip .vdiv{display:none;}
-  .seek-strip{padding:4px 12px;}
+  .seek-strip{padding:4px 12px calc(4px + env(safe-area-inset-bottom,0px));}
+  .tts-bar{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));}
   .seek-time{font-size:11px;min-width:32px;}
   .seek-strip-bar::-webkit-slider-thumb{width:22px;height:22px;}
   .opt-panel{position:fixed;top:auto !important;bottom:0;left:0;right:0;width:auto !important;border-radius:20px 20px 0 0;max-height:78vh;padding-bottom:env(safe-area-inset-bottom,0px);}
@@ -899,7 +900,7 @@ let _fontSize = 18;
 let _lineHeight = 1.88;
 let _maxWidth = 680;
 
-const IS_PWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const IS_PWA = window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: minimal-ui)').matches || window.navigator.standalone === true;
 const CAN_FS = 'showDirectoryPicker' in window;
 const AUDIO_EXTS = new Set(['mp3','m4a','m4b','ogg','wav','aac','flac','opus']);
 const EBOOK_EXTS = new Set(['txt','epub','html','htm','md','xhtml']);
@@ -1338,7 +1339,7 @@ function flushPositionSync(){
       if(curBookIdx<0) return;
       const b=library[curBookIdx];
       // Synchronous write — mirrors savePwaProgress() but no IDB
-      const prog={curSent,curWord,audioTime:isFinite(_audio.currentTime)?_audio.currentTime:0,wpm,sentPauseMs,playbackRate:_audio.playbackRate||1,totalSents:sentences.length||b.totalSents||1};
+      const prog={curSent,curWord,audioTime:isFinite(_audio.currentTime)?_audio.currentTime:0,wpm,sentPauseMs,playbackRate:_audio.playbackRate||1,syncOffset,totalSents:sentences.length||b.totalSents||1};
       Object.assign(b,prog);
       const all=getPwaProgress();
       all[b.id]=prog;
@@ -1465,11 +1466,13 @@ function renderLib(){
     });
     grid.appendChild(card);
   });
-  const add=document.createElement('div');
-  add.className='add-card';
-  add.innerHTML='<div class="add-card-icon">+</div><div style="font-size:13px;font-weight:500">Add Book</div>';
-  add.onclick=()=>openModal();
-  grid.appendChild(add);
+  if(!IS_PWA){
+    const add=document.createElement('div');
+    add.className='add-card';
+    add.innerHTML='<div class="add-card-icon">+</div><div style="font-size:13px;font-weight:500">Add Book</div>';
+    add.onclick=()=>openModal();
+    grid.appendChild(add);
+  }
 }
 function renameBook(i,e){
   e.stopPropagation();
@@ -1477,6 +1480,12 @@ function renameBook(i,e){
   if(t&&t.trim()){
     library[i].title=t.trim();
     if(!IS_PWA) saveLibrary();
+    else {
+      const all=getPwaProgress();
+      if(all[library[i].id]) all[library[i].id].title=t.trim();
+      else all[library[i].id]={title:t.trim()};
+      localStorage.setItem(PWA_PROG_KEY,JSON.stringify(all));
+    }
     renderLib();
     showToast('Renamed to "'+library[i].title+'"');
   }
@@ -1502,9 +1511,13 @@ function deleteBook(i,e){
     _deleteBlobsFor(b.id);
     library.splice(i,1);
     if(!IS_PWA) saveLibrary();
-    else{ const all=getPwaProgress(); delete all[b.id]; localStorage.setItem(PWA_PROG_KEY,JSON.stringify(all)); }
+    else{
+      // PWA: remove saved progress. The folder still exists on disk — book will reappear on next scan.
+      const all=getPwaProgress(); delete all[b.id]; localStorage.setItem(PWA_PROG_KEY,JSON.stringify(all));
+    }
     renderLib();
-    showToast('"'+title+'" deleted');
+    if(IS_PWA) showToast('Removed from library. Move the folder out of your library to delete permanently.','',4000);
+    else showToast('"'+title+'" deleted');
   });
   conf.querySelector('.delete-confirm-no').addEventListener('click',ev=>{
     ev.stopPropagation();
@@ -1836,7 +1849,7 @@ function resync(){
 function adjustOffset(delta){
   syncOffset=Math.round((syncOffset+delta)*10)/10;
   updateOffsetUI();
-  if(curBookIdx>=0){ library[curBookIdx].syncOffset=syncOffset; if(!IS_PWA) saveLibrary(); }
+  if(curBookIdx>=0){ library[curBookIdx].syncOffset=syncOffset; if(!IS_PWA) saveLibrary(); else savePwaProgress(); }
 }
 function updateOffsetUI(){
   const el=$('offsetVal');
@@ -3239,8 +3252,10 @@ async function pwaScanAndRender(){
   const scanned=[]; const skipped=[];
   for await (const [name,entry] of pwaRootHandle.entries()){
     if(entry.kind!=='directory'||name.startsWith('.')) continue;
-    const book=await pwaScanBookFolder(name,entry);
-    if(book) scanned.push(book); else skipped.push(name);
+    try{
+      const book=await pwaScanBookFolder(name,entry);
+      if(book) scanned.push(book); else skipped.push(name);
+    }catch(e){ console.warn('Folio: error scanning folder',name,e); skipped.push(name); }
   }
   scanned.sort((a,b)=>a.title.localeCompare(b.title));
   const saved=getPwaProgress();
@@ -3292,7 +3307,7 @@ function getPwaProgress(){ try{ return JSON.parse(localStorage.getItem(PWA_PROG_
 function savePwaProgress(){
   if(!IS_PWA||curBookIdx<0) return;
   const b=library[curBookIdx];
-  const prog={curSent,curWord,audioTime:isFinite(_audio.currentTime)?_audio.currentTime:0,wpm,sentPauseMs,playbackRate:_audio.playbackRate||1,totalSents:sentences.length||b.totalSents||1};
+  const prog={curSent,curWord,audioTime:isFinite(_audio.currentTime)?_audio.currentTime:0,wpm,sentPauseMs,playbackRate:_audio.playbackRate||1,syncOffset,totalSents:sentences.length||b.totalSents||1};
   Object.assign(b,prog);
   const all=getPwaProgress();
   all[b.id]=prog;
@@ -3313,14 +3328,17 @@ async function pwaOpenBook(i){
       const audioFile=await b.audioHandle.getFile();
       if(b.audioUrl) URL.revokeObjectURL(b.audioUrl);
       b.audioUrl=resolvedAudioUrl=URL.createObjectURL(audioFile);
-    }catch(e){ console.warn('Folio: audio load failed',e); }
+    }catch(e){ console.warn('Folio: audio load failed',e); showToast('Audio file not found \u2014 playing in TTS mode','error',4000); }
   }
   if(b.transcriptHandle){
     try{
       const txFile=await b.transcriptHandle.getFile();
       b.transcriptData=await txFile.text();
       b.transcriptType=b.transcriptExt==='json'?'whisper':'txt';
-    }catch(e){}
+    }catch(e){
+      console.warn('Folio: transcript load failed',e);
+      b.transcriptData=null; b.transcriptType=null;
+    }
   }
   // Resolve cover image from handle if not yet loaded
   if(b.coverHandle&&!b.coverUrl){
@@ -3337,7 +3355,7 @@ async function pwaOpenBook(i){
       const t=b.ebookType;
       if(t==='epub'){ const ab=await ebookFile.arrayBuffer(); b.ebookData=arrayBufferToBase64(ab); }
       else { b.ebookData=await ebookFile.text(); }
-    }catch(e){ console.warn('Folio: ebook load failed',e); }
+    }catch(e){ console.warn('Folio: ebook load failed',e); showToast('Ebook file not found \u2014 check your library folder','error',4000); }
   }
   loadEbook(b,()=>{ curSent=b.curSent||0; curWord=b.curWord||0; updateHL(); updateProg(); seekAudioToSentence(); pulseResumeSent(true); });
   setupMediaSession();

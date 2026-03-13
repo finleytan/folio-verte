@@ -2,6 +2,23 @@
 
 ---
 
+## v1.7 — 2026-03-12
+
+### Fixed
+- **syncOffset not persisted in PWA mode** — `savePwaProgress` and `flushPositionSync` now include `syncOffset` in the saved progress object; `adjustOffset` calls `savePwaProgress()` in PWA mode
+- **Add Book card shown in PWA mode** — card is now gated by `!IS_PWA` since PWA books are managed via the filesystem folder
+- **Renamed book title lost on PWA relaunch** — `renameBook` now writes the custom title to `PWA_PROG_KEY` so it survives folder re-scan
+- **Generic delete toast in PWA mode** — `deleteBook` now shows a folder-specific message explaining the book folder still exists on disk
+- **Bottom controls clipped on notched devices** — added `env(safe-area-inset-bottom)` padding to `.seek-strip` and `.tts-bar` in mobile CSS
+- **Silent failure on missing PWA files** — `pwaOpenBook` now shows user-facing toasts when audio or ebook file handles fail; transcript handle failure nulls `transcriptData`/`transcriptType` instead of crashing
+- **Single folder scan error breaks entire library** — `pwaScanAndRender` now wraps each `pwaScanBookFolder` call in try/catch, skipping broken folders
+- **IS_PWA detection incomplete** — now checks `fullscreen` and `minimal-ui` display modes in addition to `standalone` and `navigator.standalone`
+
+### Added
+- Playwright test suite for all 9 PWA audit fixes + 9 regression tests (`tests/specs/06-pwa-audit.spec.js`, 29 tests total)
+
+---
+
 ## v1.6 — 2026-03-12
 
 ### Removed

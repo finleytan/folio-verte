@@ -1,18 +1,24 @@
-// Folio — Playwright config
-// Serves the repo root on port 3000 automatically before running tests.
-
 const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
-  testDir: '.',
+  testDir: './specs',
   timeout: 30_000,
+  expect: {
+    timeout: 5_000,
+  },
+  fullyParallel: false,
+  retries: process.env.CI ? 1 : 0,
+  reporter: [['html', { open: 'never' }], ['list']],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:4000',
     headless: true,
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npx http-server .. -p 3000 --silent',
-    url: 'http://localhost:3000',
+    command: 'npx serve .. -p 4000 --no-clipboard',
+    port: 4000,
     reuseExistingServer: !process.env.CI,
     timeout: 10_000,
   },
