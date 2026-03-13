@@ -1593,7 +1593,7 @@ function configurePlayerForMode(b, audioSrc, rate){
 // ══════════════════════════════════════════════════════
 // OPEN BOOK
 // ══════════════════════════════════════════════════════
-function openBook(i){
+async function openBook(i){
   if(IS_PWA && CAN_FS){ pwaOpenBook(i); return; }
   const b=library[i];
   curBookIdx=i;
@@ -1603,7 +1603,7 @@ function openBook(i){
   $('player').style.display='flex';
   $('pTitle').textContent=b.title;
   configurePlayerForMode(b, b.audioUrl||null, b.playbackRate||1);
-  loadTranscriptData(b);
+  await loadTranscriptData(b);
   loadEbook(b,()=>{ curSent=b.curSent||0; curWord=b.curWord||0; updateHL(); updateProg(); seekAudioToSentence(); pulseResumeSent(true); });
   setupMediaSession();
   updatePageTitle();
@@ -1752,11 +1752,9 @@ function onSeekChange(v){
   isSeeking=false;
   if(mediaState!=='playing' && sentenceTimings.length){
     const t=_audio.currentTime+syncOffset;
-    let lo=0,hi=sentenceTimings.length-1,best=curSent;
-    while(lo<=hi){
-      const mid=(lo+hi)>>>1;
-      if(sentenceTimings[mid]&&t>=sentenceTimings[mid].start){ best=mid; lo=mid+1; }
-      else{ hi=mid-1; }
+    let best=curSent;
+    for(let i=sentenceTimings.length-1;i>=0;i--){
+      if(sentenceTimings[i]&&t>=sentenceTimings[i].start){ best=i; break; }
     }
     if(best!==curSent){ curSent=best; curWord=0; updateHL(); updateProg(); if(autoScroll) scrollToSent(curSent); }
   }
@@ -1806,16 +1804,21 @@ function wireAudioEvents(){
         if(this.duration) _seekBar.value=(this.currentTime/this.duration)*100;
       }
     }
+    // Self-heal: Android (Samsung One UI especially) can steal audio focus briefly,
+    // firing 'pause' then resuming without a 'play' event — leaving mediaState stale.
+    if(!this.paused && mediaState!=='playing'){
+      setMediaState('playing'); setPlayBtnIcon(true); startWordTicker();
+      acquireWakeLock(); updateMediaSessionState(true); updatePageTitle();
+    }
     if(!sentenceTimings.length || mediaState!=='playing') return;
     const t = this.currentTime + syncOffset;
-    let lo = 0, hi = sentenceTimings.length - 1, bestSent = curSent;
-    while(lo <= hi){
-      const mid = (lo + hi) >>> 1;
-      if(sentenceTimings[mid] && t >= sentenceTimings[mid].start){
-        bestSent = mid; lo = mid + 1;
-      } else {
-        hi = mid - 1;
-      }
+    // Linear scan: sparse sentenceTimings (undefined holes from unmatched sentences)
+    // break binary search — a hole at the midpoint sends the search left and skips
+    // all valid entries on the right. Linear scan is O(n) but n is sentence count
+    // and this path is throttled to ~4 Hz by the audio element's timeupdate rate.
+    let bestSent = curSent;
+    for(let i = sentenceTimings.length - 1; i >= 0; i--){
+      if(sentenceTimings[i] && t >= sentenceTimings[i].start){ bestSent = i; break; }
     }
     if(bestSent !== curSent){
       curSent = bestSent; curWord = 0;
@@ -3391,7 +3394,7 @@ async function pwaOpenBook(i){
     }catch(e){ console.warn('Folio: cover load failed',e); }
   }
   configurePlayerForMode(b, resolvedAudioUrl, rate);
-  loadTranscriptData(b);
+  await loadTranscriptData(b);
   if(b.ebookHandle){
     try{
       const ebookFile=await b.ebookHandle.getFile();

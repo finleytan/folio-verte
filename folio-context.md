@@ -2,7 +2,7 @@
 
 # Folio — Living Context Document
 
-Single-file HTML PWA (~3,493 lines). Audiobook/ebook reader with synced word-level highlighting.
+Single-file HTML PWA (~3,496 lines). Audiobook/ebook reader with synced word-level highlighting.
 Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default dark, light, night.
 
 ---
@@ -16,7 +16,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | `<body>` | Static HTML (4 screens + 5 modals) |
 | `<script>` | All JS |
 
-**Approximate line ranges (index.html):** CSS `16–474` · HTML `476–874` · JS `875–3493`
+**Approximate line ranges (index.html):** CSS `16–474` · HTML `476–874` · JS `875–3496`
 
 ### CSS Sections
 
@@ -90,9 +90,9 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | **DISPLAY PREFERENCES** | `saveDisplayPrefs()` (reads `_fontBody/_fontSize/_lineHeight/_maxWidth`; no `getComputedStyle`), `loadDisplayPrefs()` |
 | **LIBRARY UI** | `renderLib()` (Add Book card gated by `!IS_PWA`), `renameBook()` (PWA mode persists title to `PWA_PROG_KEY`), `deleteBook()` (inline confirm, calls `_deleteBlobsFor`; PWA mode shows folder-specific toast), `configurePlayerForMode()` |
 | **PLAYER CONFIG** | `configurePlayerForMode(b, audioSrc, rate)` — decides ttsMode, shows/hides seek strip vs TTS bar; revokes previous `blob:` URL on `_audio.src` before assigning new src; toggles `.scrubbing` class on `.read-progress-wrap` (added when ttsMode=true, removed when false) |
-| **OPEN BOOK / GO LIB** | `openBook(i)` (calls `pulseResumeSent()`), `goLib()` (resets `transcriptWords`, `transcriptText`, `sentenceTimings`, `wordTimings`, `sentences`, `tocEntries`, `_tocItems`, `_prevTocActive`, `syncOffset`, `_pendingTimingBookIdx`; also cancels `_plainTextRetryListener` and `_timingWorkerTimeout`) |
-| **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()` (calls `updateSpeedBadge()`), `changeSpeed(dir)` (steps ±1 through `RATE_STEPS` array), `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()` (uses `syncOffset`), `onSeekInput()`, `onSeekChange()` (when paused/stopped: performs `>>> 1` binary search over `sentenceTimings` with `syncOffset`, then calls `updateHL`, `updateProg`, `scrollToSent` if sentence changed) |
-| **AUDIO EVENTS** | `_wordTick()` (rAF word highlight, uses `syncOffset`; guards `curSent >= sentences.length` with rAF re-registration; only early-returns without rAF when `mediaState !== 'playing'`), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate throttled ~4fps + unsigned-right-shift binary search `>>> 1` for sentence with `bestSent=curSent` initial value, ended/play/pause; uses `syncOffset`; `pause` handler calls full quad including `releaseWakeLock()`) |
+| **OPEN BOOK / GO LIB** | `openBook(i)` (now `async`; awaits `loadTranscriptData` before `loadEbook`; calls `pulseResumeSent()`), `goLib()` (resets `transcriptWords`, `transcriptText`, `sentenceTimings`, `wordTimings`, `sentences`, `tocEntries`, `_tocItems`, `_prevTocActive`, `syncOffset`, `_pendingTimingBookIdx`; also cancels `_plainTextRetryListener` and `_timingWorkerTimeout`) |
+| **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()` (calls `updateSpeedBadge()`), `changeSpeed(dir)` (steps ±1 through `RATE_STEPS` array), `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()` (uses `syncOffset`), `onSeekInput()`, `onSeekChange()` (when paused/stopped: reverse linear scan over `sentenceTimings` with `syncOffset`, handles sparse arrays correctly; calls `updateHL`, `updateProg`, `scrollToSent` if sentence changed) |
+| **AUDIO EVENTS** | `_wordTick()` (rAF word highlight, uses `syncOffset`; guards `curSent >= sentences.length` with rAF re-registration; only early-returns without rAF when `mediaState !== 'playing'`), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate: self-heals stale `mediaState` when `!audio.paused && mediaState!=='playing'` — recovers from Samsung/Android audio-focus stealing; reverse linear scan for current sentence in sparse `sentenceTimings[]`; throttled UI at ~4fps; ended/play/pause; uses `syncOffset`; `pause` handler calls full quad including `releaseWakeLock()`) |
 | **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()` (clears `scrollTimer` only — does NOT touch `ttsSpeaking` or `_scrollPauseTimer`), `advanceSent()`, `nudge(n)`, `resync()` (uses `syncOffset`) |
 | **SYNC OFFSET** | `adjustOffset(delta)` (calls `savePwaProgress()` in PWA mode), `updateOffsetUI()` — manual transcript timing correction (±0.5s steps) |
 | **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()`, `ttsPause()`, `ttsStop()` |
@@ -108,7 +108,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | **LINK AUDIO MODAL** | `openLinkAudioModal()`, `saveLinkAudio()` |
 | **BOOK INFO MODAL** | `openBookInfoModal()`, `closeBookInfoModal()`, `biReassign()` (`type==='audio'` branch: revokes old blob URL, creates new one, calls `configurePlayerForMode(b, b.audioUrl, b.playbackRate\|\|1)` directly — configurePlayerForMode owns the `_audio.src` assignment and load; then `saveLibrary()` + success toast synchronously; **do not** pre-set `_audio.src` before calling configurePlayerForMode or it will self-revoke the blob URL) |
 | **RELINK** | `showRelink()`, `closeRelink()`, `rlLoad()` |
-| **PWA FILE SYSTEM** | `pwaPickFolder()`, `pwaRegrantAccess()`, `pwaScanAndRender()` (per-folder try/catch around `pwaScanBookFolder`), `pwaScanBookFolder()`, `getPwaProgress()`, `savePwaProgress()` (prog includes `syncOffset`), `pwaOpenBook()` (shows toasts on audio/ebook handle failure; transcript catch nulls `transcriptData`/`transcriptType`) |
+| **PWA FILE SYSTEM** | `pwaPickFolder()`, `pwaRegrantAccess()`, `pwaScanAndRender()` (per-folder try/catch around `pwaScanBookFolder`), `pwaScanBookFolder()`, `getPwaProgress()`, `savePwaProgress()` (prog includes `syncOffset`), `pwaOpenBook()` (now awaits `loadTranscriptData` before reading ebook handle; shows toasts on audio/ebook handle failure; transcript catch nulls `transcriptData`/`transcriptType`) |
 | **SCREEN ROUTER** | `showScreen(id)`, `pwaShowFirstRun()`, `pwaCheckOnLaunch()` |
 | **SWIPE GESTURES** | Touchstart/move/end IIFE on `#eScroll` |
 | **SERVICE WORKER** | `navigator.serviceWorker.register()` |
@@ -323,12 +323,12 @@ Stopped: `setPlayBtnIcon(false)`, `setMediaState('stopped')`, `stopScrollEngine(
 ### Book Open Flow
 
 ```
-openBook(i)
+openBook(i)  [async]
   ├── IS_PWA && CAN_FS → pwaOpenBook(i)
-  │   └── resolves file handles → configurePlayerForMode() → loadTranscriptData()
+  │   └── resolves file handles → configurePlayerForMode() → await loadTranscriptData()
   │       → loadEbook() → setupMediaSession() → updatePageTitle() → pulseResumeSent()
   └── browser mode:
-      └── configurePlayerForMode() → loadTranscriptData() → loadEbook(onDone) →
+      └── configurePlayerForMode() → await loadTranscriptData() → loadEbook(onDone) →
           setupMediaSession() → updatePageTitle() → pulseResumeSent()
 
 configurePlayerForMode(b, audioSrc, rate)
@@ -401,9 +401,11 @@ advanceSent()  (TTS scroll engine — WPM-based, not used during speechSynthesis
   └── calculates ms from char count + wpm + sentPauseMs → setTimeout → curSent++ → recurse
 
 wireAudioEvents()
-  └── timeupdate: throttled to ~4fps via `_lastTimeUpdate` timestamp, unsigned-right-shift binary
-      search (`>>> 1`, `bestSent` initialized to `curSent`) for current sentence in sentenceTimings[];
-      sparse entries (undefined) treated as "go left" (hi = mid-1); ended/play/pause update state.
+  └── timeupdate: self-heals stale mediaState (if `!audio.paused && mediaState!=='playing'`,
+      runs full state quad to recover — fixes Samsung/Android audio-focus steal without play event);
+      throttled UI at ~4fps via `_lastTimeUpdate` timestamp; reverse linear scan from end of
+      sentenceTimings[] for current sentence (handles sparse/undefined holes correctly, O(n) but
+      only at ~4 Hz timeupdate rate); ended/play/pause update state.
 
 _wordTick()  (audio mode only)
   └── reads _audio.currentTime + syncOffset → binary search in wordTimings[curSent].starts →
@@ -539,6 +541,7 @@ Blobs stripped via `_stripBlobs()` before every write.
 | click-outside handler for options panel | any document click |
 | swipe gesture detection on `#eScroll` | touch events → `nudge(±1)` |
 | modal keyboard trap (Escape to close, Tab focus trap) | keydown on open modals |
+| `timeupdate` mediaState self-heal | fires inside `wireAudioEvents` timeupdate handler; if `!audio.paused && mediaState!=='playing'`, runs full state quad (setPlayBtnIcon, setMediaState, startWordTicker, acquireWakeLock, updateMediaSessionState, updatePageTitle) to recover from stale state after Android audio-focus steal |
 
 ---
 
@@ -554,3 +557,6 @@ Blobs stripped via `_stripBlobs()` before every write.
 8. **`togglePlay` TTS check**: `togglePlay()` checks `ttsSpeaking` to decide play vs pause. `ttsSpeaking` is exclusively owned by `ttsPlay`/`ttsPause`/`ttsStop` — `stopScrollEngine` must not set it. If `ttsPaused` is true and `ttsSpeaking` is false, `togglePlay` correctly calls `ttsPlay()` which hits the resume path.
 9. **`extractFromDom` bare-div text**: `div` is not in BLOCK and is descended into (not consumed atomically). A `<div>` containing only raw text with no block children will have that text silently dropped, since the walker skips `nodeType===3` text nodes. Rare in real EPUBs/HTML, but possible in minimal hand-authored files.
 10. **PWA rename spread order**: `pwaScanAndRender` merges saved progress via `{...scanned, ...saved}`, so `renameBook()` must write the custom title to `PWA_PROG_KEY` — otherwise the next folder scan overwrites it with the folder-derived title.
+11. **`loadTranscriptData` must be awaited before `loadEbook`**: Both are async. If `loadTranscriptData` is fire-and-forget, `scheduler.postTask('background')` in `yieldToMain()` can defer it past the entire ebook build. When it finally resumes it wipes `sentenceTimings=[]` (line 2209) and re-parses — but by then `transcriptWords` may already have been consumed by the first `buildSentenceTimings`, leaving sentenceTimings permanently empty. `openBook` and `pwaOpenBook` now both `await loadTranscriptData(b)`.
+12. **`timeupdate` mediaState self-heal**: Android (Samsung One UI especially) can steal audio focus briefly, firing a `pause` event → `mediaState='paused'`, then resuming audio without a `play` event. The `timeupdate` handler self-heals by checking `!audio.paused && mediaState!=='playing'` and running the full state quad. Do not remove this guard — it is the only recovery path for this Android-specific behaviour.
+13. **Sparse `sentenceTimings` and search algorithms**: `sentenceTimings` is a sparse array (undefined holes for unmatched sentences). Binary search breaks on sparse arrays — a hole at the midpoint sends the search left, skipping all valid entries on the right. The `timeupdate` and `onSeekChange` handlers now use reverse linear scan. If you add new code that searches `sentenceTimings`, use linear scan or ensure the array is dense.

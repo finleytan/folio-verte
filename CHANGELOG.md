@@ -2,6 +2,18 @@
 
 ---
 
+## v1.10 — 2026-03-13
+
+### Fixed
+- **Audio-text sync broken on Samsung/Android PWA** — Android can steal audio focus briefly, firing a `pause` event then resuming without a `play` event; `mediaState` got stuck at `'paused'` while audio kept playing, causing the `timeupdate` handler to skip sentence tracking entirely. Added a self-heal in the `timeupdate` handler that detects `!audio.paused && mediaState!=='playing'` and runs the full state quad to recover.
+- **Sentence tracking skips entries in sparse `sentenceTimings`** — the binary search used by `timeupdate` and `onSeekChange` treated undefined holes as "go left", causing it to miss all valid entries after a hole at the midpoint. Replaced with a reverse linear scan that handles sparse arrays correctly.
+- **Race condition between `loadTranscriptData` and `loadEbook`** — both were async and neither was awaited; on mobile, `scheduler.postTask('background')` could defer `loadTranscriptData` past the ebook build, causing it to wipe already-built timings. Both `openBook` and `pwaOpenBook` now `await loadTranscriptData(b)` before proceeding to ebook loading.
+
+### Added
+- Playwright test suite for mobile sync fixes (14 tests in `tests/specs/08-mobile-sync.spec.js`)
+
+---
+
 ## v1.9 — 2026-03-13
 
 ### Added

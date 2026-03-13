@@ -6,7 +6,7 @@ File: index.html — <style>, static HTML (4 screens + 5 modals), <script>.
 ## File structure
 - CSS: lines 16–474
 - HTML: lines 476–874
-- JS: lines 875–3493
+- JS: lines 875–3496
 
 ## Two playback modes (set by configurePlayerForMode)
 - Audio mode: <audio> drives playback, _wordTick() at rAF for word highlights
