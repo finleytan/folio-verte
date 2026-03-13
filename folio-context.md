@@ -2,7 +2,7 @@
 
 # Folio — Living Context Document
 
-Single-file HTML PWA (~3,447 lines). Audiobook/ebook reader with synced word-level highlighting.
+Single-file HTML PWA (~3,484 lines). Audiobook/ebook reader with synced word-level highlighting.
 Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default dark, light, night.
 
 ---
@@ -16,7 +16,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | `<body>` | Static HTML (4 screens + 5 modals) |
 | `<script>` | All JS |
 
-**Approximate line ranges (index.html):** CSS `16–474` · HTML `476–872` · JS `873–3444`
+**Approximate line ranges (index.html):** CSS `16–474` · HTML `476–872` · JS `873–3484`
 
 ### CSS Sections
 
@@ -76,7 +76,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 |---|---|
 | **STATE** | All global variable declarations and constants (incl. `_fontBody/_fontSize/_lineHeight/_maxWidth`) |
 | **TOAST** | `showToast(msg, type, duration)`, `showSyncHintOnce()` (one-time Whisper sync hint; guarded by `SYNC_HINT_KEY` localStorage flag + `ttsMode` check) |
-| **WAKE LOCK** | `acquireWakeLock()`, `releaseWakeLock()`, visibilitychange re-acquire |
+| **WAKE LOCK** | `acquireWakeLock()`, `releaseWakeLock()`, visibilitychange re-acquire + audio/TTS recovery, PWA `freeze`/`resume` listeners (IS_PWA-guarded) |
 | **MEDIA SESSION** | `setupMediaSession()`, `updateMediaSessionState(playing)` |
 | **DEBOUNCED SAVE** | `saveBookProgressDebounced()` — 500ms timer |
 | **PAGE TITLE** | `updatePageTitle()` |
@@ -92,8 +92,8 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body). Three themes: default
 | **PLAYER CONFIG** | `configurePlayerForMode(b, audioSrc, rate)` — decides ttsMode, shows/hides seek strip vs TTS bar; revokes previous `blob:` URL on `_audio.src` before assigning new src; toggles `.scrubbing` class on `.read-progress-wrap` (added when ttsMode=true, removed when false) |
 | **OPEN BOOK / GO LIB** | `openBook(i)` (calls `pulseResumeSent()`), `goLib()` (resets `transcriptWords`, `transcriptText`, `sentenceTimings`, `wordTimings`, `sentences`, `tocEntries`, `_tocItems`, `_prevTocActive`, `syncOffset`, `_pendingTimingBookIdx`; also cancels `_plainTextRetryListener` and `_timingWorkerTimeout`) |
 | **MEDIA CONTROLS** | `setMediaState()`, `togglePlay()`, `mediaPlay/Pause/Stop()`, `skip()`, `setRate()` (calls `updateSpeedBadge()`), `changeSpeed(dir)` (steps ±1 through `RATE_STEPS` array), `setVol()`, `setVolBoth()`, `toggleMute()`, `seekAudioToSentence()` (uses `syncOffset`), `onSeekInput()`, `onSeekChange()` (when paused/stopped: performs `>>> 1` binary search over `sentenceTimings` with `syncOffset`, then calls `updateHL`, `updateProg`, `scrollToSent` if sentence changed) |
-| **AUDIO EVENTS** | `_wordTick()` (rAF word highlight, uses `syncOffset`), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate throttled ~4fps + unsigned-right-shift binary search `>>> 1` for sentence with `bestSent=curSent` initial value, ended/play/pause; uses `syncOffset`) |
-| **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()` (clears `scrollTimer` only — does NOT touch `ttsSpeaking`), `advanceSent()`, `nudge(n)`, `resync()` (uses `syncOffset`) |
+| **AUDIO EVENTS** | `_wordTick()` (rAF word highlight, uses `syncOffset`; guards `curSent >= sentences.length` with rAF re-registration; only early-returns without rAF when `mediaState !== 'playing'`), `startWordTicker()`, `stopWordTicker()`, `wireAudioEvents()` (timeupdate throttled ~4fps + unsigned-right-shift binary search `>>> 1` for sentence with `bestSent=curSent` initial value, ended/play/pause; uses `syncOffset`; `pause` handler calls full quad including `releaseWakeLock()`) |
+| **SCROLL ENGINE** | `startScrollEngine()`, `stopScrollEngine()` (clears `scrollTimer` only — does NOT touch `ttsSpeaking` or `_scrollPauseTimer`), `advanceSent()`, `nudge(n)`, `resync()` (uses `syncOffset`) |
 | **SYNC OFFSET** | `adjustOffset(delta)` (calls `savePwaProgress()` in PWA mode), `updateOffsetUI()` — manual transcript timing correction (±0.5s steps) |
 | **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()`, `ttsPause()`, `ttsStop()` |
 | **HIGHLIGHTING & PROGRESS** | `updateHL()`, `updateProg()` (shows `Chapter · pct%` using `tocEntries`; falls back to `pct%` if no TOC), `_cacheScrollMetrics()` (caches `_scrollEl`/`_scrollElH`/`_scrollElTop` from `_eScroll` rect; called at init and on resize), `scrollToSent(idx, instant=false)` (sets `_programmaticScroll=true` before `scrollIntoView`, clears after 100ms; instant=true also skips `scrollPaused` guard and safe-zone check), `toggleAS()`, `toggleWordHl()`, `pulseResumeSent(instant=false)` (calls `scrollToSent` with instant flag), `updateSpeedBadge()`, `scrubToPosition(ev)` (click/touchend handler on `.read-progress-wrap`; no-ops if `!ttsMode` or `!sentences.length`; maps `clientX` position to `Math.round(pct*(sentences.length-1))`; calls `ttsStop()+ttsPlay()` only when `mediaState==='playing'`; wired once in `init()` — not per book-load) |
@@ -164,7 +164,8 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 |---|---|---|
 | `autoScroll` | `boolean` | Auto-scroll to active sentence |
 | `scrollPaused` | `boolean` | Temporarily true (2s) after user manual scroll |
-| `scrollTimer` | `timeout ID` | Used by both scroll-pause IIFE and advanceSent |
+| `scrollTimer` | `timeout ID` | Used by `advanceSent()` / `stopScrollEngine()` only (no longer shared with scroll-pause IIFE) |
+| `_scrollPauseTimer` | `timeout ID` | Used by the scroll-pause IIFE for the 2s cooldown (separated from `scrollTimer` to prevent timer conflicts) |
 | `_programmaticScroll` | `boolean` | True for ~100ms while `scrollToSent` is executing; suppresses scroll-pause IIFE so programmatic scrolls don't trigger the 2s cooldown |
 | `lastAdvanceTime` | `number` | Timestamp — unused legacy? |
 | `wpm` | `number` | Words per minute for TTS scroll engine |
@@ -216,6 +217,8 @@ Routed by `showScreen(id)` toggling `display:flex/none`.
 ### Private module-level variables
 | Variable | Description |
 |---|---|
+| `_wasPlayingBeforeFreeze` | Boolean; true between `freeze` and `resume` events if audio/TTS was playing — used to auto-resume after PWA unfreeze |
+| `_scrollPauseTimer` | setTimeout ID for the scroll-pause IIFE's 2s cooldown (separated from `scrollTimer`) |
 | `_wakeLock` | Screen wake lock sentinel |
 | `_saveTimer` | Debounce timer for `saveBookProgressDebounced` |
 | `_sleepTimerIdx` | Index into `SLEEP_OPTIONS` array |
@@ -284,6 +287,7 @@ togglePlay()
 mediaPlay()       → ttsMode redirects to ttsPlay()
   └── _audio.play() → then: setPlayBtnIcon(true), setMediaState('playing'),
       startScrollEngine(), startWordTicker(), acquireWakeLock(), updatePageTitle()
+      catch: setPlayBtnIcon(false), setMediaState('paused'), releaseWakeLock(), updatePageTitle()
 
 mediaPause()      → ttsMode redirects to ttsPause()
   └── _audio.pause(), stopWordTicker(), setPlayBtnIcon(false), setMediaState('paused'),
@@ -403,6 +407,8 @@ wireAudioEvents()
 _wordTick()  (audio mode only)
   └── reads _audio.currentTime + syncOffset → binary search in wordTimings[curSent].starts →
       updates curWord + word-active class → requestAnimationFrame(self)
+      Guards: returns without rAF only when mediaState!=='playing'; curSent>=sentences.length
+      re-registers rAF (keeps polling); undefined wordTimings[curSent] skips gracefully
 ```
 
 ### Save/Load Chain
@@ -525,8 +531,10 @@ Blobs stripped via `_stripBlobs()` before every write.
 
 | What | Trigger |
 |---|---|
-| visibilitychange → re-acquire wake lock if playing | auto |
-| scroll-pause detection on `#eScroll` | user scroll → sets `scrollPaused=true` for 2s; early-returns if `_programmaticScroll` is true (suppresses cooldown for `scrollToSent` calls) |
+| visibilitychange → re-acquire wake lock if playing; recover silently-paused audio (`_audio.play().catch`); detect dead TTS engine and restart | auto |
+| `freeze` → if IS_PWA: set `_wasPlayingBeforeFreeze`, call `mediaPause()` or `ttsPause()` | Page Lifecycle freeze (IS_PWA only) |
+| `resume` → if IS_PWA && `_wasPlayingBeforeFreeze`: call `mediaPlay()` (150ms delay) or `ttsPlay()` (200ms delay) | Page Lifecycle resume (IS_PWA only) |
+| scroll-pause detection on `#eScroll` | user scroll → sets `scrollPaused=true` for 2s via `_scrollPauseTimer`; early-returns if `_programmaticScroll` is true (suppresses cooldown for `scrollToSent` calls) |
 | click-outside handler for options panel | any document click |
 | swipe gesture detection on `#eScroll` | touch events → `nudge(±1)` |
 | modal keyboard trap (Escape to close, Tab focus trap) | keydown on open modals |
@@ -541,7 +549,7 @@ Blobs stripped via `_stripBlobs()` before every write.
 4. **Sync window cap**: `buildSentenceTimings` search window is capped — long audio intros not in ebook can desync cursor.
 5. **PWA folder hash**: book.id = folder name hash — renaming folder loses all saved progress.
 6. **No audio persistence**: blob URLs are runtime-only. Browser mode reload = must re-link audio.
-7. **`scrollTimer` dual use**: `scrollTimer` is used both by the scroll-pause IIFE and by `advanceSent()` via `stopScrollEngine`. Clearing it in one context can affect the other.
+7. **`scrollTimer` / `_scrollPauseTimer` separation**: `scrollTimer` is now used exclusively by `advanceSent()` / `stopScrollEngine()`. The scroll-pause IIFE uses `_scrollPauseTimer` for its 2s cooldown. These must remain separate — re-merging them reintroduces the hang bug where user scrolling kills the TTS advance chain.
 8. **`togglePlay` TTS check**: `togglePlay()` checks `ttsSpeaking` to decide play vs pause. `ttsSpeaking` is exclusively owned by `ttsPlay`/`ttsPause`/`ttsStop` — `stopScrollEngine` must not set it. If `ttsPaused` is true and `ttsSpeaking` is false, `togglePlay` correctly calls `ttsPlay()` which hits the resume path.
 9. **`extractFromDom` bare-div text**: `div` is not in BLOCK and is descended into (not consumed atomically). A `<div>` containing only raw text with no block children will have that text silently dropped, since the walker skips `nodeType===3` text nodes. Rare in real EPUBs/HTML, but possible in minimal hand-authored files.
 10. **PWA rename spread order**: `pwaScanAndRender` merges saved progress via `{...scanned, ...saved}`, so `renameBook()` must write the custom title to `PWA_PROG_KEY` — otherwise the next folder scan overwrites it with the folder-derived title.

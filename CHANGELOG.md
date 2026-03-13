@@ -2,6 +2,20 @@
 
 ---
 
+## v1.8 — 2026-03-13
+
+### Fixed
+- **Audio stops when backgrounding PWA** — added `freeze`/`resume` Page Lifecycle listeners that cleanly pause before freeze and auto-resume on return (IS_PWA only)
+- **TTS breaks after freeze/resume on Android** — TTS branch added to the same freeze/resume listeners; visibilitychange detects dead speechSynthesis engine and restarts from current sentence
+- **Pause/resume leaves player in broken state** — `mediaPlay()` catch path now calls the full state quad; `wireAudioEvents` pause handler now releases wake lock on browser-initiated pauses
+- **Playback hangs on random sentences** — separated `_scrollPauseTimer` from `scrollTimer` so user scrolling no longer kills the TTS advance chain; `_wordTick` now guards out-of-bounds `curSent`
+
+### Added
+- Playwright test suite for lifecycle and playback fixes (15 tests in `tests/specs/07-lifecycle-playback.spec.js`)
+- "Session setup" card in `folio-workflow-prompts.html`
+
+---
+
 ## v1.7 — 2026-03-12
 
 ### Fixed

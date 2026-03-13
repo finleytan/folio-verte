@@ -9,6 +9,7 @@
   --bg:#0d1117; --surface:#161b22; --surface2:#21262d;
   --border:#30363d; --text:#e6edf3; --text2:#8b949e; --text3:#484f58;
   --accent:#5b8def; --green:#3fb950; --yellow:#d29922; --red:#f85149;
+  --orange:#f0883e;
   --radius:10px; --font:'DM Sans',system-ui,sans-serif; --mono:'Courier New',monospace;
 }
 * { box-sizing:border-box; margin:0; padding:0; }
@@ -49,6 +50,11 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font); mi
 }
 .section-heading::after { content:''; flex:1; height:1px; background:var(--border); }
 .section-heading:first-child { margin-top:0; }
+.section-count {
+  font-size:10px; font-weight:700; background:var(--surface2);
+  border:1px solid var(--border); color:var(--text3);
+  padding:1px 7px; border-radius:20px; letter-spacing:0; flex-shrink:0;
+}
 
 /* Prompt card */
 .prompt-card {
@@ -129,6 +135,80 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font); mi
 .copy-icon { font-size:13px; }
 
 .empty { text-align:center; padding:60px 20px; color:var(--text3); font-size:14px; display:none; }
+
+/* Add-prompt button */
+.add-btn {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 18px; border-radius:8px;
+  background:var(--surface); border:1px solid var(--border);
+  color:var(--text2); font-family:var(--font); font-size:13px;
+  font-weight:600; cursor:pointer; transition:all .15s;
+  margin-bottom:28px;
+}
+.add-btn:hover { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* Modal overlay */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.65); z-index:100;
+  align-items:center; justify-content:center; padding:20px;
+}
+.modal-overlay.open { display:flex; }
+.modal-box {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); width:100%; max-width:600px;
+  max-height:90vh; display:flex; flex-direction:column;
+}
+.modal-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px; border-bottom:1px solid var(--border);
+}
+.modal-head h2 { font-size:15px; font-weight:700; }
+.modal-close {
+  background:none; border:none; color:var(--text2); font-size:18px;
+  cursor:pointer; line-height:1; padding:4px;
+}
+.modal-close:hover { color:var(--text); }
+.modal-body { padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:14px; }
+
+.field label {
+  display:block; font-size:11px; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--text2); margin-bottom:6px;
+}
+.field input, .field select, .field textarea {
+  width:100%; background:#0d1117; border:1px solid var(--border);
+  border-radius:6px; padding:9px 12px; color:var(--text);
+  font-family:var(--font); font-size:13px; outline:none;
+  transition:border-color .15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color:var(--accent);
+}
+.field textarea { font-family:var(--mono); font-size:12px; resize:vertical; min-height:120px; }
+.field select option { background:var(--surface2); }
+
+.row-fields { display:flex; gap:12px; }
+.row-fields .field { flex:1; }
+
+.modal-foot {
+  display:flex; justify-content:flex-end; gap:10px;
+  padding:14px 20px; border-top:1px solid var(--border);
+}
+.btn-cancel {
+  padding:8px 18px; border-radius:6px; border:1px solid var(--border);
+  background:transparent; color:var(--text2); font-family:var(--font);
+  font-size:13px; font-weight:600; cursor:pointer;
+}
+.btn-cancel:hover { color:var(--text); border-color:var(--text2); }
+.btn-save {
+  padding:8px 18px; border-radius:6px; border:1px solid var(--accent);
+  background:var(--accent); color:#fff; font-family:var(--font);
+  font-size:13px; font-weight:600; cursor:pointer; transition:background .15s;
+}
+.btn-save:hover { background:#4a7bde; }
+
+/* Custom-card marker */
+.tag-custom { background:rgba(232,90,173,.1); color:#e85aad; border:1px solid rgba(232,90,173,.2); }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -157,10 +237,68 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font); mi
     <button class="filter-btn"          onclick="filter('perf',this)">Perf</button>
   </div>
 
+  <button class="add-btn" onclick="openAddModal()">&#43; Add prompt</button>
+
   <div id="cards"></div>
   <div class="empty" id="empty">No prompts match this filter.</div>
 
+</div><!-- /.page -->
+
+<!-- Add-prompt modal -->
+<div class="modal-overlay" id="addModal" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>Add new prompt</h2>
+      <button class="modal-close" onclick="closeAddModal()">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Title *</label>
+        <input type="text" id="f-title" placeholder="Short description of the task">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <input type="text" id="f-desc" placeholder="One-line context for what this fixes or adds">
+      </div>
+      <div class="row-fields">
+        <div class="field">
+          <label>Status</label>
+          <select id="f-status">
+            <option value="active">Active</option>
+            <option value="backlog">Backlog</option>
+            <option value="deferred">Deferred</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Type</label>
+          <select id="f-type">
+            <option value="feat">Feature</option>
+            <option value="fix">Fix</option>
+            <option value="perf">Perf</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Effort</label>
+          <select id="f-effort">
+            <option value="low">Low</option>
+            <option value="med">Med</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Prompt text</label>
+        <textarea id="f-prompt" placeholder="Paste or write the full prompt here…"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-save"   onclick="saveNewPrompt()">Save prompt</button>
+    </div>
+  </div>
 </div>
+
 <script>
 // ╔══════════════════════════════════════════════════════════╗
 // ║  PROMPT DATA — only edit between these two markers       ║
@@ -168,639 +306,603 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font); mi
 // ╚══════════════════════════════════════════════════════════╝
 const PROMPTS = [
 
+  // ── Active ────────────────────────────────────────
   {
-    num:'1', status:'active', type:'fix', model:'sonnet', effort:'low',
-    title:'Remove transcript pill from add-book modal + remove WPM UI',
-    desc:"Two UI cleanups: (1) remove the redundant transcript file-pill from the add-book modal, (2) remove the WPM slider from the options panel. WPM logic stays — only the UI elements are removed.",
-    prompt:
-`# Cleanup: Remove transcript upload pill + remove WPM UI in index.html
-
-## Change 1 — Remove transcript file-pill from add-book modal
-The transcript upload pill in the add-book modal is superseded by the
-book info panel transcript slot. Remove the entire pill block that
-contains id="transcriptPill", id="transcriptInput", id="transcriptName".
-
-It sits between the ebook pill and the cover pill in the modal HTML.
-Remove the full <div class="file-pill" id="transcriptPill"> block.
-
-Also find fileChosen() and remove or guard any references to
-'transcriptPill', 'transcriptInput', 'transcriptName' in that
-function only. Do NOT touch transcript handling logic used elsewhere
-(txModal, biReassign, saveTranscript, removeTranscript, etc.).
-
-## Change 2 — Remove WPM section from options panel
-The "Text Scroll Speed (WPM)" section in the playback tab is
-redundant. Remove from the HTML options panel (playback tab):
-- The entire op-sec containing the "Text Scroll Speed (WPM)" op-ttl
-- Its op-row with #defWpmSlider and #defWpmInput
-- Its op-row with #wpmSpeedLbl
-
-KEEP the JS functions setDefaultWpmFromSlider(), setDefaultWpmFromInput(),
-updateWpmLabel() — they are called from loadDisplayPrefs() and
-saveDisplayPrefs() and control TTS scroll timing internally.
-Only remove the three HTML elements listed above.
-
-Keep the "Sentence Pause" op-sec directly below WPM — only remove
-the WPM section itself.
-
-## Verification
-After changes:
-- Add-book modal shows: Audio, Ebook, Cover pills only
-- Options playback tab shows: Volume, Sentence Pause, Word Highlight,
-  Playback Rate, Controls — no WPM section
-
-Run node --check index.html when done.`
+  num:"1", status:"active", type:"fix", model:"sonnet", effort:"high",
+  title:"PWA: transcript not followed during audio playback",
+  desc:"In PWA mode the ebook text is not highlighted in sync with audio. sentenceTimings[] is built but the word-tick loop either finds no match or the timings are offset. The reader shows no active sentence during playback.",
+  prompt:"# Fix: Transcript not followed during audio playback (PWA mode) in index.html\n\n## Context\nRead folio-context.md sections: AUDIO EVENTS, TRANSCRIPT, SYNC OFFSET, and FRAGILE AREAS before editing.\nPWA mode: IS_PWA && CAN_FS. Audio src is a blob URL created from a File System Access handle.\nsentenceTimings[] is built by buildSentenceTimings() / buildTimingsFromPlainText() (worker or sync fallback).\n_wordTick() (rAF loop) drives sentence highlighting via sentenceTimings and syncOffset.\nwireAudioEvents() timeupdate handler also updates curSent via binary search over sentenceTimings.\n\n## Problem\nTranscript highlighting does not follow audio in PWA mode. Likely causes in priority order:\n1. sentenceTimings[] is empty or still building when playback starts — timing worker hasn't\n   posted back yet, so _wordTick has nothing to match against.\n2. syncOffset is wrong for PWA (file read timing differs from browser blob timing).\n3. _audio.currentTime vs sentenceTimings start/end units mismatch (e.g. ms vs s).\n4. The timeupdate binary search uses bestSent=curSent as starting index — if curSent is 0\n   and timings start mid-array the search never converges in one frame.\n\n## Investigation steps (read before writing any fix)\n1. Read _wordTick() in full — check the guard conditions that early-return without updating curSent.\n2. Read wireAudioEvents() timeupdate handler — check how sentenceTimings is accessed and what\n   syncOffset value is used.\n3. Read buildSentenceTimings() and its worker onmessage — confirm sentenceTimings[] is assigned\n   before the onmessage resolves.\n4. Read configurePlayerForMode() — confirm it does not reset sentenceTimings after timing is built.\n5. Check loadTranscriptData() — confirm transcriptData is loaded from the PWA file handle before\n   buildSentenceTimings is called.\n\n## Fix requirements\n- Do not change the timing algorithm or similarity() — fix the plumbing only.\n- Do not assign _audio.src outside configurePlayerForMode.\n- Do not reset sentenceTimings[] at any point after it has been built for the current book.\n- If the fix requires waiting for timing to be ready before starting the rAF loop, add a guard\n  flag (e.g. _timingsReady) that _wordTick checks rather than polling sentenceTimings.length.\n- Keep syncOffset unchanged — do not zero it or remove it.\n- After the fix, highlight must track audio within ±1 sentence across the full book.\n\n## Verification\nAfter fix:\n- Open a PWA book with audio + transcript. Play from beginning. Active sentence must advance in sync.\n- Seek audio to 50% via seek bar. Highlighted sentence must jump to the matching position.\n- Pause and resume. Highlight must continue from where audio left off.\n- Run syntax check: node -e \"const fs=require('fs'),html=fs.readFileSync('index.html','utf8'),m=html.match(/<script>([sS]*?)<\/script>/);try{new Function(m[1]);console.log('OK');}catch(e){console.error(e.message);}\"\n"
   },
 
   {
-    num:'2', status:'active', type:'feat', model:'sonnet', effort:'low',
-    title:'Add OpenDyslexic font option',
-    desc:"Adds OpenDyslexic as a selectable body font in Display options. Loads from CDN on demand only — no impact on initial page load.",
-    prompt:
-`# Feature: Add OpenDyslexic font option in index.html
-
-## Goal
-Add OpenDyslexic as a selectable body font alongside Lora, Georgia,
-Sans, Mono. Load from CDN only when selected.
-
-## 1. Add font pill to HTML
-In the Font pills section (Display tab, op-sec containing fontPill-lora),
-add after the Mono pill:
-
-  <button class="pill" id="fontPill-dyslexic"
-    onclick="setFont('OpenDyslexic,sans-serif','dyslexic',this)">
-    Dyslexic
-  </button>
-
-## 2. Load font on demand in setFont()
-Find setFont(f, key, btn) and add CDN injection when key is 'dyslexic',
-before the existing logic:
-
-  if(key === 'dyslexic' && !document.getElementById('font-opendyslexic')){
-    const link = document.createElement('link');
-    link.id = 'font-opendyslexic';
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.cdnfonts.com/css/open-dyslexic';
-    document.head.appendChild(link);
-  }
-
-Only add these lines at the top of setFont() — do not change anything
-else in that function.
-
-## 3. No changes needed to saveDisplayPrefs() or loadDisplayPrefs()
-fontKey is already saved generically from the active fontPill id.
-'dyslexic' will round-trip correctly. loadDisplayPrefs() restores via
-setFont() which will re-inject the CDN link if needed.
-
-## Notes
-- CDN: https://fonts.cdnfonts.com/css/open-dyslexic (free, no key)
-- Guard with getElementById to avoid duplicate link injection
-- Demand-load only — do not preload
-
-Run node --check index.html when done.`
+  num:"2", status:"active", type:"fix", model:"sonnet", effort:"med",
+  title:"Seeking audio progress bar does not navigate ebook position",
+  desc:"When the user drags or clicks the seek bar (#seekBar) the audio jumps to the new time but the ebook scroll position and highlighted sentence do not update to match. onSeekChange() should call updateHL, updateProg, and scrollToSent after resolving the new sentence from sentenceTimings.",
+  prompt:"# Fix: Seeking audio bar does not update ebook position in index.html\n\n## Context\nRead folio-context.md: MEDIA CONTROLS (onSeekInput, onSeekChange), HIGHLIGHTING & PROGRESS\n(updateHL, updateProg, scrollToSent), AUDIO EVENTS.\nonSeekChange() is the input \"change\" event on #seekBar (fired on drag end / click).\nIt already performs a binary search over sentenceTimings to find the matching sentence.\nscrollToSent(idx, instant) scrolls the ebook; instant=true bypasses the safe-zone guard.\n\n## Problem\nonSeekChange() updates _audio.currentTime but does not:\n- Call updateHL(newSent) to highlight the new sentence.\n- Call updateProg() to update chapter/progress display.\n- Call scrollToSent(newSent, true) to scroll ebook to matching position.\nOr: it calls them but with the wrong index, or before curSent is updated.\n\n## Investigation steps (read before writing any fix)\n1. Read onSeekChange() in full — find exactly where it updates curSent and what it calls after.\n2. Read onSeekInput() — confirm it only updates the time label, not curSent.\n3. Read scrollToSent() — note that instant=true is required here to prevent the safe-zone\n   guard from skipping the scroll.\n\n## Fix\nIn onSeekChange(), after the binary search resolves a new sentence index:\n1. Set curSent to the new index.\n2. Set curWord = 0.\n3. Call updateHL(curSent).\n4. Call updateProg().\n5. Call scrollToSent(curSent, true).\nThese calls must happen regardless of whether mediaState is playing or paused.\nDo not call ttsStop/ttsPlay from onSeekChange — TTS seek is handled separately via scrubToPosition.\n\n## Verification\n- Drag seek bar to 30%: ebook scrolls to matching sentence and highlights it.\n- Click seek bar at 80%: same result.\n- Seek while paused: ebook position updates, highlight shows correct sentence.\n- Seek while playing: highlight continues from new position without jumping back.\n- Run syntax check.\n"
   },
 
   {
-    num:'3', status:'active', type:'feat', model:'sonnet', effort:'med',
-    title:'Tap rate display to cycle speed presets',
-    desc:"Tapping #rateBtnInline on the seek strip cycles through RATE_STEPS presets. Long-press (400ms) still opens the options panel. Adds a brief flash animation on cycle.",
-    prompt:
-`# Feature: Tap rate display to cycle speed presets in index.html
-
-## Goal
-Tapping the #rateBtnInline display on the seek strip cycles through
-RATE_STEPS presets instead of opening the options panel. Long-press
-(400ms+) still opens options for full control.
-
-## 1. Remove onclick from #rateBtnInline in HTML
-The button currently has:
-  onclick="toggleOpts();switchOptTab('playback',document.querySelector('.op-tab'))"
-Remove that onclick attribute entirely.
-
-## 2. Add press-duration handler in JS
-Add near the other rate/speed functions:
-
-  function _initRateBtnBehaviour(){
-    const btn = document.getElementById('rateBtnInline');
-    if(!btn) return;
-    let t = 0;
-    btn.addEventListener('pointerdown', () => { t = Date.now(); });
-    btn.addEventListener('pointerup', () => {
-      const dur = Date.now() - t;
-      t = 0;
-      if(dur < 400){
-        changeSpeed(1);
-      } else {
-        toggleOpts();
-        switchOptTab('playback', document.querySelector('.op-tab'));
-      }
-    });
-    btn.addEventListener('pointercancel', () => { t = 0; });
-  }
-
-Call _initRateBtnBehaviour() once in init() after cacheDOM().
-
-## 3. Visual flash on cycle
-In changeSpeed(), after calling setRate(next), briefly flash the button:
-
-  const b = document.getElementById('rateBtnInline');
-  if(b){ b.classList.add('rate-flash');
-    setTimeout(() => b.classList.remove('rate-flash'), 180); }
-
-Add to stylesheet:
-  .rate-flash { background: var(--accent) !important;
-                color: #fff !important;
-                transition: none !important; }
-
-## Notes
-- changeSpeed() and setRate() already exist — no changes needed there
-- Do not remove the rate presets from the options panel
-- Do not add onclick back — the pointerdown/up pair handles both tap and long-press
-
-Run node --check index.html when done.`
-  },
-
-  // ── DEFERRED ──────────────────────────────────────────
-  {
-    num:'D', status:'deferred', type:'fix', model:'sonnet', effort:'high',
-    title:'DEFERRED: Confidence-aware sync correction',
-    desc:"Stores Jaccard confidence scores during matching and re-matches low-confidence sentences at playback time using a ±5 sentence window. Deferred — do not build until explicitly requested.",
-    prompt:
-`# DEFERRED FEATURE: Confidence-Aware Sync Correction
-# Status: NOT implemented. Deliberately deferred.
-# Do not build until explicitly requested.
-
-## The Problem
-buildSentenceTimings matches ebook sentences to transcript word runs via
-Jaccard similarity in two passes. The fill pass accepts weak matches
-(bestScore > 0.35). During playback, timeupdate blindly trusts these
-timestamps, which can cause highlight drift at poorly-matched sections.
-
-## The Approach (when ready to build)
-Use Option B: keep transcriptWords alive conditionally, store confidence
-scores alongside sentenceTimings, and add correctSyncDrift(audioTime)
-that binary-searches transcriptWords by time, windows ~10 words, and
-re-checks similarity against +-5 ebook sentences around curSent.
-
-## Full spec
-
-1. Store bestScore in a parallel sentenceConfidence[] array in
-   buildSentenceTimings / _buildSentenceTimingsSync / worker
-   doSentenceTimings. Include in worker postMessage payload.
-
-2. Add: const SYNC_CONFIDENCE_THRESHOLD = 0.3;
-
-3. Only null transcriptWords if all confidence scores are above
-   threshold. If any are weak, keep transcriptWords alive.
-
-4. Add correctSyncDrift(audioTime): binary search transcriptWords for
-   word at audioTime, window ~10 words, run similarity() against
-   sentences[curSent-5..curSent+5], return best index or curSent.
-
-5. In timeupdate: if bestSent !== curSent AND confidence below
-   threshold, call correctSyncDrift(t) and use result instead.
-   High-confidence path must have zero additional overhead.
-
-6. Toast "Sync corrected" debounced to 30s between toasts.
-
-7. Update folio-context.md with sentenceConfidence,
-   _lastCorrectionToast, correctSyncDrift.
-
-8. Run node --check index.html when done.
-
-## Known limitation
-Only helps when original match was weak due to OCR noise or minor text
-differences. Won't help with genuine ebook/transcript divergence.`
-  },
-
-  // ── COMPLETED ─────────────────────────────────────────
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'TOC navigation bugs fixed in TTS mode',
-    desc:"Fixed three TOC navigation bugs: sidebar now closes before scroll fires (fixing wrong position on mobile/long ebooks), ttsStop()+ttsPlay() replaces advanceSent() to prevent double-advance while playing, and ttsStop() clears the stale utterance when paused so the next play press starts from the correct sentence.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'Linking audio via Book Files now switches out of TTS mode',
-    desc:"Fixed biReassign() audio branch — removed pre-load of _audio.src that caused self-revocation of the blob URL, and called configurePlayerForMode() directly to switch the player into audio mode immediately when audio is linked via Book Files.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'feat', model:'sonnet',
-    title:'Reading progress bar as TTS scrubber',
-    desc:"Added scrubToPosition() making the reading progress bar tappable in TTS mode — tap percentage maps to sentence index via Math.round(pct*(sentences.length-1)), bar expands to 12px with .scrubbing class in TTS mode, and TTS restarts from new position if playing.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'Seek bar updates ebook position while paused',
-    desc:"Added binary search in onSeekChange() to immediately update the sentence highlight and scroll position when the seek bar is dragged while paused or stopped.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'EPUB paragraph fragmentation fix',
-    desc:"Rewrote extractFromDom() to collect text at block element boundaries, fixing paragraph fragmentation from inline elements in EPUB/HTML. Also fixed empty TOC for EPUBs where headings are nested inside div containers.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'TTS auto-scroll stops working after navigation',
-    desc:"Added _programmaticScroll flag to prevent programmatic scroll events from triggering the 2s auto-scroll cooldown; TOC click now restarts advanceSent() when TTS is playing.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'TTS play/pause unresponsive after pausing',
-    desc:"Removed ttsSpeaking=false from stopScrollEngine() to fix TTS play/pause state corruption caused by the scroll engine timer firing during active playback.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'Two speed controls visible in TTS mode + TTS rate not synced',
-    desc:"Hidden speed-strip in TTS mode by adding explicit hide in configurePlayerForMode(). Unified rate state by routing setTtsRate() through setRate() and syncing #ttsRateLbl / #ttsRateSlider from setRate().",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'TTS sentence highlight off by one after click',
-    desc:"Added re-anchor guard inside utt.onboundary: if _activeSentEl has drifted from the current sentence element, it is corrected before the word highlight updates.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'TTS sentence skip on click',
-    desc:"Added _ttsGeneration counter. onend/onerror closures capture gen at speak() time and bail out if gen !== _ttsGeneration, preventing stale cancel callbacks from advancing curSent.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'TTS play button unresponsive after returning to app',
-    desc:"Expanded the visibilitychange wake-lock handler to detect a dead SpeechSynthesis engine on return from background and reset ttsSpeaking/mediaState to stopped so play works on the first press.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'TTS → audiobook position lost on mode switch',
-    desc:"Guarded audioTime writes in saveBookProgress() and flushPositionSync() with !ttsMode. Added sentenceTimings fallback seek in configurePlayerForMode()'s loadedmetadata handler when audioTime is 0.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'TTS click navigation',
-    desc:"Clicking a sentence in TTS mode now stops the current utterance and restarts speech from the tapped sentence. Both word-click and sentence-click paths updated.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'fix', model:'sonnet',
-    title:'Instant scroll to resume position on book open',
-    desc:"Book open now scrolls instantly to the saved sentence position. scrollToSent() gained an instant=true parameter; pulseResumeSent(true) is passed from both openBook and pwaOpenBook.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'feat', model:'sonnet',
-    title:'Inline speed controls on seek strip',
-    desc:"− / rate / + buttons sit directly on the seek strip. Mobile users can change speed without opening the options panel. RATE_STEPS array and changeSpeed() function added.",
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'feat', model:'sonnet',
-    title:'Progress percentage in top bar',
-    desc:'Top bar now shows "Chapter 3 · 15%" instead of the raw sentence count. Chapter label is derived from tocEntries[] and truncated to 28 chars.',
-    prompt:''
-  },
-  {
-    num:'✓', status:'done', type:'feat', model:'sonnet',
-    title:'Sync offset hint toast',
-    desc:"One-time toast appears after the first Whisper transcript sync pointing users to Options > Sync offset. Guarded by folio_sync_hint_v1 localStorage flag.",
-    prompt:''
+  num:"3", status:"active", type:"fix", model:"sonnet", effort:"low",
+  title:"Ignore files named \"metadata\" during PWA folder scan",
+  desc:"When scanning a book folder in PWA mode, files named \"metadata\" (any extension or no extension) are incorrectly picked up as audio, ebook, or cover candidates. These system/sidecar files should be silently skipped during pwaScanBookFolder().",
+  prompt:"# Fix: Ignore \"metadata\" files during PWA folder scan in index.html\n\n## Context\nRead folio-context.md: the pwaScanBookFolder() description in the PWA section.\npwaScanBookFolder() iterates files in a directory handle and assigns them to\naudioHandle, ebookHandle, transcriptHandle, or coverHandle based on extension matching.\n\n## Task\n1. Read pwaScanBookFolder() in full.\n2. Find the loop or conditional that inspects each file entry's name/extension.\n3. Add a guard at the top of that loop that skips any file whose base name\n   (filename without extension, lowercased) is exactly 'metadata':\n\n   const baseName = file.name.replace(/.[^.]+$/, '').toLowerCase();\n   if (baseName === 'metadata') continue;  // skip sidecar/system files\n\n4. The guard must be the first check in the loop — before any extension matching.\n5. Do not change any other logic in pwaScanBookFolder().\n6. Do not skip files named e.g. 'book-metadata.epub' — only exact base name match.\n\n## Verification\n- A folder containing 'metadata', 'metadata.json', 'metadata.opf' alongside a valid\n  audio file: only the audio file is assigned; metadata files are ignored.\n- A folder with no metadata files: behaviour unchanged.\n- Run syntax check.\n"
   },
 
   {
-    num:'4', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'TOC double-click required to navigate',
-    desc:"TOC sometimes requires two clicks to reach the correct position. Likely a race between toggleToc() closing the sidebar and scrollToSent() firing on mobile. Needs investigation before prompt can be written.",
-    prompt:''
+  num:"4", status:"active", type:"fix", model:"sonnet", effort:"low",
+  title:"syncOffset not saved in PWA mode — lost on every session",
+  desc:"adjustOffset() writes library[curBookIdx].syncOffset but skips saving when IS_PWA is true, and savePwaProgress() does not include syncOffset in its prog object. Any sync offset dialled in during a PWA session is silently lost on the next launch — data loss for transcript users.",
+  prompt:"# Fix: syncOffset not saved in PWA mode in index.html\n\n## Context\nRead folio-context.md: SYNC OFFSET section and savePwaProgress().\nadjustOffset(delta) is the function users call when nudging sync offset via\nthe Options panel buttons. It updates syncOffset and library[curBookIdx].syncOffset.\nsavePwaProgress() builds a prog object and writes it to localStorage[PWA_PROG_KEY].\n\n## Root cause (confirmed in code)\nadjustOffset() at line ~1852 calls:\n  if(!IS_PWA) saveLibrary(); else savePwaProgress();\nBut savePwaProgress() builds prog as:\n  {curSent, curWord, audioTime, wpm, sentPauseMs, playbackRate, totalSents}\nsyncOffset is NOT in that object, so it is never persisted in PWA mode.\n\n## Fix — two changes:\n\n### 1. savePwaProgress(): add syncOffset to prog\nFind savePwaProgress() and add syncOffset to the prog object literal:\n  const prog = {\n    curSent, curWord,\n    audioTime: isFinite(_audio.currentTime) ? _audio.currentTime : 0,\n    wpm, sentPauseMs,\n    playbackRate: _audio.playbackRate || 1,\n    syncOffset,          // ← ADD THIS\n    totalSents: sentences.length || b.totalSents || 1\n  };\n\n### 2. flushPositionSync(): add syncOffset to PWA path\nFind the IS_PWA branch in flushPositionSync() and add syncOffset to\nthe prog object there as well (it mirrors savePwaProgress() structure).\n\n## Verification\n- Open a book in PWA mode. Adjust sync offset to +1.5s. Press back.\n  Reopen book. Options → Advanced → Sync offset must show +1.5s.\n- Adjust to -0.5s. Close app. Reopen. Must restore -0.5s.\n- Browser mode: unchanged behaviour (no regression).\n- Run syntax check."
   },
+
   {
-    num:'5', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'UI element drift (icons shift between books)',
-    desc:"Icons like the options button shift position slightly depending on the book. Likely a flexbox/layout issue caused by variable content in the player bar. Needs investigation.",
-    prompt:''
+  num:"5", status:"active", type:"fix", model:"sonnet", effort:"low",
+  title:"Fix sizing and padding in PWA player screen",
+  desc:"In PWA mode the player screen has incorrect padding, oversized elements, or clipped content — particularly around the top bar, seek strip, and reading area. Safe-area insets for Android gesture nav bar may be missing or wrong.",
+  prompt:"# Fix: Sizing and padding issues in PWA player screen in index.html\n\n## Context\nRead folio-context.md CSS SECTIONS (Seek strip, Top bar, Reader body, Media queries).\nThe seek strip and TTS bar use env(safe-area-inset-bottom) in the mobile media query.\nThe reading area is #eScroll > #eContent inside .reader-body.\nIS_PWA mode may need additional top padding if the status bar overlaps .top-bar.\n\n## Task\nThis is a targeted CSS-only fix (no JS changes).\n\n1. Read the CSS for .top-bar, #seekStrip, .tts-bar, .reader-body, #eScroll in full.\n2. Read the @media(max-width:639px) block in full.\n3. Identify and fix:\n   a. Any missing env(safe-area-inset-bottom) on #seekStrip and .tts-bar in mobile query.\n   b. Any missing env(safe-area-inset-top) or status-bar padding on .top-bar.\n   c. Any hardcoded pixel values that should use env() for notched/gesture-nav devices.\n   d. Any overflow or clipping on .reader-body / #eScroll that cuts off content near the\n      bottom seek strip.\n\n4. Add a CSS block scoped to a .is-pwa class on <body> (or #player) if PWA-specific\n   overrides are needed — do not change base styles that affect browser mode.\n   The IS_PWA JS constant adds class 'is-pwa' to document.body if not already done;\n   if that class is not being set, add: if(IS_PWA) document.body.classList.add('is-pwa');\n   near the IS_PWA constant definition in JS.\n\n## Constraints\n- CSS changes only unless adding the is-pwa body class requires one JS line.\n- Do not change layout for desktop (min-width:640px) breakpoint.\n- Do not change any colour, font, or non-spacing property.\n\n## Verification\n- Player screen fills viewport correctly on a 390px-wide Android device.\n- No content clipped under status bar at top.\n- Seek strip not obscured by gesture nav bar at bottom.\n- Run syntax check (checks JS only — visually verify CSS in browser).\n"
   },
+
   {
-    num:'6', status:'backlog', type:'feat', model:'sonnet', effort:'low',
-    title:'High-contrast themes',
-    desc:"Add high-contrast and white-on-black themes to the theme picker. Currently only Parchment, Dark, and Night exist.",
-    prompt:''
+  num:"6", status:"active", type:"fix", model:"sonnet", effort:"med",
+  title:"loadEbook has no cancellation — race on rapid book switching",
+  desc:"Opening a book then immediately opening a different one can leave two concurrent chunked DOM builds writing to #eContent — the old book’s async chunks can land after the new book has started rendering, corrupting the reader.",
+  prompt:"# Fix: loadEbook has no cancellation — race on rapid book switching in index.html\n\n## Context\nRead loadEbook(book, onDone) in full. It builds the ebook DOM in async chunks\nusing yieldToMain(). If the user opens book A and immediately opens book B,\ntwo concurrent loadEbook() calls write to the same #eContent element and\npush to the same sentences[] array.\n\n## Fix\nAdd a monotonic load generation counter:\n  let _ebookLoadGen = 0;\n\nAt the start of loadEbook():\n  const myGen = ++_ebookLoadGen;\n\nAt every point after an await yieldToMain() inside the chunked build loop,\nadd a stale-check before continuing:\n  if(myGen !== _ebookLoadGen) return; // newer load started — abandon this one\n\nThe stale-check must appear:\n1. After each await yieldToMain() inside the while(i < items.length) loop.\n2. Before the final content.appendChild(frag) call.\n3. Before setBannerState('hidden').\n4. Before the onDone() call — only call onDone if this is still the active load.\n\n## Where to place the check\nInside the loop:\n  await yieldToMain();\n  if(myGen !== _ebookLoadGen) return;  // ← add after every yield\n\nBefore final flush and onDone:\n  if(myGen !== _ebookLoadGen) return;\n  content.appendChild(frag);\n  setBannerState('hidden');\n  // ... attach click handler, buildToc, buildSentenceTimings, onDone() ...\n\n## Constraints\n- Do not add any new UI state or error toasts for the abandoned load.\n- Do not change the chunk size, yield frequency, or build logic.\n- _ebookLoadGen is module-level; reset is not needed (monotonic counter is fine).\n- Do not guard the initial content.innerHTML wipe or items parsing with myGen —\n  only guard after yields.\n\n## Verification\n- Open book A. Immediately open book B. Only book B's content appears.\n- Open book A normally (no race): loads correctly.\n- Run syntax check."
   },
+
   {
-    num:'7', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'No way to cancel folder selection on mobile',
-    desc:"Once folder selection begins on mobile there is no cancel step. Needs a confirmation or cancel affordance before committing the folder.",
-    prompt:''
+  num:"7", status:"active", type:"fix", model:"sonnet", effort:"low",
+  title:"TOC double-click required to navigate",
+  desc:"TOC sometimes requires two clicks to reach the correct position. Likely a race between toggleToc() closing the sidebar and scrollToSent() firing on mobile. Needs investigation before prompt can be written.",
+  prompt:"# Fix: TOC double-click required to navigate in index.html\n\n## Context\nRead buildToc() in full, specifically the TOC item click handler.\nIt currently: closes sidebar on mobile (≤700px), defers one\nrequestAnimationFrame, then inside the rAF scrolls to curSent.\nRead _cacheScrollMetrics() — it caches _scrollElH and _scrollElTop.\n\n## Root cause\nOn low-end Android the sidebar close CSS transition hasn't finished\nwithin one rAF (~16ms), so _scrollElH/_scrollElTop are stale when\nscrollIntoView fires, landing at the wrong position.\n\n## Fix\nInside the TOC item click handler, change the single-rAF delay to a\ntwo-rAF sequence that refreshes scroll metrics between frames:\n\nBefore (current):\n  requestAnimationFrame(() => {\n    scrollPaused = false;\n    scrollToSent(curSent, true);\n    // ... TTS logic ...\n  });\n\nAfter:\n  requestAnimationFrame(() => {\n    _cacheScrollMetrics();           // refresh after sidebar close\n    requestAnimationFrame(() => {\n      scrollPaused = false;\n      scrollToSent(curSent, true);\n      // ... TTS logic unchanged ...\n    });\n  });\n\nThe sidebar close block (if window.innerWidth <= 700) and the rAF\nwrapping it must remain — only add the inner rAF and the\n_cacheScrollMetrics() call.\n\n## Constraints\n- Do not change _cacheScrollMetrics() itself.\n- Do not change the TTS resume/stop logic inside the rAF.\n- Do not change scrollToSent() or the instant=true argument.\n- This is a 3-line change: add _cacheScrollMetrics() and wrap existing\n  rAF body in a second requestAnimationFrame.\n\n## Verification\n- Long book, TOC item 20 chapters in: one tap navigates correctly.\n- Same item tapped twice: no unexpected jump.\n- TTS playing, tap TOC item: speech restarts from correct sentence.\n- Run syntax check."
   },
+
   {
-    num:'8', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'Shift+Arrow skip silent no-op in TTS mode',
-    desc:"Keyboard shortcuts Shift+\u2190 and Shift+\u2192 call skip(\u00b115) which immediately returns in TTS mode with no feedback \u2014 user gets no response and no indication of why, making the shortcut feel broken.",
-    prompt:''
+  num:"8", status:"active", type:"fix", model:"sonnet", effort:"med",
+  title:"Text alignment resets on book reopen",
+  desc:"Text alignment set in Display options is lost when closing and reopening a book — loadEbook() wipes #eContent innerHTML which discards the inline style, and setAlign() is not called again after the ebook finishes loading.",
+  prompt:"# Fix: Text alignment resets on book reopen in index.html\n\n## Context\nRead loadEbook() in full. It wipes #eContent innerHTML on line ~2684:\n  content.innerHTML = '<p ...>Loading…</p>';\nThis destroys any inline style.textAlign previously set by setAlign().\nRead loadDisplayPrefs() — it calls setAlign() at startup only.\nRead setAlign() — it sets document.getElementById('eContent').style.textAlign directly.\n\n## Root cause\nloadEbook() is called on every book open. After it wipes innerHTML and\nrebuilds the DOM, the inline textAlign on #eContent is gone because the\nelement reference is the same but innerHTML assignment does not restore\ninline styles.\n\n## Fix\nAt the end of loadEbook(), after the final content.appendChild(frag) and\nsetBannerState('hidden'), reapply the saved text alignment:\n\n  // Restore text alignment from saved prefs\n  const savedAlign = document.querySelector('[id^=alignPill].active')?.id?.replace('alignPill-','');\n  if(savedAlign) content.style.textAlign = savedAlign;\n\nThis reads the currently-active alignment pill (which loadDisplayPrefs set at\nstartup) and reapplies it to the newly-built content.\n\nAlternatively, read it from the _fontBody pattern: save the alignment as a\nmodule-level variable _textAlign (similar to _fontBody, _fontSize etc.) and\nset it in setAlign(). Then in loadEbook()'s onDone path, apply content.style.textAlign = _textAlign.\n\nUse whichever approach is simpler and consistent with the existing pattern.\nThe _textAlign variable approach is preferred for consistency with _fontBody etc.\n\n## Constraints\n- Do not change saveDisplayPrefs() or loadDisplayPrefs() beyond adding\n  the new _textAlign variable if that approach is used.\n- The fix must be inside loadEbook(), not in openBook() or onDone callbacks.\n- Do not wipe the content element's textAlign at any point after setting it.\n\n## Verification\n- Set text alignment to Justify. Close book. Reopen. Text is still justified.\n- Change to Center. Open a different book. Alignment is Center.\n- Run syntax check."
   },
+
   {
-    num:'9', status:'backlog', type:'feat', model:'sonnet', effort:'low',
-    title:'No currently-playing indicator on library cards',
-    desc:"Returning to the library while audio is playing shows no visual connection between the active book card and the ongoing playback \u2014 users have no way to identify which book is playing at a glance.",
-    prompt:''
+  num:"9", status:"active", type:"fix", model:"sonnet", effort:"med",
+  title:"Sentence splitter breaks on common abbreviations and quoted dialogue",
+  desc:"splitSentences() treats i.e., e.g., Fig., p. (page), and No. as sentence boundaries, corrupting highlighting and transcript sync for non-fiction. Quoted dialogue is also split incorrectly: \"He said \\\"Stop!\\\" and ran away\" becomes two fragments because the regex fires on the closing quote.",
+  prompt:"# Fix: Sentence splitter breaks on abbreviations and quoted dialogue in index.html\n\n## Context\nRead splitSentences(text) in full (it appears twice: once in _timingWorkerFn\nas the serialised worker copy, and once in the main script below as the\nstandalone version called from loadEbook). Both copies must be updated\nidentically — they must stay in sync.\n\nCurrent regex lookbehind:\n  (?<!\\b(?:Dr|Mr|Mrs|Ms|Prof|Rev|Sr|Jr|St|vs|etc|vol|ch|no))\n\n## Problems\n1. Missing abbreviations: i.e, e.g, Fig, p (page), No, cf, approx, dept,\n   est, approx, ca — all fire false sentence boundaries.\n2. Quoted dialogue: \"Stop!\" becomes a sentence break because the regex\n   matches [.!?]+ before the closing quote then whitespace.\n\n## Fix\n\n### 1. Expand the abbreviation list in the lookbehind\nReplace the existing lookbehind list with an extended one:\n  (?<!\\b(?:Dr|Mr|Mrs|Ms|Prof|Rev|Sr|Jr|St|vs|etc|vol|ch|no|i\\.e|e\\.g|fig|p|cf|approx|dept|est|ca|ibid|op|cit))\n\nNote: lookbehind must use escaped dots for i.e and e.g since these are\ninside a regex already — use i\\\\.e and e\\\\.g (JS string: i\\\\\\.e).\nTest carefully to avoid breaking the regex entirely.\n\n### 2. Fix closing-quote absorption\nThe current pattern already includes [\"'\\u00bb...)] in the match group\nthat absorbs trailing punctuation after sentence-ending chars.\nThe issue is the pattern matches [.!?]+[closing-quote]?\\s+ — the quote\nIS absorbed, but only when followed by whitespace. After a closing \" in\ndialogue like: She said \"Stop!\" and ran — the exclamation + quote IS\nabsorbed, then the lowercase \"and\" continues. This should already work.\n\nReproduce the actual failing case and add a regression test comment\nabove splitSentences explaining the expected split point.\n\n### 3. Keep both copies in sync\nAfter fixing splitSentences in the main script (below the worker), find\nthe identical function inside _timingWorkerFn (it's a copy serialised\ninto the blob worker) and apply the exact same regex change there.\n\n## Constraints\n- Do not change the function signature or return type.\n- The fix is regex-only: do not add any post-processing or loops.\n- If the lookbehind becomes too complex and causes a syntax error, fall\n  back to a simpler pre-filter (replace \"i.e.\" with \"i_e_\" before splitting).\n\n## Verification\n- \"Dr. Smith went to Washington. He arrived at 9 a.m.\" → 2 sentences, not 4.\n- \"She said \\\"Stop!\\\" and ran away.\" → 1 sentence.\n- Normal paragraph with 3 sentences → 3 sentences.\n- Run syntax check."
   },
+
   {
-    num:'10', status:'backlog', type:'feat', model:'sonnet', effort:'low',
-    title:'Chapter skip buttons \u2014 jump to next/previous chapter',
-    desc:"Navigation jumps either one sentence (nudge) or opens the full TOC sidebar \u2014 there is no quick way to skip to the next or previous chapter without tapping through the TOC.",
-    prompt:''
+  num:"10", status:"active", type:"fix", model:"sonnet", effort:"med",
+  title:"Ebook formatting polish",
+  desc:"General ebook formatting still needs work beyond the paragraph fragmentation fix. Specific issues to be identified during testing.",
+  prompt:"# Fix: Ebook formatting polish in index.html\n\n## Context\nRead extractFromDom(), parseTxt(), parseMd(), parseHtml(), parseEpub() in full.\nCommon formatting issues found in real ebooks:\n1. EPUBs with <div> containing only raw text (no block children) silently drop\n   that text — documented in folio-context.md FRAGILE AREAS #9.\n2. Consecutive short paragraphs from parseTxt() get treated as separate items\n   even when they're part of the same block (e.g. poetry or dialogue).\n3. parseMd() processes line-by-line, so a paragraph split across two lines\n   with a single newline is split into two items.\n\n## Fixes\n\n### Fix 1: extractFromDom bare-div text\nIn extractFromDom(), the walk() function currently does: if(node.nodeType!==1) return;\nThis skips text nodes. Inside the div/section/article/aside descent path (Array.from\nchildNodes forEach walk), text nodes are children — but skipped.\n\nAdd handling for text node children of container elements:\n  if(node.nodeType === 3) {  // text node\n    const t = node.textContent.replace(/\\s+/g, ' ').trim();\n    if(t) items.push({type:'text', text:t});\n    return;\n  }\n\nAdd this check before the nodeType!==1 guard so text nodes are collected.\n\n### Fix 2: parseTxt soft-wrap\nIn parseTxt(), change the paragraph split to also collapse single-newline\nsequences into spaces (common in plain-text ebooks copied from web):\n  String(data).split(/\\n{2,}/).forEach(para => {\n    const t = para.replace(/\\n/g, ' ').replace(/\\s+/g, ' ').trim();\n    if(t) items.push({type:'text', text:t});\n  });\nThe extra .replace(/\\n/g, ' ') collapses single newlines within a paragraph.\n\n### Fix 3: parseMd paragraph joining\nIn parseMd(), consecutive non-heading lines that aren't separated by a blank\nline should be joined. Currently each line is its own item. Add state:\n  let pendingText = '';\n  lines.forEach((line, idx) => {\n    const hm = line.match(/^(#{1,3})\\s+(.+)/);\n    if(hm) {\n      if(pendingText) { items.push({type:'text',text:pendingText.trim()}); pendingText=''; }\n      items.push({type:'heading', level:hm[1].length, text:hm[2].trim()});\n      return;\n    }\n    const t = line.replace(/[*_`~]+/g,'').trim();\n    if(!t) {\n      if(pendingText) { items.push({type:'text',text:pendingText.trim()}); pendingText=''; }\n    } else {\n      pendingText += (pendingText ? ' ' : '') + t;\n    }\n  });\n  if(pendingText) items.push({type:'text',text:pendingText.trim()});\n\n## Constraints\n- Do not change parseTxt's double-newline paragraph split threshold.\n- extractFromDom change must not affect EPUB files that already render correctly.\n- Test with both a simple .txt file and an EPUB after changes.\n\n## Verification\n- A div with only text content (no block children) renders in the reader.\n- A .txt file with single-newline line breaks renders as complete paragraphs.\n- A .md file with paragraphs across multiple lines merges them correctly.\n- Run syntax check."
   },
+
   {
-    num:'11', status:'backlog', type:'perf', model:'sonnet', effort:'low',
-    title:'arrayBufferToBase64 blocks main thread on large EPUBs',
-    desc:"The base64 encoder uses a character-by-character loop with string concatenation that blocks the main thread for large EPUB files \u2014 should use btoa with a typed array slice approach or move off the main thread.",
-    prompt:''
+  num:"11", status:"active", type:"fix", model:"sonnet", effort:"low",
+  title:"loadScript has no CDN fallback for JSZip — EPUB silently fails offline",
+  desc:"loadScript() resolves on both onload and onerror so parseEpub continues with JSZip undefined when the CDN is unreachable, showing only a terse error message with no retry, no fallback URL, and no explanation that the device may be offline.",
+  prompt:"# Fix: loadScript has no CDN fallback for JSZip in index.html\n\n## Context\nRead loadScript(src) in full. It resolves on both onload AND onerror,\nso parseEpub() proceeds with JSZip === undefined when the CDN is unreachable.\nparseEpub() already has a typeof JSZip === 'undefined' guard that returns an\nerror message, but it gives no user feedback about why it failed.\n\n## Fix — two parts:\n\n### 1. Add a secondary CDN URL\nIn parseEpub(), change the load call:\n  if(typeof JSZip === 'undefined') await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');\n\nTo a try-with-fallback:\n  if(typeof JSZip === 'undefined'){\n    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');\n  }\n  if(typeof JSZip === 'undefined'){\n    // Primary CDN failed, try unpkg fallback\n    await loadScript('https://unpkg.com/jszip@3.10.1/dist/jszip.min.js');\n  }\n  if(typeof JSZip === 'undefined'){\n    return [{type:'text',text:'Could not load EPUB parser. Check your internet connection and try again.'}];\n  }\n\n### 2. Better error message\nIf JSZip is still undefined after both attempts, return a user-friendly message\n(already done above in the second guard).\n\n## Constraints\n- Do not change loadScript() signature.\n- The two CDN attempts happen sequentially (await each).\n- Do not add any UI loading state for the CDN fetch — the ebook loading banner\n  is already visible during this time.\n- Do not change how JSZip is used after it loads.\n\n## Verification\n- Normal case (CDN reachable): EPUB loads as before.\n- Simulate CDN failure (wrong URL): second CDN is tried, then error message shown.\n- Run syntax check."
   },
+
   {
-    num:'12', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'lastAdvanceTime is declared but never used \u2014 dead state variable',
-    desc:"lastAdvanceTime is initialised in the global state block and documented in folio-context.md as \u2018unused legacy?\u2019 but is never read or written anywhere \u2014 should be removed to reduce state surface and confusion.",
-    prompt:''
+  num:"12", status:"active", type:"fix", model:"sonnet", effort:"med",
+  title:"Audiobook + ebook with no transcript — undefined UX",
+  desc:"No defined behaviour for when an audiobook and ebook are loaded but no transcript is present. Should show a banner explaining the state and surface the transcript upload action. High risk of confusing new users.",
+  prompt:"# Fix: Audiobook + ebook with no transcript — undefined UX in index.html\n\n## Context\nRead loadTranscriptData(b) in full. Read setBannerState() in full.\nRead the tx-banner CSS section and the player screen HTML breakdown.\nWhen a book has audio + ebook but no transcript (b.transcriptType is null),\nloadTranscriptData() returns immediately after setBannerState('hidden').\nThe user sees no transcript banner, no explanation, and no action to fix it.\n\n## Fix\nIn loadTranscriptData(b), in the early-return path where !b.transcriptType:\n\n1. Instead of just calling setBannerState('hidden') and returning, check if\n   the book has an audio file but no transcript:\n     if(!b.transcriptType) {\n       if(b.audioUrl || b.audioHandle) {\n         setBannerState('notx'); // new state\n       } else {\n         setBannerState('hidden');\n       }\n       return;\n     }\n\n2. Add a 'notx' state to setBannerState():\n   - Give it a distinct icon (e.g. 📝 with a ? or ⚠️).\n   - Text: \"No transcript — highlights unavailable\"\n   - Detail: \"Add a transcript for word-level highlighting\"\n   - Add a small \"Add transcript\" action link/button inside the banner\n     that calls openTranscriptModal() when tapped.\n\n3. CSS: add a .tx-banner.notx rule styled similarly to .tx-banner.ready\n   but with a muted amber/yellow colour (use --yellow or var(--text3)).\n\n## HTML change\nIn the #txBanner HTML, ensure there is a container for the action link\n(the banner likely already has a slot for detail text — add the button\nafter #txBannerDetail):\n  <button id=\"txBannerAction\" class=\"tx-banner-action\" onclick=\"openTranscriptModal()\"\n    style=\"display:none\">Add transcript →</button>\n\nIn setBannerState(), show/hide #txBannerAction based on whether state==='notx'.\n\n## Constraints\n- Do not change the 'hidden', 'loading', 'syncing', 'ready', 'error' states.\n- openTranscriptModal() already exists — just call it.\n- PWA mode: the transcript modal works for PWA too (biReassign handles PWA save).\n\n## Verification\n- Open a book with audio + ebook, no transcript: banner shows \"No transcript\" message\n  with an \"Add transcript\" button.\n- Tap \"Add transcript\": transcript modal opens.\n- Add a transcript: banner transitions to loading → syncing → ready.\n- Open a TTS-only book (no audio): banner stays hidden.\n- Run syntax check."
   },
+
   {
-    num:'13', status:'backlog', type:'perf', model:'sonnet', effort:'low',
-    title:'content-visibility intrinsic size hint may cause layout shifts',
-    desc:"ebook-para uses contain-intrinsic-size: auto 80px but paragraphs vary widely in height \u2014 incorrect cached estimates cause layout shifts as the user scrolls through books with short or long paragraphs.",
-    prompt:''
+  num:"13", status:"active", type:"feat", model:"sonnet", effort:"med",
+  title:"Empty library onboarding — no guidance for new users",
+  desc:"A first-time user sees a blank grid and a + card with no explanation of what Folio does, what files it accepts, or how to get started — critical to fix before Play Store submission.",
+  prompt:"# Feature: Empty library onboarding in index.html\n\n## Context\nRead renderLib() in full. It renders the grid of book cards. In browser mode,\nwhen library is empty, it renders only the + Add Book card with no explanation.\nIn PWA mode with no books scanned, pwaScanAndRender() shows a \"No books found\"\nmessage but it's sparse. This is the first thing new users see.\n\n## Task\nWhen the library grid is empty (no books), show an onboarding card above the +\nAdd Book card that explains what Folio is and how to get started.\n\n### Browser mode\nIn renderLib(), before appending the add-card, if library.length === 0:\n  const onboard = document.createElement('div');\n  onboard.className = 'onboard-card';\n  onboard.innerHTML = `\n    <div class=\"onboard-title\">Welcome to Folio</div>\n    <div class=\"onboard-body\">\n      Read ebooks with synced audio highlighting.\n      Add a book to get started — you'll need an audio file (.mp3, .m4b, etc.)\n      and an ebook (.epub, .txt, .html, or .md).\n      Add a Whisper transcript (.json) for word-level sync.\n    </div>`;\n  grid.appendChild(onboard);\n\n### PWA mode\nIn the pwaScanAndRender() empty-state block (where it currently shows\n\"No books found in X\"), replace the existing minimal message with richer HTML:\n  - Folder name displayed\n  - Brief instructions: each book needs its own subfolder\n  - Accepted file types\n\n### CSS\nAdd to stylesheet:\n  .onboard-card {\n    grid-column: 1 / -1;\n    background: var(--surface); border: 1px dashed var(--border);\n    border-radius: var(--radius); padding: 28px 24px; margin-bottom: 8px;\n    text-align: center;\n  }\n  .onboard-title {\n    font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 10px;\n  }\n  .onboard-body {\n    font-size: 13px; color: var(--text2); line-height: 1.6; max-width: 420px;\n    margin: 0 auto;\n  }\n\n## Constraints\n- Only show when library.length === 0 (browser mode) or scan returns 0 books (PWA).\n- Once a book is added, the card must not appear (renderLib() rebuilds the grid).\n- No changes to openModal(), addBook(), or scan logic.\n- Keep it concise — this is not a tutorial, just context.\n\n## Verification\n- Fresh browser mode (no books): onboarding card visible above + Add Book.\n- Add a book: onboarding card disappears, book card shows.\n- PWA mode, empty folder: improved empty state message.\n- Run syntax check."
   },
+
   {
-    num:'14', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'Book rename uses window.prompt() \u2014 inconsistent and blocked in some PWA contexts',
-    desc:"renameBook() calls window.prompt() which is blocked in some installed PWA environments and looks out of place alongside the rest of the custom modal UI \u2014 should be replaced with an inline edit field on the card.",
-    prompt:''
+  num:"14", status:"active", type:"fix", model:"sonnet", effort:"low",
+  title:"Book rename uses window.prompt() — inconsistent and blocked in some PWA contexts",
+  desc:"renameBook() calls window.prompt() which is blocked in some installed PWA environments and looks out of place alongside the rest of the custom modal UI — should be replaced with an inline edit field on the card.",
+  prompt:"# Fix: Book rename uses window.prompt() in index.html\n\n## Context\nRead renameBook() in full before editing. It currently calls\nwindow.prompt('New title:', library[i].title) which is blocked in some\ninstalled PWA environments and is visually inconsistent with the rest of\nthe UI. Replace with an inline edit field on the book card itself.\n\n## Implementation\n\n### Remove prompt()\nIn renameBook(i, e), remove the window.prompt() call entirely.\n\n### Inline edit\nInstead, find the title element inside the clicked card and replace it\nwith an input temporarily:\n  1. Find the .book-title div inside e.target.closest('.book-card').\n  2. Store its current text, replace it with:\n       <input class=\"book-title-input\" value=\"[current title]\" />\n  3. Focus and select-all on the input immediately.\n  4. On 'blur' and on Enter keydown: read the value, trim it.\n     If non-empty and changed: update library[i].title, save, call\n     renderLib() (which rebuilds the card, removing the input).\n     If empty or unchanged: just call renderLib() to restore.\n  5. On Escape keydown: call renderLib() without saving.\n\n### CSS\nAdd to stylesheet:\n  .book-title-input {\n    font: inherit; font-size: 13px; font-weight: 600;\n    background: var(--surface2); color: var(--text);\n    border: 1px solid var(--accent); border-radius: 4px;\n    padding: 2px 6px; width: 100%; box-sizing: border-box;\n    outline: none;\n  }\n\n### Save logic (unchanged)\nAfter confirming a new title, the same save logic applies:\n  if(!IS_PWA) saveLibrary();\n  else { /* existing PWA_PROG_KEY update */ }\n\n## Constraints\n- Do not use prompt(), confirm(), or alert() anywhere.\n- The input must not break the card grid layout — use width:100% inside\n  the existing .book-info container.\n- renderLib() already rebuilds the entire grid, so the input will be\n  replaced naturally when it is called.\n\n## Verification\n- Click rename on a card: title becomes an editable input.\n- Type new name, press Enter: card shows new name, library saved.\n- Press Escape: card restores original name, nothing saved.\n- Click away (blur): same as Enter — saves if changed.\n- Run syntax check."
   },
+
   {
-    num:'15', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'syncOffset not saved in PWA mode \u2014 lost on every session',
-    desc:"adjustOffset() writes library[curBookIdx].syncOffset but skips saving when IS_PWA is true, and savePwaProgress() does not include syncOffset in its prog object. Any sync offset dialled in during a PWA session is silently lost on the next launch \u2014 data loss for transcript users.",
-    prompt:''
+  num:"15", status:"active", type:"fix", model:"sonnet", effort:"low",
+  title:"No way to cancel folder selection on mobile",
+  desc:"Once folder selection begins on mobile there is no cancel step. Needs a confirmation or cancel affordance before committing the folder.",
+  prompt:"# Fix: No way to cancel folder selection on mobile in index.html\n\n## Context\nRead pwaPickFolder() in full. It calls showDirectoryPicker() which\nlaunches the OS file picker. If the user picks a folder, pwaScanAndRender()\nruns immediately with no confirmation step. On mobile there is no way to\nabort once a folder is selected without quitting the app.\n\n## Fix\nAfter showDirectoryPicker() resolves and before pwaScanAndRender():\n\n1. Show a toast-style confirmation sheet (not an alert):\n   - Display the chosen folder name.\n   - Two buttons: \"Use this folder\" and \"Choose another\".\n   - No modal overlay needed — a fixed bottom sheet is fine.\n\n2. If \"Use this folder\":\n   - Proceed with the existing idbSet + pwaScanAndRender() logic.\n   - Dismiss the sheet.\n\n3. If \"Choose another\":\n   - Dismiss the sheet without saving the handle.\n   - Do NOT call idbSet or pwaScanAndRender().\n   - The first-run screen remains visible.\n\n## Implementation\nAdd a helper that returns a Promise resolving true/false:\n  async function _confirmFolder(name) {\n    return new Promise(resolve => {\n      // Build and append a .folder-confirm-sheet div to document.body\n      // Two buttons wired to resolve(true) / resolve(false) + sheet.remove()\n    });\n  }\n\nInside pwaPickFolder(), after const handle = await showDirectoryPicker():\n  const ok = await _confirmFolder(handle.name);\n  if(!ok) return;\n  pwaRootHandle = handle;\n  await idbSet('rootHandle', handle);\n  await idbSet('rootName', handle.name);\n  await pwaScanAndRender();\n\n## CSS\nAdd to stylesheet (append at end of <style>):\n  .folder-confirm-sheet {\n    position: fixed; bottom: env(safe-area-inset-bottom, 0);\n    left: 0; right: 0; background: var(--surface2);\n    border-top: 1px solid var(--border); padding: 20px 20px 24px;\n    display: flex; flex-direction: column; gap: 12px; z-index: 9999;\n  }\n  .folder-confirm-name {\n    font-size: 15px; font-weight: 600; color: var(--text);\n    text-align: center;\n  }\n  .folder-confirm-row { display: flex; gap: 10px; }\n  .folder-confirm-row .btn { flex: 1; }\n\n## Constraints\n- Do not use confirm() or alert().\n- AbortError from showDirectoryPicker is already caught — leave it unchanged.\n- This is PWA-only code; do not add any UI for browser mode.\n\n## Verification\n- PWA first run: pick a folder, confirmation sheet appears with folder name.\n- \"Use this folder\": library loads from chosen folder.\n- \"Choose another\": first-run screen is still visible, no folder committed.\n- Run syntax check."
   },
+
   {
-    num:'16', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'parseMd leaves partial markdown symbols on edge-case formatting',
-    desc:"parseMd strips inline markdown with /[*_`~]+/g but leaves partial symbols on tokens like word* or _word where the asterisk or underscore is adjacent to a non-space character. Produces garbage text fragments for heavily formatted Markdown ebooks.",
-    prompt:''
+  num:"16", status:"active", type:"fix", model:"sonnet", effort:"med",
+  title:"No auto-link audiobook on mobile",
+  desc:"Should auto-link an audiobook if one is present in the selected folder on mobile. No matching logic exists yet.",
+  prompt:"# Fix: No auto-link audiobook on mobile (PWA folder scan) in index.html\n\n## Context\nRead pwaScanBookFolder() in full. It already detects audioFile by extension.\nIn browser mode, addBook() creates a blob URL immediately. In PWA mode, the\naudioHandle is stored but the URL is only created when the book is opened\n(pwaOpenBook creates the URL from the handle).\n\nThe issue: in browser mode, when a folder is selected via the Add Book modal,\nthe audio file is detected but the user still has to manually click \"Audio\"\nto assign it. The auto-assignment happens in folderChosen() for audio and ebook,\nbut may not work on some mobile browsers.\n\n## Investigation first\nRead folderChosen() in full. Check:\n1. Does it call assignFileToPill(audioFile, 'audio') automatically?\n2. If yes, why does it not work on some mobile browsers?\n3. Check if AUDIO_EXTS includes all common mobile audio formats (.m4b, .aac).\n\n## Fix based on investigation\nIf folderChosen() already auto-assigns but the file isn't detected:\n- Check if AUDIO_EXTS = new Set([...]) includes 'm4b' and 'aac'.\n  If missing, add them.\n- Check if the file extension detection is case-sensitive. Add .toLowerCase()\n  if not already present.\n\nIf folderChosen() does not auto-assign audio (unlikely given the code):\n- Add: const audioFile = files.find(f => AUDIO_EXTS.has(f.name.split('.').pop().toLowerCase()));\n  if(audioFile) assignFileToPill(audioFile, 'audio');\n\nFor PWA mode specifically — if m4b files in a PWA folder are not being\ndetected as audio:\n- In pwaScanBookFolder(), check that 'm4b' is in AUDIO_EXTS (it should be,\n  as it's in the constant declaration). If it's not, add it.\n\n## Constraints\n- Only fix the detection / auto-assignment plumbing.\n- Do not change pwaOpenBook() audio URL creation.\n- If AUDIO_EXTS already has 'm4b' and folderChosen() already auto-assigns,\n  write a comment explaining the investigation found no bug and the item\n  can be closed.\n\n## Verification\n- Select a folder containing book.mp3 + book.epub: both auto-assigned.\n- Select a folder containing book.m4b: audio auto-assigned.\n- Run syntax check."
   },
+
   {
-    num:'17', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'No visual feedback when sync offset is adjusted during playback',
-    desc:"adjustOffset() updates the #offsetVal label inside the options panel but shows nothing in the main reading view. Users tuning the offset by feel while listening cannot easily see the current value without opening options.",
-    prompt:''
+  num:"17", status:"active", type:"feat", model:"sonnet", effort:"high",
+  title:"No manual library rescan button",
+  desc:"There is no way to manually trigger a rescan of book folders in PWA mode. If files are added or changed outside the app the user must remove and re-add the book to pick up changes — should have a visible rescan/refresh action on the library screen.",
+  prompt:"# Feature: Manual library rescan button in PWA mode in index.html\n\n## Context\nRead folio-context.md: PWA FILE SYSTEM section. pwaScanAndRender() does\nthe full scan. The library screen HTML has a .lib-header div. IS_PWA and\nCAN_FS are constants. pwaRootHandle is the currently active folder handle.\n\n## Task\nAdd a visible \"Rescan\" button to the library header in PWA mode.\n\n### HTML\nFind the .lib-header div in the library screen. Inside it, add a rescan\nbutton that is only visible in PWA mode. Since we can\\'t use server-side\nrendering, hide it by default and show it with JS after init:\n  <button id=\"pwaRescanBtn\" class=\"ic-btn\" style=\"display:none\"\n    title=\"Rescan library\" onclick=\"pwaRescan()\">🔄</button>\n\nPlace it alongside the existing lib-header icon buttons.\n\n### JS\nAdd:\n  function pwaRescan() {\n    if(!IS_PWA || !pwaRootHandle) return;\n    showToast(\\'Scanning library…\\', \\'\\', 1500);\n    pwaScanAndRender();\n  }\n\nIn init(), after routing is resolved and if IS_PWA && CAN_FS:\n  const rescanBtn = document.getElementById(\\'pwaRescanBtn\\');\n  if(rescanBtn && IS_PWA && CAN_FS) rescanBtn.style.display = \\'\\';\n\n### Behaviour rules\n- Button is only ever visible in PWA mode (IS_PWA && CAN_FS).\n- Browser mode: button remains display:none permanently.\n- If pwaRootHandle is null (first-run, no folder yet): pwaRescan() is a\n  no-op (the guard handles this).\n- pwaScanAndRender() already shows the scanning indicator — no extra UI needed.\n- Do not change pwaScanAndRender() itself.\n\n## Verification\n- PWA mode, library screen: rescan button visible in header.\n- Tap rescan: library re-scans and re-renders from disk.\n- Browser mode: button not visible.\n- Run syntax check."
   },
+
   {
-    num:'18', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'TOC sidebar does not scroll to the active chapter on open',
-    desc:"buildToc() rebuilds the list from scratch on every open, always starting scrolled to the top. In a long book the active chapter is highlighted but off-screen, forcing manual scrolling to find the current position.",
-    prompt:''
+  num:"18", status:"active", type:"fix", model:"sonnet", effort:"med",
+  title:"Toast container obscured by Android gesture navigation bar",
+  desc:"The toast notification container sits at a fixed bottom position that overlaps with the Android gesture navigation bar on phones without a hardware nav bar. Toasts are partially or fully hidden behind the system UI.",
+  prompt:"# Fix: Toast container obscured by Android gesture navigation bar in index.html\n\n## Context\nRead the CSS for #toastContainer. It is currently positioned at the bottom\nof the viewport with a fixed bottom value. On Android phones using gesture\nnavigation (no hardware nav bar), the system UI overlaps this area.\nenv(safe-area-inset-bottom) is the correct CSS mechanism for this.\nThe seek strip already uses env(safe-area-inset-bottom) in the mobile media\nquery — follow the same pattern.\n\n## Fix — CSS only\nFind the #toastContainer rule (or .toast rule if toasts are absolutely positioned\ninside the container). Add or increase the bottom offset using env():\n\n  #toastContainer {\n    bottom: max(16px, calc(16px + env(safe-area-inset-bottom)));\n  }\n\nIf the existing rule already has a bottom value, replace it with the max() form.\n\nIf toasts are positioned inside the container and the container itself sits\nat bottom:0, change the container to:\n  #toastContainer {\n    bottom: env(safe-area-inset-bottom, 0);\n    padding-bottom: 16px;\n  }\n\nUse whichever approach matches the existing CSS — do NOT restructure the toast\npositioning system, only fix the bottom clearance.\n\n## Constraints\n- CSS change only. No JS changes.\n- Do not affect toast appearance, animation, or stacking.\n- The fix must apply on all screens; env() degrades to 0 on non-notched devices.\n\n## Verification\n- On a device with gesture navigation: toast appears above the navigation bar.\n- On a device with hardware buttons: toast position unchanged (env() returns 0).\n- Run syntax check (JS unchanged — CSS-only fix)."
   },
+
   {
-    num:'19', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'Horizontal swipe gesture in reader conflicts with text selection on touch laptops',
-    desc:"The swipe handler fires nudge() for any horizontal touchend drag over 50px on the ebook scroll area. On a touch laptop or tablet, attempting to select text by dragging horizontally accidentally triggers sentence navigation instead.",
-    prompt:''
+  num:"19", status:"active", type:"fix", model:"sonnet", effort:"low",
+  title:"UI element drift (icons shift between books)",
+  desc:"Icons like the options button shift position slightly depending on the book. Likely a flexbox/layout issue caused by variable content in the player bar. Needs investigation.",
+  prompt:"# Fix: UI element drift — icons shift between books in index.html\n\n## Context\nRead the .top-bar CSS in full. The top bar contains: back button, title (#pTitle),\nprogress text (#pProg), play button (#playBtn), speed badge (#speedBadge), and\nicon buttons (#optBtn, #tocBtn, #txBtn). The drift is likely caused by #pProg or\n#pTitle changing width when content changes, pushing flex siblings.\n\n## Investigation\n1. Read the .top-bar CSS rule and its children's CSS rules in full.\n2. Check whether #pTitle or #pProg have min-width or max-width constraints.\n   If flex:1 is set on the title wrapper, it should absorb width changes.\n3. Check whether #speedBadge or icon buttons have fixed widths. If not, they\n   flex with content.\n\n## Fix (CSS only)\nThe icon buttons (#optBtn, #tocBtn, #txBtn, #playBtn) and the speed badge must\nhave fixed or min-width values so they don't shift when neighbouring content changes:\n\n  .ic-btn {\n    width: 36px; height: 36px; flex-shrink: 0;\n  }\n  #playBtn {\n    width: 40px; height: 40px; flex-shrink: 0;\n  }\n  #speedBadge {\n    min-width: 36px; text-align: center; flex-shrink: 0;\n  }\n\nThe title/progress group should absorb remaining space:\n  .bk-info {\n    flex: 1; min-width: 0; overflow: hidden;\n  }\n\n## Constraints\n- CSS-only fix unless the JS is setting widths dynamically.\n- Do not change icon sizes visually — only ensure they don't reflow.\n- Do not touch seek strip or options panel layout.\n- Check if flex-shrink: 0 is already set — only add if missing.\n\n## Verification\n- Open three books with very different title lengths. Icon positions are stable.\n- Progress percentage changes do not shift icon positions.\n- Run syntax check."
   },
+
   {
-    num:'20', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'loadScript has no CDN fallback for JSZip \u2014 EPUB silently fails offline',
-    desc:"loadScript() resolves on both onload and onerror so parseEpub continues with JSZip undefined when the CDN is unreachable, showing only a terse error message with no retry, no fallback URL, and no explanation that the device may be offline.",
-    prompt:''
+  num:"20", status:"active", type:"fix", model:"sonnet", effort:"low",
+  title:"No visual feedback when sync offset is adjusted during playback",
+  desc:"adjustOffset() updates the #offsetVal label inside the options panel but shows nothing in the main reading view. Users tuning the offset by feel while listening cannot easily see the current value without opening options.",
+  prompt:"# Fix: No visual feedback when sync offset is adjusted in index.html\n\n## Context\nRead adjustOffset(delta) and updateOffsetUI() in full.\nupdateOffsetUI() updates #offsetVal inside the options panel but shows\nnothing in the main reading view. Users adjusting the offset while\nlistening have to open the options panel to see the current value.\n\n## Fix\nIn adjustOffset(delta), after calling updateOffsetUI(), show a brief toast\nwith the current offset value:\n\n  showToast('Sync offset: ' + (syncOffset >= 0 ? '+' : '') + syncOffset.toFixed(1) + 's', '', 1500);\n\nUse a short duration (1500ms) so it doesn't block the UI during rapid adjustment.\n\n## Constraints\n- Do not change updateOffsetUI().\n- The toast must show the updated syncOffset value (after the Math.round call).\n- Do not throttle or debounce the toast — each button press should show feedback.\n  (The toast system auto-stacks multiple toasts gracefully.)\n- One line change inside adjustOffset() only.\n\n## Verification\n- Tap + offset button: toast \"Sync offset: +0.5s\" appears briefly.\n- Tap multiple times: each tap shows updated value.\n- Offset at 0: shows \"Sync offset: 0.0s\".\n- Run syntax check."
   },
+
   {
-    num:'21', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'rateBtnInline opens options panel using fragile querySelector for tab selection',
-    desc:"The inline speed button calls switchOptTab('playback', document.querySelector('.op-tab')) which relies on the first .op-tab in the DOM being the Playback tab. If tab order ever changes it will silently open the wrong tab.",
-    prompt:''
+  num:"21", status:"active", type:"perf", model:"sonnet", effort:"low",
+  title:"arrayBufferToBase64 blocks main thread on large EPUBs",
+  desc:"The base64 encoder uses a character-by-character loop with string concatenation that blocks the main thread for large EPUB files — should use btoa with a typed array slice approach or move off the main thread.",
+  prompt:"# Perf: arrayBufferToBase64 blocks main thread on large EPUBs in index.html\n\n## Context\nRead arrayBufferToBase64(buf) in full. It currently uses a character-by-character\nloop with string concatenation, which is O(n) and blocks the main thread for\nlarge files (>5MB EPUB can take 500ms+).\n\n## Fix\nReplace the implementation with btoa + Uint8Array slice approach which is\nsubstantially faster due to native btoa implementation:\n\n  function arrayBufferToBase64(buf) {\n    const bytes = new Uint8Array(buf);\n    let result = '';\n    const CHUNK = 8192;\n    for(let i = 0; i < bytes.length; i += CHUNK) {\n      result += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));\n    }\n    return btoa(result);\n  }\n\nThis uses apply() with a chunk size of 8192 to avoid call stack overflow\n(apply() with very large arrays throws RangeError on some JS engines),\nthen passes the full string to btoa() once.\n\n## Constraints\n- The function signature and return type must be unchanged.\n- The output must be identical base64 to the current implementation.\n- Chunk size 8192 is safe across all JS engines — do not increase it.\n- Do not move this off-thread (that would require significant refactoring of\n  pwaOpenBook's await chain) — the chunked approach is fast enough.\n\n## Verification\n- A 20MB EPUB opens without a noticeable main-thread freeze.\n- The parsed EPUB content is identical to before (same sentences rendered).\n- Run syntax check."
   },
+
+
+  // ── Backlog ───────────────────────────────────────
   {
-    num:'22', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'folio_install_dismissed flag never expires \u2014 install prompt permanently hidden after one dismissal',
-    desc:"Once the install banner is dismissed the folio_install_dismissed flag is set with no version key or expiry. Users who dismiss it accidentally can never get the install prompt back without manually clearing localStorage, and the flag persists across major app updates.",
-    prompt:''
+  num:"26", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"TOC sidebar does not scroll to the active chapter on open",
+  desc:"buildToc() rebuilds the list from scratch on every open, always starting scrolled to the top. In a long book the active chapter is highlighted but off-screen, forcing manual scrolling to find the current position.",
+  prompt:"# Fix: TOC sidebar does not scroll to active chapter on open in index.html\n\n## Context\nRead toggleToc() and buildToc() in full. buildToc() is called each time\nthe TOC is opened (or on book load). It rebuilds #tocList from scratch.\nAfter rebuild, _tocItems[] is populated and updateTocActive() highlights\nthe current item — but the sidebar scroll position is left at the top.\n\n## Fix\nAt the end of buildToc(), after updateTocActive() is called, scroll the\nactive TOC item into view:\n\n  const activeBtn = _tocItems[_prevTocActive >= 0 ? _prevTocActive : 0];\n  if(activeBtn) {\n    activeBtn.scrollIntoView({ block: 'center', behavior: 'instant' });\n  }\n\nThe scroll target is _tocItems[_prevTocActive] — this is the button\nelement that updateTocActive() just marked as toc-active.\n\n## Where to place it\nAt the very end of buildToc(), after the loop that appends all buttons\nand after the updateTocActive() call.\n\n## Constraints\n- Use behavior:'instant' — not 'smooth' (sidebar is just opening).\n- If _prevTocActive is -1 (no chapter yet), scroll to the first item.\n- Do not change how _tocItems is populated or how updateTocActive() works.\n- Do not scroll #eScroll — only scroll #tocSidebar or #tocList.\n  Check which element is the scrolling container for TOC items and\n  use the correct scrollIntoView target.\n\n## Verification\n- Book at chapter 15 of 20. Open TOC. Chapter 15 is visible without\n  manual scrolling.\n- Book at chapter 1. Open TOC. Top of list shown.\n- Run syntax check."
   },
+
   {
-    num:'23', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'Stale totalSents from old progress poisons progress % on re-added books',
-    desc:"When a book is removed and re-added, the old progress record in folio_pwa_progress_v1 may still contain a stale totalSents value. If the new ebook has a different sentence count the progress percentage calculation uses the wrong denominator, showing incorrect or >100% progress.",
-    prompt:''
+  num:"27", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"parseMd leaves partial markdown symbols on edge-case formatting",
+  desc:"parseMd strips inline markdown with /[*_`~]+/g but leaves partial symbols on tokens like word* or _word where the asterisk or underscore is adjacent to a non-space character. Produces garbage text fragments for heavily formatted Markdown ebooks.",
+  prompt:"# Fix: parseMd leaves partial markdown symbols in index.html\n\n## Context\nRead parseMd(data) in full. The current inline stripping regex is:\n  line.replace(/[*_`~]+/g, '')\nThis removes runs of markdown chars but leaves isolated ones:\n- \"word*\" (trailing asterisk) → \"word*\" (asterisk not in a run of 2+)\n- \"_word\" (leading underscore) → \"_word\"\n\n## Fix\nReplace the stripping regex with one that handles both paired and unpaired markers:\n\n  // Remove markdown bold/italic/code/strikethrough markers\n  // Handles paired (**word**), single markers adjacent to word chars,\n  // and trailing punctuation attached to markdown syntax\n  const t = line\n    .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, '$1')  // paired markers: **word** → word\n    .replace(/[*_`~]+/g, '')                          // remaining isolated markers\n    .trim();\n\nApply this two-pass approach in parseMd(): first strip paired markers\n(which preserves the enclosed text), then strip any leftover isolated markers.\n\n## Constraints\n- Only change parseMd(). Do not change parseTxt(), parseHtml(), or extractFromDom().\n- The function must return the same items structure: [{type, level, text}].\n- Heading detection (hm = line.match(/^(#{1,3})\\s+(.+)/)) runs before stripping\n  and is unaffected — check that headings still work correctly.\n- Do not add a full Markdown parser — minimal stripping is sufficient for this use case.\n\n## Verification\n- \"This is **bold** and _italic_ text.\" → \"This is bold and italic text.\"\n- \"word*\" → \"word\" (no trailing asterisk).\n- \"# Heading with **bold**\" → heading with text \"Heading with bold\".\n- Run syntax check."
   },
+
   {
-    num:'24', status:'backlog', type:'fix', model:'sonnet', effort:'low',
-    title:'configurePlayerForMode called before all handles resolved \u2014 wrong mode if both fail',
-    desc:"configurePlayerForMode() is called as soon as the first file handle resolves, but if both audio and ebook handles fail the function may lock the player into the wrong mode with no recovery path. The resolution order is not guaranteed and there is no final reconciliation step.",
-    prompt:''
+  num:"28", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"Horizontal swipe gesture in reader conflicts with text selection on touch laptops",
+  desc:"The swipe handler fires nudge() for any horizontal touchend drag over 50px on the ebook scroll area. On a touch laptop or tablet, attempting to select text by dragging horizontally accidentally triggers sentence navigation instead.",
+  prompt:"# Fix: Horizontal swipe conflicts with text selection on touch devices in index.html\n\n## Context\nRead the swipe gesture IIFE on #eScroll in full. It fires nudge() on\ntouchend when horizontal drag > 50px. On touch laptops and tablets,\nattempting to select text by horizontal drag accidentally triggers navigation.\n\n## Fix\nAdd a guard inside the touchmove handler: if the user appears to be\nselecting text (window.getSelection().toString() is non-empty, or more\nreliably: if a touchmove starts but returns to near the start position\nbefore being over the threshold, it may be a selection attempt).\n\nThe most reliable fix is to detect whether text was selected during the\ngesture and cancel the swipe:\n\nIn the touchend handler, before calling nudge(), add:\n  const sel = window.getSelection();\n  if(sel && sel.toString().length > 0) { moved = false; return; }\n\nThis means: if any text is selected at touchend, treat the gesture as a\ntext selection (not a swipe) and do nothing.\n\nAdditionally, increase the minimum horizontal distance from 50px to 80px\nto reduce accidental fires:\n  if(Math.abs(dx) > 80) { nudge(dx < 0 ? 1 : -1); moved = false; }\n\n## Constraints\n- Do not remove the swipe gesture entirely — it is a primary navigation\n  method on mobile phones.\n- The fix must be inside the existing touchend handler in the IIFE.\n- Do not change touchstart or touchmove handlers.\n\n## Verification\n- Touch phone: horizontal swipe still navigates sentences.\n- Touch laptop: dragging to select text does not trigger navigation.\n- Run syntax check."
   },
+
   {
-    num:'25', status:'backlog', type:'perf', model:'sonnet', effort:'low',
-    title:'pwaScanBookFolder has no early exit once all slots are filled',
-    desc:"pwaScanBookFolder() iterates every file in the folder even after audio, ebook, transcript, and cover slots are all populated. For folders with many non-book files this wastes time on unnecessary getFile() calls.",
-    prompt:''
+  num:"29", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"Stale totalSents from old progress poisons progress % on re-added books",
+  desc:"When a book is removed and re-added, the old progress record in folio_pwa_progress_v1 may still contain a stale totalSents value. If the new ebook has a different sentence count the progress percentage calculation uses the wrong denominator, showing incorrect or >100% progress.",
+  prompt:"# Fix: Stale totalSents poisons progress % on re-added books in index.html\n\n## Context\nRead pwaScanAndRender() and pwaScanBookFolder(). When scanning, the saved\nprogress is merged: library = scanned.map(b => ({...b,...(saved[b.id]||{})})).\nsaved[b.id] may contain totalSents from a previous book version. If the\nebook has been updated (different sentence count), this stale value persists\nuntil the book is opened and a new totalSents is calculated.\n\n## Fix\nIn the progress merge in pwaScanAndRender(), explicitly drop totalSents from\nthe saved object to force recalculation on next open:\n\n  library = scanned.map(b => {\n    const prog = saved[b.id] || {};\n    const { totalSents: _drop, ...progWithoutSents } = prog; // drop stale count\n    return { ...b, ...progWithoutSents };\n  });\n\ntotalSents will be set correctly when the book is opened and loadEbook()\nfinishes (saveBookProgress() writes the new count).\n\n## Alternative approach\nIf the destructuring approach is complex in the existing code style, use:\n  library = scanned.map(b => {\n    const prog = {...(saved[b.id] || {})};\n    delete prog.totalSents;\n    return {...b, ...prog};\n  });\n\n## Constraints\n- Only drop totalSents from the merge — keep all other saved fields (curSent,\n  syncOffset, wpm, etc.) intact.\n- Do not change how totalSents is written by saveBookProgress().\n- This change is in pwaScanAndRender() only.\n\n## Verification\n- Remove a book, change its ebook to a shorter version, re-add it.\n  Progress % shows correctly (not >100%).\n- Existing books with valid totalSents: progress % unchanged on rescan\n  (totalSents is recalculated on next open, not lost permanently).\n- Run syntax check."
   },
+
   {
-    num:'26', status:'backlog', type:'perf', model:'sonnet', effort:'low',
-    title:'Ebook data string held in memory after DOM is built (PWA only)',
-    desc:"In PWA mode the raw ebook text string read from the file handle is kept in the library entry after loadEbook() has finished building the DOM. The string can be several MB for large books and is never needed again after rendering \u2014 it should be nulled out to reduce memory pressure.",
-    prompt:''
+  num:"30", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"configurePlayerForMode called before all handles resolved — wrong mode if both fail",
+  desc:"configurePlayerForMode() is called as soon as the first file handle resolves, but if both audio and ebook handles fail the function may lock the player into the wrong mode with no recovery path. The resolution order is not guaranteed and there is no final reconciliation step.",
+  prompt:"# Fix: configurePlayerForMode called before all handles resolved in index.html\n\n## Context\nRead pwaOpenBook(i) in full. The current flow:\n  1. Resolve audio handle → create blob URL (or show error toast)\n  2. Resolve transcript handle → load text\n  3. Resolve cover handle → create blob URL\n  4. Call configurePlayerForMode(b, resolvedAudioUrl, rate)   ← called after audio attempt\n  5. loadTranscriptData(b)\n  6. Resolve ebook handle → load data\n  7. loadEbook(b, onDone)\n\nIf BOTH audio handle resolution fails AND ebook handle resolution fails later,\nconfigurePlayerForMode has already been called with resolvedAudioUrl=null and\nttsMode was set to true. But then loadEbook also fails — the player is left\nin TTS mode with no content, no error recovery.\n\n## Fix\nMove configurePlayerForMode() to after the ebook handle is resolved,\nso the mode decision has full information:\n\n  1. Resolve audio handle → store resolvedAudioUrl (or null on failure)\n  2. Resolve transcript handle\n  3. Resolve cover handle\n  4. Resolve ebook handle → store ebookData (or null on failure)\n  5. Call configurePlayerForMode(b, resolvedAudioUrl, rate)   ← moved here\n  6. loadTranscriptData(b)\n  7. loadEbook(b, onDone)  ← or show error if ebookData still null\n\nIf both audio and ebook fail, show a clear error toast and return without\ncalling configurePlayerForMode or loadEbook.\n\n## Constraints\n- configurePlayerForMode must still be called before loadTranscriptData.\n- The existing try/catch blocks around each handle resolution must remain.\n- The existing error toasts for audio/ebook failure must remain.\n- Do not change configurePlayerForMode() itself.\n\n## Verification\n- Audio handle resolves, ebook fails: show error toast, don't open player.\n- Both handles fail: single error toast, stay on library screen.\n- Both succeed: normal book open flow.\n- Run syntax check."
   },
+
   {
-    num:'27', status:'backlog', type:'fix', model:'sonnet', effort:'med',
-    title:'Audiobook + ebook with no transcript \u2014 undefined UX',
-    desc:"No defined behaviour for when an audiobook and ebook are loaded but no transcript is present. Should show a banner explaining the state and surface the transcript upload action. High risk of confusing new users.",
-    prompt:''
+  num:"31", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"rateBtnInline opens options panel using fragile querySelector for tab selection",
+  desc:"The inline speed button calls switchOptTab('playback', document.querySelector('.op-tab')) which relies on the first .op-tab in the DOM being the Playback tab. If tab order ever changes it will silently open the wrong tab.",
+  prompt:"# Fix: rateBtnInline uses fragile querySelector for tab selection in index.html\n\n## Context\nRead the #rateBtnInline onclick attribute in HTML. It calls:\n  switchOptTab('playback', document.querySelector('.op-tab'))\nThis relies on the first .op-tab in the DOM being the Playback tab.\n\nRead switchOptTab(name, btn) — it uses btn to mark the active tab button.\nThe tabs are Playback, Display, Advanced. Their pill buttons should have\nstable IDs.\n\n## Fix\n\n### 1. Add IDs to the option tab buttons in HTML\nFind the three .op-tab buttons in the options panel and add IDs if they\ndon't already have them:\n  <button class=\"op-tab\" id=\"opTabBtn-playback\" ...>Playback</button>\n  <button class=\"op-tab\" id=\"opTabBtn-display\"  ...>Display</button>\n  <button class=\"op-tab\" id=\"opTabBtn-advanced\" ...>Advanced</button>\n\n### 2. Update the #rateBtnInline onclick\nChange from:\n  onclick=\"toggleOpts();switchOptTab('playback',document.querySelector('.op-tab'))\"\nTo:\n  onclick=\"toggleOpts();switchOptTab('playback',document.getElementById('opTabBtn-playback'))\"\n\nThis makes the tab selection robust regardless of DOM order.\n\n## Constraints\n- If the tab buttons already have IDs, use those instead of adding new ones.\n- switchOptTab() must not be changed.\n- Do not change the other tabs' onclick handlers (if they also use querySelector,\n  fix those too with the same pattern — but only if they share the same fragility).\n\n## Verification\n- Tapping rate button opens options panel on the Playback tab.\n- Options panel tab switching still works normally.\n- Run syntax check."
   },
+
   {
-    num:'28', status:'backlog', type:'fix', model:'sonnet', effort:'med',
-    title:'Ebook formatting polish',
-    desc:"General ebook formatting still needs work beyond the paragraph fragmentation fix. Specific issues to be identified during testing.",
-    prompt:''
+  num:"32", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"folio_install_dismissed flag never expires — install prompt permanently hidden after one dismissal",
+  desc:"Once the install banner is dismissed the folio_install_dismissed flag is set with no version key or expiry. Users who dismiss it accidentally can never get the install prompt back without manually clearing localStorage, and the flag persists across major app updates.",
+  prompt:"# Fix: folio_install_dismissed flag never expires in index.html\n\n## Context\nRead dismissInstall() in full. It sets localStorage.setItem('folio_install_dismissed','1').\nRead the beforeinstallprompt handler — it checks this flag with getItem().\n\n## Fix\nInstead of a bare '1' flag, store a versioned dismissal with a timestamp:\n\n  function dismissInstall(){\n    document.getElementById('installBanner').classList.remove('show');\n    const rec = { v: 1, ts: Date.now() };\n    localStorage.setItem('folio_install_dismissed', JSON.stringify(rec));\n  }\n\nUpdate the beforeinstallprompt check to:\n  const raw = localStorage.getItem('folio_install_dismissed');\n  if(raw) {\n    try {\n      const rec = JSON.parse(raw);\n      // Expire after 30 days\n      const EXPIRE_MS = 30 * 24 * 60 * 60 * 1000;\n      if(rec.v === 1 && Date.now() - rec.ts < EXPIRE_MS) return;\n      // Expired or wrong version — show banner again\n    } catch(e) {\n      // Legacy bare '1' flag — treat as permanent (don't show)\n      return;\n    }\n  }\n\nThe 30-day expiry means users who accidentally dismiss it will see the\nprompt again after a month. Keep the legacy bare-'1' handling so old\ndismissals are still respected.\n\n## Constraints\n- Do not change installPWA() logic.\n- The banner must not show on every page load if dismissed recently.\n- The 3-second delay before showing the banner must remain.\n\n## Verification\n- Dismiss banner: does not reappear immediately.\n- Simulate expired record (set ts to 0): banner reappears on next load.\n- Legacy bare-'1' flag: still suppresses banner.\n- Run syntax check."
   },
+
   {
-    num:'29', status:'backlog', type:'fix', model:'sonnet', effort:'med',
-    title:'No auto-link audiobook on mobile',
-    desc:"Should auto-link an audiobook if one is present in the selected folder on mobile. No matching logic exists yet.",
-    prompt:''
+  num:"33", status:"backlog", type:"perf", model:"sonnet", effort:"med",
+  title:"Cover + audio blob URLs leaked on PWA rescan",
+  desc:"When pwaScanBookFolder() rescans a book folder it creates new blob URLs for cover and audio files without revoking the previous ones. Repeated rescans accumulate orphaned blob URLs that hold file data in memory.",
+  prompt:"# Perf: Cover + audio blob URLs leaked on PWA rescan in index.html\n\n## Context\nRead pwaOpenBook() in full. When a book is opened in PWA mode, it calls\nURL.createObjectURL(audioFile) for audio and URL.createObjectURL(imgFile)\nfor cover. These are stored in b.audioUrl and b.coverUrl respectively.\nIf the book is closed and reopened (or the library is rescanned), new blob\nURLs are created without revoking the old ones.\n\n## Fix\n\n### Audio URL\nIn pwaOpenBook(), before creating a new audio blob URL:\n  if(b.audioUrl) URL.revokeObjectURL(b.audioUrl);\n  b.audioUrl = resolvedAudioUrl = URL.createObjectURL(audioFile);\n\nThis line is already present in the code — verify it is there. If missing, add it.\n\n### Cover URL\nIn pwaOpenBook(), before creating a new cover blob URL:\n  if(b.coverUrl) URL.revokeObjectURL(b.coverUrl);\n  b.coverUrl = URL.createObjectURL(imgFile);\n\nThis guard is missing — add it.\n\n### goLib() cleanup\nIn goLib(), when leaving the player screen, revoke the current book's blob URLs\nto free memory immediately rather than waiting for the next open:\n  if(curBookIdx >= 0) {\n    const b = library[curBookIdx];\n    if(b && b.audioUrl) { URL.revokeObjectURL(b.audioUrl); b.audioUrl = null; }\n    // Do NOT revoke coverUrl here — it is displayed on library cards\n  }\nAdd this block at the start of goLib(), before curBookIdx = -1.\n\n## Constraints\n- Do NOT revoke coverUrl in goLib() — library cards display cover images.\n- Only revoke URLs that were created via URL.createObjectURL in PWA mode.\n  Browser-mode audioUrl is also a blob URL — the existing revoke-before-assign\n  in pwaOpenBook already handles that path (audioUrl revoke is inside b.audioHandle block).\n- Do not change configurePlayerForMode — it already revokes _audio.src blob if needed.\n\n## Verification\n- Open a book, go back, reopen: no errors in console about revoked object URLs.\n- Run syntax check."
   },
+
   {
-    num:'30', status:'backlog', type:'feat', model:'sonnet', effort:'med',
-    title:'Faster audiobook relinking (remember filepath)',
-    desc:"Relinking an audiobook requires re-uploading. Should remember the filename/path so relinking is quicker \u2014 especially for PWA mode where file handles are available.",
-    prompt:''
+  num:"34", status:"backlog", type:"perf", model:"sonnet", effort:"med",
+  title:"Timing worker blob URL never revoked",
+  desc:"The timing worker is created via URL.createObjectURL() on a Blob but the blob URL is never revoked after the worker is started. Each book open leaks a blob URL that persists for the lifetime of the page.",
+  prompt:"# Perf: Timing worker blob URL never revoked in index.html\n\n## Context\nRead getTimingWorker() in full. It creates a Blob Worker via:\n  URL.createObjectURL(blob) → stored in _timingWorkerBlobUrl\n  new Worker(_timingWorkerBlobUrl) → stored in _timingWorker\nThe blob URL is created once and never revoked. Each time the worker is\nrecreated (new book open) a new blob URL leaks.\n\n## Fix\nIn getTimingWorker(), immediately after new Worker(_timingWorkerBlobUrl):\n  URL.revokeObjectURL(_timingWorkerBlobUrl);\n  // The Worker already has a reference to the blob internally; revoking the URL\n  // is safe at this point and frees the string reference from the JS heap.\n\nRevoke immediately after construction — the Worker doesn't need the URL to stay\nalive once it has been instantiated.\n\n## Constraints\n- Do not change _timingWorkerBlobUrl = null — it is used as a guard to check\n  whether the worker Blob has already been created.\n  After revoking, set _timingWorkerBlobUrl = 'revoked' (truthy sentinel) OR\n  keep it set to the URL string (harmless after revoke) — either is fine.\n  The important thing is the revoke call is placed right after new Worker().\n- Do not change worker message handling, watchdog, or error paths.\n- One revoke call only — do not revoke on every buildSentenceTimings call.\n\n## Verification\n- Open several books sequentially. No growing blob: URLs in DevTools → Memory.\n- Run syntax check."
   },
+
   {
-    num:'31', status:'backlog', type:'feat', model:'sonnet', effort:'med',
-    title:'Settings accessible from library screen',
-    desc:"Options menu is only accessible from inside the reader. Should be reachable from the library view without opening a book.",
-    prompt:''
+  num:"35", status:"backlog", type:"perf", model:"sonnet", effort:"low",
+  title:"pwaScanBookFolder has no early exit once all slots are filled",
+  desc:"pwaScanBookFolder() iterates every file in the folder even after audio, ebook, transcript, and cover slots are all populated. For folders with many non-book files this wastes time on unnecessary getFile() calls.",
+  prompt:"# Perf: pwaScanBookFolder has no early exit in index.html\n\n## Context\nRead pwaScanBookFolder(folderName, entry) in full. It iterates all files\nin a directory entry. After the loop, it checks if audioFile && ebookFile\nare filled. But the loop continues even after all four slots are filled.\n\n## Fix\nAdd an early-exit check at the bottom of the for-await loop body. After\neach file is assigned to a slot, check if all slots are filled:\n\n  // After the if/else chain that assigns to audioFile, ebookFile, etc.:\n  if(audioFile && ebookFile && transcriptFile && coverFile) break;\n\nThis exits the loop as soon as all four slots are populated, skipping\nany remaining files in the folder.\n\n## Where to place it\nAt the very end of the for-await loop body, after all the if/else\nassignment conditions. The break exits the for-await loop.\n\n## Constraints\n- The break must come after ALL assignment conditions in the loop body,\n  not inside any of them.\n- The logic that chooses preferred JSON/image files (prefer \"transcript\"\n  in name, prefer \"cover\" in name) happens in a second pass AFTER the loop\n  — this is NOT changed. The break only applies to the main loop.\n- Verify: if audioFile is filled on file 1 but ebookFile is not yet filled\n  on file 2, the loop must continue until ebookFile is also found or exhausted.\n\n## Verification\n- A folder with 50 files where the book files are first: scan time reduced.\n- A folder where book files are last: scan result unchanged (all files checked).\n- Run syntax check."
   },
+
   {
-    num:'32', status:'backlog', type:'fix', model:'sonnet', effort:'med',
-    title:'Text alignment resets on book reopen',
-    desc:"Text alignment set in Display options is lost when closing and reopening a book \u2014 loadEbook() wipes #eContent innerHTML which discards the inline style, and setAlign() is not called again after the ebook finishes loading.",
-    prompt:''
+  num:"36", status:"backlog", type:"perf", model:"sonnet", effort:"low",
+  title:"Ebook data string held in memory after DOM is built (PWA only)",
+  desc:"In PWA mode the raw ebook text string read from the file handle is kept in the library entry after loadEbook() has finished building the DOM. The string can be several MB for large books and is never needed again after rendering — it should be nulled out to reduce memory pressure.",
+  prompt:"# Perf: Ebook data string held in memory after DOM is built (PWA only) in index.html\n\n## Context\nRead pwaOpenBook(i) — it sets b.ebookData from the file handle.\nRead loadEbook(book, onDone) — it reads book.ebookData to build the DOM.\nAfter loadEbook() completes (onDone fires), ebookData is no longer needed\nbecause the DOM is already built and sentences[] is populated.\nIn PWA mode, ebookData can be several MB for large books.\n\n## Fix\nAt the end of the onDone callback in pwaOpenBook() — after curSent, updateHL,\nupdateProg, seekAudioToSentence, pulseResumeSent — add:\n  b.ebookData = null; // free memory — DOM is already built\n\nSimilarly, null it in the browser-mode openBook() onDone callback as well,\nsince in browser mode the data is in IndexedDB and can be reloaded from there\nif needed (though reloading the page is the only scenario where it would be\nneeded again):\n  b.ebookData = null; // DOM built, data no longer needed in memory\n\n## Constraints\n- Only null it INSIDE the onDone callback (after DOM is fully built).\n- Do not null it before onDone — loadEbook() reads ebookData throughout\n  the async build process.\n- biReassign() (ebook reassign) reloads the ebook from the new file and\n  calls loadEbook() again — this is fine because it reassigns b.ebookData\n  from the new FileReader result before calling loadEbook().\n- In PWA mode, the handle (b.ebookHandle) is still valid for future reloads.\n\n## Verification\n- Open a large EPUB. After onDone fires, b.ebookData is null in console.\n- Go back to library and reopen: pwaOpenBook re-reads from handle, works normally.\n- Run syntax check."
   },
+
   {
-    num:'33', status:'backlog', type:'fix', model:'sonnet', effort:'med',
-    title:'loadEbook has no cancellation \u2014 race on rapid book switching',
-    desc:"Opening a book then immediately opening a different one can leave two concurrent chunked DOM builds writing to #eContent \u2014 the old book\u2019s async chunks can land after the new book has started rendering, corrupting the reader.",
-    prompt:''
+  num:"37", status:"backlog", type:"perf", model:"sonnet", effort:"low",
+  title:"content-visibility intrinsic size hint may cause layout shifts",
+  desc:"ebook-para uses contain-intrinsic-size: auto 80px but paragraphs vary widely in height — incorrect cached estimates cause layout shifts as the user scrolls through books with short or long paragraphs.",
+  prompt:"# Perf: content-visibility intrinsic size hint layout shifts in index.html\n\n## Context\nRead the CSS for .ebook-para. It uses:\n  content-visibility: auto;\n  contain-intrinsic-size: auto 80px;\nThe 80px estimate is wrong for most paragraphs and causes layout jumps\nas the browser corrects its size estimate when paragraphs scroll into view.\n\n## Fix\nChange the contain-intrinsic-size to use the 'auto' keyword which caches\nthe last measured size instead of using a fixed estimate:\n\n  .ebook-para {\n    content-visibility: auto;\n    contain-intrinsic-size: auto 120px;  /* 120px is a better starting estimate */\n  }\n\nThe 'auto' prefix before the size value (already present) means the browser\nremembers the actual rendered size after first paint — subsequent scrolling\nback to a paragraph uses the cached size instead of the estimate. The 80px\nhint is only used on first render before measurement; 120px is closer to\nan average paragraph height at default font size.\n\nAdditionally, check if contain-intrinsic-block-size would be more\nappropriate (only constrains block/vertical axis) — use it if supported:\n  contain-intrinsic-block-size: auto 120px;\n\n## Constraints\n- CSS-only change. Do not remove content-visibility: auto — it is a\n  significant performance win for long books.\n- Do not change any other .ebook-para properties (margins, font, etc).\n- If contain-intrinsic-block-size is used, keep the auto prefix.\n\n## Verification\n- Open a long book. Scroll quickly through it. No visible layout jumps.\n- Run syntax check (JS unchanged)."
   },
+
   {
-    num:'34', status:'backlog', type:'feat', model:'sonnet', effort:'med',
-    title:'Empty library onboarding \u2014 no guidance for new users',
-    desc:"A first-time user sees a blank grid and a + card with no explanation of what Folio does, what files it accepts, or how to get started \u2014 critical to fix before Play Store submission.",
-    prompt:''
+  num:"38", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"lastAdvanceTime is declared but never used — dead state variable",
+  desc:"lastAdvanceTime is initialised in the global state block and documented in folio-context.md as ‘unused legacy?’ but is never read or written anywhere — should be removed to reduce state surface and confusion.",
+  prompt:"# Cleanup: Remove lastAdvanceTime dead state variable in index.html\n\n## Context\nRead folio-context.md global state variables table. lastAdvanceTime is\ndocumented as 'unused legacy?'. Verify by searching the full JS for any\nread of lastAdvanceTime (assignment is at line ~885).\n\n## Task\n1. Search index.html for every occurrence of lastAdvanceTime.\n2. If it is only declared (let lastAdvanceTime = 0) and never read,\n   remove the declaration.\n3. If it is written anywhere (e.g. lastAdvanceTime = Date.now()), remove\n   those write statements too — they are dead writes.\n4. Do not remove it if it is actually read somewhere that was missed.\n\n## Constraints\n- Remove the declaration AND all assignments, nothing else.\n- Do not change any other state variables.\n- Update folio-context.md to remove the lastAdvanceTime entry from the\n  scroll & timing state table — but only do this if folio-context.md is\n  in the working directory. If it's read-only, skip that step.\n\n## Verification\n- grep for lastAdvanceTime in index.html: zero matches after change.\n- Run syntax check."
   },
+
   {
-    num:'35', status:'backlog', type:'feat', model:'sonnet', effort:'med',
-    title:'Library sort order is fixed \u2014 no user control',
-    desc:"Books are sorted alphabetically in PWA mode and by insertion order in browser mode with no way to reorder \u2014 users with large libraries have no way to surface recently-read or prioritised books.",
-    prompt:''
+  num:"39", status:"backlog", type:"feat", model:"sonnet", effort:"low",
+  title:"Chapter skip buttons — jump to next/previous chapter",
+  desc:"Navigation jumps either one sentence (nudge) or opens the full TOC sidebar — there is no quick way to skip to the next or previous chapter without tapping through the TOC.",
+  prompt:"# Feature: Chapter skip buttons in index.html\n\n## Context\nRead folio-context.md TOC section. tocEntries[] holds {text, level, sentIdx}\nfor each heading. nudge(n) advances one sentence. The top bar has icon buttons\n(#optBtn, #tocBtn, #txBtn). Read the .top-bar HTML in full.\n\n## Implementation\n\n### JS\nAdd a function that finds the next/previous chapter boundary:\n  function skipChapter(dir) {\n    // dir: 1 = next chapter, -1 = previous chapter\n    if(!tocEntries.length) { nudge(dir); return; }\n    let target = -1;\n    if(dir > 0) {\n      // Next: first tocEntry with sentIdx > curSent\n      for(let i = 0; i < tocEntries.length; i++) {\n        if(tocEntries[i].sentIdx > curSent) { target = tocEntries[i].sentIdx; break; }\n      }\n      if(target < 0) target = sentences.length - 1; // at last chapter, go to end\n    } else {\n      // Previous: last tocEntry with sentIdx < curSent - 1\n      // (subtract 1 so pressing prev at sentence 1 of chapter 3 goes to chapter 2)\n      for(let i = tocEntries.length - 1; i >= 0; i--) {\n        if(tocEntries[i].sentIdx < curSent - 1) { target = tocEntries[i].sentIdx; break; }\n      }\n      if(target < 0) target = 0; // already at/before first chapter\n    }\n    curSent = target; curWord = 0;\n    updateHL(); updateProg(); saveBookProgressDebounced();\n    if(autoScroll) scrollToSent(curSent, true);\n    if(ttsMode && mediaState === 'playing') { ttsStop(); ttsPlay(); }\n    else if(ttsMode && mediaState === 'paused') { ttsStop(); }\n    else if(!ttsMode) seekAudioToSentence();\n  }\n\n### HTML\nIn the .top-bar (or the seek-strip area), add two small chapter-skip buttons.\nA good location is near the nudge/skip controls. Add to the seek strip row:\n  <button class=\"ic-btn\" title=\"Previous chapter\" onclick=\"skipChapter(-1)\">⏮</button>\n  <button class=\"ic-btn\" title=\"Next chapter\" onclick=\"skipChapter(1)\">⏭</button>\n\nPlace them flanking the seek bar or inside the speed-strip area where space allows.\n\n## Constraints\n- skipChapter() must work in both audio mode and TTS mode.\n- If tocEntries is empty, fall back to nudge() for graceful degradation.\n- Do not modify nudge() or advanceSent().\n- seekAudioToSentence() is called in audio mode to seek the audio to the new sentence.\n\n## Verification\n- Audio mode: tap next chapter → audio seeks and highlight jumps to chapter start.\n- TTS mode playing: tap next chapter → TTS restarts from chapter start.\n- No TOC (book without headings): buttons still work via nudge() fallback.\n- Run syntax check."
   },
+
   {
-    num:'36', status:'backlog', type:'feat', model:'sonnet', effort:'med',
-    title:'Export / backup reading progress',
-    desc:"Reading positions are stored only in localStorage and IndexedDB \u2014 clearing browser data or moving to a new device permanently loses all progress with no recovery path.",
-    prompt:''
+  num:"40", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"Shift+Arrow skip silent no-op in TTS mode",
+  desc:"Keyboard shortcuts Shift+← and Shift+→ call skip(±15) which immediately returns in TTS mode with no feedback — user gets no response and no indication of why, making the shortcut feel broken.",
+  prompt:"# Fix: Shift+Arrow skip is silent no-op in TTS mode in index.html\n\n## Context\nRead the keydown handler in full (the keyboard shortcuts section).\nskip(n) is called by Shift+ArrowRight/Left. Read skip() in full to see\nwhat it does in TTS mode.\n\n## Root cause\nskip(n) calls _audio.currentTime += n, which does nothing in TTS mode\n(no audio element). It returns silently with no feedback.\n\n## Fix\nIn the keyboard shortcut handler, change the Shift+Arrow case:\n\n  case 'ArrowRight':\n    e.preventDefault();\n    if(e.shiftKey) {\n      if(ttsMode) skipChapter(1);  // or nudge(5) as a sentence skip fallback\n      else skip(15);\n    } else {\n      nudge(1);\n    }\n    break;\n\n  case 'ArrowLeft':\n    e.preventDefault();\n    if(e.shiftKey) {\n      if(ttsMode) skipChapter(-1); // or nudge(-5)\n      else skip(-15);\n    } else {\n      nudge(-1);\n    }\n    break;\n\nIf skipChapter() is not yet implemented (pending prompt #28), use nudge(10)\nand nudge(-10) as the TTS fallback instead, and add a toast:\n  showToast('Skipped 10 sentences');\n\n## Constraints\n- Do not change skip() itself — it is correct for audio mode.\n- In TTS mode, Shift+Arrow must do something visible — either skipChapter\n  or a multi-sentence nudge with a toast.\n- Do not change the non-shift Arrow behaviour (nudge ±1).\n\n## Verification\n- Audio mode, Shift+→: skips 15 seconds as before.\n- TTS mode, Shift+→: skips to next chapter (or 10 sentences) with feedback.\n- TTS mode, Shift+←: goes to previous chapter (or back 10 sentences).\n- Run syntax check."
   },
+
   {
-    num:'37', status:'backlog', type:'fix', model:'sonnet', effort:'med',
-    title:'Sentence splitter breaks on common abbreviations and quoted dialogue',
-    desc:"splitSentences() treats i.e., e.g., Fig., p. (page), and No. as sentence boundaries, corrupting highlighting and transcript sync for non-fiction. Quoted dialogue is also split incorrectly: \"He said \\\"Stop!\\\" and ran away\" becomes two fragments because the regex fires on the closing quote.",
-    prompt:''
+  num:"41", status:"backlog", type:"feat", model:"sonnet", effort:"low",
+  title:"No currently-playing indicator on library cards",
+  desc:"Returning to the library while audio is playing shows no visual connection between the active book card and the ongoing playback — users have no way to identify which book is playing at a glance.",
+  prompt:"# Feature: Currently-playing indicator on library cards in index.html\n\n## Context\nRead renderLib() in full. Read goLib() — it sets curBookIdx = -1 when\nleaving. When the user returns to the library while audio is playing,\ncurBookIdx is still set (the user may go back without stopping).\nRead the .book-card CSS.\n\n## Implementation\n\n### JS change in renderLib()\nIn the card-building loop, after card.className = 'book-card', add:\n  if(i === curBookIdx && mediaState === 'playing') {\n    card.classList.add('playing-card');\n  }\n\nAlso add a small \"Now Playing\" badge to the card HTML inside card.innerHTML,\nrendered only if i === curBookIdx && mediaState === 'playing':\n  ${i === curBookIdx && mediaState === 'playing'\n    ? '<div class=\"now-playing-badge\">▶ Now Playing</div>' : ''}\n\nPlace the badge inside .book-info, below .book-meta.\n\n### CSS\n  .now-playing-badge {\n    font-size: 10px; font-weight: 700; color: var(--accent);\n    letter-spacing: .04em; margin-top: 4px;\n    text-transform: uppercase;\n  }\n  .playing-card {\n    border-color: var(--accent);\n  }\n  .playing-card .book-cover {\n    box-shadow: 0 0 0 2px var(--accent);\n  }\n\n## Constraints\n- renderLib() is called every time the library is rendered. The check\n  curBookIdx >= 0 && mediaState === 'playing' is safe (both are globals).\n- Do not change goLib() — curBookIdx is reset there when navigating away\n  from the player, which is correct (user has stopped the session).\n- No timer or polling needed — renderLib() is called when navigating\n  to the library via goLib(), which reads current state at that moment.\n\n## Verification\n- Play a book. Press back. Library shows the playing card highlighted\n  with \"▶ Now Playing\" badge and accent border.\n- Pause, press back: no indicator (mediaState !== 'playing').\n- Stop playback from library: re-render removes the indicator.\n- Run syntax check."
   },
+
   {
-    num:'38', status:'backlog', type:'feat', model:'sonnet', effort:'med',
-    title:'Sleep timer \u2014 no custom duration and no way to extend a running timer',
-    desc:"The sleep timer cycles through fixed 15/30/45/60 min presets only. There is no way to set an arbitrary duration or extend a timer that is already running without cycling all the way back around.",
-    prompt:''
+  num:"42", status:"backlog", type:"fix", model:"sonnet", effort:"high",
+  title:"Can't assign file types individually (folder-only)",
+  desc:"File type assignment only works when uploading an entire folder. Individual file picker path does not exist. Needs a new file assignment flow in the book info panel.",
+  prompt:"# Feature: Manual library rescan button in PWA mode in index.html\n\n## Context\nRead folio-context.md: PWA FILE SYSTEM section. pwaScanAndRender() does\nthe full scan. The library screen HTML has a .lib-header div. IS_PWA and\nCAN_FS are constants. pwaRootHandle is the currently active folder handle.\n\n## Task\nAdd a visible \"Rescan\" button to the library header in PWA mode.\n\n### HTML\nFind the .lib-header div in the library screen. Inside it, add a rescan\nbutton that is only visible in PWA mode. Since we can't use server-side\nrendering, hide it by default and show it with JS after init:\n  <button id=\"pwaRescanBtn\" class=\"ic-btn\" style=\"display:none\"\n    title=\"Rescan library\" onclick=\"pwaRescan()\">🔄</button>\n\nPlace it alongside the existing lib-header icon buttons (settings / info).\n\n### JS\nAdd:\n  function pwaRescan() {\n    if(!IS_PWA || !pwaRootHandle) return;\n    showToast('Scanning library…', '', 1500);\n    pwaScanAndRender();\n  }\n\nIn init(), after routing is resolved and if IS_PWA && CAN_FS:\n  const rescanBtn = document.getElementById('pwaRescanBtn');\n  if(rescanBtn && IS_PWA && CAN_FS) rescanBtn.style.display = '';\n\n### Behaviour rules\n- Button is only ever visible in PWA mode (IS_PWA && CAN_FS).\n- Browser mode: button remains display:none permanently.\n- If pwaRootHandle is null (first-run, no folder yet): pwaRescan() is a\n  no-op (the guard handles this).\n- pwaScanAndRender() already shows the scanning indicator — no extra UI needed.\n- Do not change pwaScanAndRender() itself.\n\n## Verification\n- PWA mode, library screen: rescan button visible in header.\n- Tap rescan: library re-scans and re-renders from disk.\n- Browser mode: button not visible.\n- Run syntax check."
   },
+
   {
-    num:'39', status:'backlog', type:'feat', model:'sonnet', effort:'med',
-    title:'Multi-select books in library for bulk delete',
-    desc:"There is no way to select multiple books at once in the library \u2014 deleting several books requires opening each one individually and removing it. Should support a selection mode (long-press or edit button) with a bulk delete action.",
-    prompt:''
+  num:"43", status:"backlog", type:"feat", model:"sonnet", effort:"med",
+  title:"Settings accessible from library screen",
+  desc:"Options menu is only accessible from inside the reader. Should be reachable from the library view without opening a book.",
+  prompt:"# Feature: Settings accessible from library screen in index.html\n\n## Context\nRead toggleOpts() and the #optPanel HTML. The options panel is currently\nonly opened from inside the player screen via the opt button (#optBtn).\nRead the library screen HTML (libGrid, lib-header).\n\n## Implementation\n\n### Approach: expose a subset of settings from library\nRather than showing the full options panel (which has player-specific controls\nlike Sync offset, Resync, Stop), add a simple library-level settings button\nthat opens the options panel's Display tab only.\n\n### HTML changes\n1. In the library header (.lib-header), add a settings icon button:\n   <button id=\"libSettingsBtn\" class=\"ic-btn\" title=\"Display settings\"\n     onclick=\"toggleLibSettings()\">⚙️</button>\n\n2. The #optPanel itself is in the player screen, but can be temporarily\n   re-parented or cloned. A simpler approach: add a small CSS-positioned\n   settings popover scoped to the library screen that shows font/theme/size\n   controls only (duplicating just those controls).\n\n   PREFERRED simpler approach: move #optPanel out of #player and into\n   <body> at the top level, then show/hide it independently of which screen\n   is active. Filter which tabs are visible based on current screen.\n\n### JS changes\n  function toggleLibSettings() {\n    // Show optPanel anchored to library header\n    const panel = document.getElementById('optPanel');\n    // Hide Playback and Advanced tabs when on library screen\n    document.getElementById('opTabBtn-playback')?.style.setProperty('display','none');\n    document.getElementById('opTabBtn-advanced')?.style.setProperty('display','none');\n    // Activate Display tab\n    switchOptTab('display', document.getElementById('opTabBtn-display'));\n    toggleOpts();\n  }\n\nRestore all tabs when reopening from inside the player.\n\n## Constraints\n- Do not duplicate settings HTML — reuse the existing #optPanel.\n- Moving #optPanel out of #player may require CSS z-index adjustments.\n- If moving is complex: create a minimal second display-only panel for\n  the library screen with only font/theme/size controls. Keep the full\n  panel in the player.\n- Do not break the existing player settings flow.\n\n## Verification\n- Library screen: settings button visible, opens Display options.\n- Player screen: all three tabs available as before.\n- Theme/font/size changes from library are reflected immediately.\n- Run syntax check."
   },
+
   {
-    num:'40', status:'backlog', type:'perf', model:'sonnet', effort:'med',
-    title:'Timing worker blob URL never revoked',
-    desc:"The timing worker is created via URL.createObjectURL() on a Blob but the blob URL is never revoked after the worker is started. Each book open leaks a blob URL that persists for the lifetime of the page.",
-    prompt:''
+  num:"44", status:"backlog", type:"feat", model:"sonnet", effort:"med",
+  title:"Faster audiobook relinking (remember filepath)",
+  desc:"Relinking an audiobook requires re-uploading. Should remember the filename/path so relinking is quicker — especially for PWA mode where file handles are available.",
+  prompt:"# Feature: Faster audiobook relinking (remember filepath) in index.html\n\n## Context\nRead showRelink() and rlLoad() in full. When a browser-mode blob URL expires\n(page reload), the user must re-select the audio file from scratch. The filename\n(b.audioName) is already saved. In PWA mode, file handles are persistent and\nthis issue doesn't apply.\n\n## Fix for browser mode\nStore the audio file itself in a module-level variable when first loaded,\nso relinking only requires confirmation rather than re-picking the file.\n\nSince browser storage can't hold File objects across sessions, the best\napproach is: remember the last-used File objects in a module-level Map\nduring the current session:\n  const _sessionFiles = new Map(); // bookId → { audio: File | null }\n\nIn addBook() (after reading the audio File from upData.audio), store it:\n  _sessionFiles.set(book.id, { audio: upData.audio });\n\nIn rlLoad(), after successfully linking the audio:\n  _sessionFiles.set(b.id, { audio: f });\n\nIn showRelink(), check if a session File is cached for this book:\n  const cached = _sessionFiles.get(library[i]?.id);\n  if(cached?.audio) {\n    // Show a \"Reuse [filename]\" button in addition to the file picker\n    // so the user can re-link with one tap\n  }\n\nAdd a \"Reuse [filename]\" button to the relink overlay HTML (conditionally\nshown from showRelink() when a cached file exists):\n  <button id=\"relinkReuseBtn\" style=\"display:none\"\n    onclick=\"rlReuseSession()\">Reuse [filename]</button>\n\n  function rlReuseSession() {\n    const cached = _sessionFiles.get(library[curBookIdx]?.id);\n    if(cached?.audio) rlLoad(cached.audio);\n  }\n\n## Constraints\n- Session cache is memory-only — not persisted to localStorage/IDB.\n- Works within a single page session only.\n- In PWA mode, showRelink() is never called (handles are persistent) — no change needed.\n- Do not change the file picker path — it must still work when no cached file exists.\n\n## Verification\n- Add a book with audio. Reload page (blob URL expires). Tap book → relink overlay.\n  If session is still alive: \"Reuse\" button shown, one tap re-links.\n- Fresh session: no \"Reuse\" button, file picker works normally.\n- Run syntax check."
   },
+
   {
-    num:'41', status:'backlog', type:'perf', model:'sonnet', effort:'med',
-    title:'Cover + audio blob URLs leaked on PWA rescan',
-    desc:"When pwaScanBookFolder() rescans a book folder it creates new blob URLs for cover and audio files without revoking the previous ones. Repeated rescans accumulate orphaned blob URLs that hold file data in memory.",
-    prompt:''
+  num:"45", status:"backlog", type:"feat", model:"sonnet", effort:"low",
+  title:"High-contrast themes",
+  desc:"Add high-contrast and white-on-black themes to the theme picker. Currently only Parchment, Dark, and Night exist.",
+  prompt:"# Feature: High-contrast themes in index.html\n\n## Context\nRead the CSS Themes section (:root, .theme-light, .theme-night). The theme\nsystem uses CSS custom property overrides. Read setTheme() and the theme\npill buttons in the Display options tab in HTML.\n\n## Implementation\n\n### CSS\nAdd two new theme classes after .theme-night:\n\n  .theme-hc {\n    --bg: #000000;\n    --surface: #0a0a0a;\n    --surface2: #111111;\n    --border: #ffffff;\n    --text: #ffffff;\n    --text2: #cccccc;\n    --text3: #888888;\n    --accent: #ffff00;\n    --sent-active-bg: #333300;\n    --word-active-color: #ffff00;\n  }\n\n  .theme-hclight {\n    --bg: #ffffff;\n    --surface: #f8f8f8;\n    --surface2: #eeeeee;\n    --border: #000000;\n    --text: #000000;\n    --text2: #333333;\n    --text3: #666666;\n    --accent: #0000cc;\n    --sent-active-bg: #cce5ff;\n    --word-active-color: #0000cc;\n  }\n\nCheck folio-context.md for the --sent-active-bg and --word-active-color\nvariable names — use the exact names already in the :root block.\n\n### HTML\nIn the Display tab theme pills section, add after the Night pill:\n  <button class=\"pill\" id=\"themePill-hc\"\n    onclick=\"setTheme('hc',this)\">Hi-C Dark</button>\n  <button class=\"pill\" id=\"themePill-hclight\"\n    onclick=\"setTheme('hclight',this)\">Hi-C Light</button>\n\n### JS\nsetTheme() and loadDisplayPrefs() already handle theme generically —\nno JS changes needed.\n\n## Constraints\n- Add CSS variables only for values that differ from the defaults.\n- Do not change setTheme() or updateThemeColor().\n- Verify that the .theme-hc class is applied to <body> (setTheme sets\n  document.body.className = 'theme-hc') and that all CSS rules reference\n  var(--text), var(--bg) etc. correctly.\n- Do not break existing Dark/Light/Night themes.\n\n## Verification\n- Select Hi-C Dark: background black, text white, accent yellow.\n- Select Hi-C Light: background white, text black.\n- Reload page: theme persists (saved in folio_display_prefs_v1).\n- Run syntax check."
   },
+
   {
-    num:'42', status:'backlog', type:'fix', model:'sonnet', effort:'med',
-    title:'Toast container obscured by Android gesture navigation bar',
-    desc:"The toast notification container sits at a fixed bottom position that overlaps with the Android gesture navigation bar on phones without a hardware nav bar. Toasts are partially or fully hidden behind the system UI.",
-    prompt:''
+  num:"46", status:"backlog", type:"feat", model:"sonnet", effort:"low",
+  title:"Add OpenDyslexic font option",
+  desc:"Adds OpenDyslexic as a selectable body font in Display options. Loads from CDN on demand only — no impact on initial page load.",
+  prompt:"# Feature: Add OpenDyslexic font option in index.html\n\n## Goal\nAdd OpenDyslexic as a selectable body font alongside Lora, Georgia,\nSans, Mono. Load from CDN only when selected.\n\n## 1. Add font pill to HTML\nIn the Font pills section (Display tab, op-sec containing fontPill-lora),\nadd after the Mono pill:\n\n  <button class=\"pill\" id=\"fontPill-dyslexic\"\n    onclick=\"setFont('OpenDyslexic,sans-serif','dyslexic',this)\">\n    Dyslexic\n  </button>\n\n## 2. Load font on demand in setFont()\nFind setFont(f, key, btn) and add CDN injection when key is 'dyslexic',\nbefore the existing logic:\n\n  if(key === 'dyslexic' && !document.getElementById('font-opendyslexic')){\n    const link = document.createElement('link');\n    link.id = 'font-opendyslexic';\n    link.rel = 'stylesheet';\n    link.href = 'https://fonts.cdnfonts.com/css/open-dyslexic';\n    document.head.appendChild(link);\n  }\n\nOnly add these lines at the top of setFont() — do not change anything\nelse in that function.\n\n## 3. No changes needed to saveDisplayPrefs() or loadDisplayPrefs()\nfontKey is already saved generically from the active fontPill id.\n'dyslexic' will round-trip correctly. loadDisplayPrefs() restores via\nsetFont() which will re-inject the CDN link if needed.\n\n## Notes\n- CDN: https://fonts.cdnfonts.com/css/open-dyslexic (free, no key)\n- Guard with getElementById to avoid duplicate link injection\n- Demand-load only — do not preload\n\nRun node --check index.html when done."
   },
+
   {
-    num:'43', status:'backlog', type:'fix', model:'sonnet', effort:'med',
-    title:'No freeze/resume page lifecycle handling \u2014 TTS breaks on Android Chrome',
-    desc:"Android Chrome can freeze background tabs via the Page Lifecycle API. There is no freeze/resume event handling, so speechSynthesis state becomes stale when the tab is frozen and resumed \u2014 TTS stops working and the play button becomes unresponsive until a full page reload.",
-    prompt:''
+  num:"47", status:"backlog", type:"feat", model:"sonnet", effort:"med",
+  title:"Library sort order is fixed — no user control",
+  desc:"Books are sorted alphabetically in PWA mode and by insertion order in browser mode with no way to reorder — users with large libraries have no way to surface recently-read or prioritised books.",
+  prompt:"# Feature: Library sort order control in index.html\n\n## Context\nRead renderLib() and pwaScanAndRender(). In PWA mode, books are sorted\nalphabetically by title after scan. In browser mode, books are in insertion\norder (library[] array order). There is no UI to change sort order.\n\n## Implementation\n\n### State\nAdd a module-level variable:\n  let _libSortOrder = 'alpha'; // 'alpha' | 'recent' | 'progress'\nPersist to localStorage: key 'folio_lib_sort_v1'. Load in init().\n\n### Sort function\n  function _sortedLibrary() {\n    const idx = library.map((b, i) => i); // indices to sort\n    if(_libSortOrder === 'alpha') {\n      idx.sort((a, b) => library[a].title.localeCompare(library[b].title));\n    } else if(_libSortOrder === 'recent') {\n      idx.sort((a, b) => (library[b].lastOpened || 0) - (library[a].lastOpened || 0));\n    } else if(_libSortOrder === 'progress') {\n      const pct = i => library[i].totalSents > 1\n        ? (library[i].curSent || 0) / (library[i].totalSents - 1) : 0;\n      idx.sort((a, b) => pct(b) - pct(a));\n    }\n    return idx;\n  }\n\nUpdate renderLib() to use _sortedLibrary() to order cards:\n  const order = _sortedLibrary();\n  order.forEach(i => { const b = library[i]; ... });\n\n### Track last-opened\nIn openBook() and pwaOpenBook(), set:\n  library[i].lastOpened = Date.now();\n\n### UI\nAdd a small sort toggle button to the lib-header:\n  <button id=\"libSortBtn\" class=\"ic-btn\" title=\"Sort order\" onclick=\"cycleLibSort()\">⇅</button>\n\n  function cycleLibSort() {\n    const orders = ['alpha', 'recent', 'progress'];\n    _libSortOrder = orders[(orders.indexOf(_libSortOrder) + 1) % orders.length];\n    localStorage.setItem('folio_lib_sort_v1', _libSortOrder);\n    const labels = {alpha:'A–Z', recent:'Recent', progress:'Progress'};\n    showToast('Sort: ' + labels[_libSortOrder]);\n    renderLib();\n  }\n\n## Constraints\n- In PWA mode, pwaScanAndRender() currently calls .sort() — remove that\n  sort() call and let renderLib() handle ordering via _sortedLibrary().\n- Browser mode: library[] order is preserved (renderLib handles sort).\n- lastOpened is not persisted to IDB blobs — it's metadata, so save via\n  saveLibrary() (browser mode) or savePwaProgress() (PWA mode).\n\n## Verification\n- Cycle through A–Z, Recent, Progress: cards reorder.\n- Sort choice persists across reload.\n- Run syntax check."
   },
+
   {
-    num:'44', status:'backlog', type:'fix', model:'sonnet', effort:'high',
-    title:'Can\'t assign file types individually (folder-only)',
-    desc:"File type assignment only works when uploading an entire folder. Individual file picker path does not exist. Needs a new file assignment flow in the book info panel.",
-    prompt:''
+  num:"48", status:"backlog", type:"feat", model:"sonnet", effort:"med",
+  title:"Export / backup reading progress",
+  desc:"Reading positions are stored only in localStorage and IndexedDB — clearing browser data or moving to a new device permanently loses all progress with no recovery path.",
+  prompt:"# Feature: Export / backup reading progress in index.html\n\n## Context\nRead saveLibrary(), getPwaProgress(), saveBookProgress(). Progress is stored\nin localStorage (folio_library_v2 for browser mode, folio_pwa_progress_v1\nfor PWA mode). There is no way to export this data.\n\n## Implementation\n\n### Export\nAdd a \"Export Progress\" button to the library screen header or to the\nAdvanced tab of the options panel:\n  <button onclick=\"exportProgress()\">Export progress</button>\n\n  function exportProgress() {\n    const data = {\n      version: 1,\n      exported: new Date().toISOString(),\n      mode: IS_PWA ? 'pwa' : 'browser',\n      progress: IS_PWA\n        ? getPwaProgress()\n        : library.map(b => ({\n            id: b.id, title: b.title,\n            curSent: b.curSent, curWord: b.curWord,\n            audioTime: b.audioTime, totalSents: b.totalSents,\n            syncOffset: b.syncOffset || 0\n          }))\n    };\n    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});\n    const url = URL.createObjectURL(blob);\n    const a = document.createElement('a');\n    a.href = url; a.download = 'folio-progress-' + Date.now() + '.json';\n    a.click();\n    URL.revokeObjectURL(url);\n    showToast('Progress exported', 'success');\n  }\n\n### Import (basic)\nAdd a companion import that reads the JSON and merges progress:\n  function importProgress(file) {\n    const reader = new FileReader();\n    reader.onload = e => {\n      try {\n        const data = JSON.parse(e.target.result);\n        if(data.version !== 1) { showToast('Unrecognised backup format', 'error'); return; }\n        if(IS_PWA) {\n          const all = getPwaProgress();\n          Object.assign(all, data.progress);\n          localStorage.setItem(PWA_PROG_KEY, JSON.stringify(all));\n        } else {\n          // Merge into library by id\n          data.progress.forEach(p => {\n            const b = library.find(b => b.id === p.id);\n            if(b) Object.assign(b, {curSent:p.curSent, curWord:p.curWord,\n              audioTime:p.audioTime, syncOffset:p.syncOffset});\n          });\n          saveLibrary();\n        }\n        showToast('Progress restored', 'success');\n        renderLib();\n      } catch(e) { showToast('Import failed: ' + e.message, 'error'); }\n    };\n    reader.readAsText(file);\n  }\n\nAdd a hidden file input and a trigger button near the export button.\n\n## Constraints\n- Do NOT export ebook data, audio data, or cover images — progress only.\n- The export file must be human-readable JSON.\n- Import is a merge (not replace) — existing books not in the backup are unaffected.\n- Do not add any UI for server sync — local file only.\n\n## Verification\n- Click export: JSON file downloaded with current positions.\n- Import the file: positions restored.\n- Run syntax check."
   },
+
   {
-    num:'45', status:'backlog', type:'feat', model:'sonnet', effort:'high',
-    title:'Manage files from library screen',
-    desc:"No way to edit or remove book files from the library view \u2014 user must open the book first. Should support edit/remove from the library card or a long-press menu.",
-    prompt:''
+  num:"49", status:"backlog", type:"feat", model:"sonnet", effort:"med",
+  title:"Sleep timer — no custom duration and no way to extend a running timer",
+  desc:"The sleep timer cycles through fixed 15/30/45/60 min presets only. There is no way to set an arbitrary duration or extend a timer that is already running without cycling all the way back around.",
+  prompt:"# Feature: Sleep timer custom duration and extend in index.html\n\n## Context\nRead cycleSleepTimer(), clearSleepTimer(), _updateSleepBadge() in full.\nSLEEP_OPTIONS array holds fixed presets. The timer badge shows remaining time.\nThere is no way to set a custom duration or extend the running timer.\n\n## Fix — two improvements:\n\n### 1. Extend button when timer is running\nWhen the sleep badge is visible (timer running), allow tapping it to add 15 minutes:\n  cycleSleepTimer() currently cycles through presets. Change its behaviour:\n  - If NO timer is running: cycle to next preset and start it (existing behaviour).\n  - If a timer IS RUNNING: add 15 minutes to the remaining time and show toast\n    \"Sleep timer extended +15 min\".\n\n  function cycleSleepTimer() {\n    if(_sleepTimerId) {\n      // Extend by 15 minutes\n      const remaining = Math.max(0, _sleepEndTime - Date.now());\n      const extended = remaining + 15 * 60 * 1000;\n      clearSleepTimer();\n      _startSleepTimer(extended);\n      showToast('Sleep timer +15 min', '', 2000);\n      return;\n    }\n    // ... existing cycle logic ...\n  }\n\nExtract the timer-start logic into a helper:\n  function _startSleepTimer(ms) {\n    _sleepEndTime = Date.now() + ms;\n    _sleepTimerId = setTimeout(() => { mediaPause(); clearSleepTimer(); }, ms);\n    _sleepTickId = setInterval(_updateSleepBadge, 1000);\n    _updateSleepBadge();\n  }\n\n### 2. Add a \"30 min\" and \"90 min\" preset to SLEEP_OPTIONS\n  const SLEEP_OPTIONS = [0, 15, 30, 45, 60, 90]; // minutes; 0 = off\n\nThis adds a 90-minute option for long listening sessions.\n\n## Constraints\n- _sleepTimerId, _sleepEndTime, _sleepTickId variable names must stay the same.\n- clearSleepTimer() must still work (reset all three).\n- The sleep badge UI must update correctly for extended timers.\n- mediaPause() is called on timer expiry — this must remain.\n\n## Verification\n- Tap sleep badge with no timer: cycles through presets.\n- Start a 15-min timer. Tap badge: +15 min, now shows 30 min.\n- Timer reaches zero: playback pauses.\n- Run syntax check."
   },
+
   {
-    num:'46', status:'backlog', type:'feat', model:'sonnet', effort:'high',
-    title:'Search within book',
-    desc:"There is no way to find a word or phrase in the current ebook text \u2014 a significant gap for non-fiction and reference books where users need to locate specific passages.",
-    prompt:''
+  num:"50", status:"backlog", type:"feat", model:"sonnet", effort:"med",
+  title:"Multi-select books in library for bulk delete",
+  desc:"There is no way to select multiple books at once in the library — deleting several books requires opening each one individually and removing it. Should support a selection mode (long-press or edit button) with a bulk delete action.",
+  prompt:"# Feature: Multi-select books for bulk delete in index.html\n\n## Context\nRead renderLib() and deleteBook() in full. Each book card has an individual\ndelete action with inline confirmation. There is no batch selection mode.\n\n## Implementation\n\n### State\n  let _libSelectMode = false;\n  const _libSelected = new Set(); // indices of selected books\n\n### Toggle selection mode\nAdd to the library header:\n  <button id=\"libSelectBtn\" class=\"ic-btn\" title=\"Select books\"\n    onclick=\"toggleLibSelectMode()\">☑</button>\n\n  function toggleLibSelectMode() {\n    _libSelectMode = !_libSelectMode;\n    _libSelected.clear();\n    document.getElementById('libSelectBtn').classList.toggle('active', _libSelectMode);\n    document.getElementById('libBulkDeleteBtn').style.display = _libSelectMode ? '' : 'none';\n    renderLib();\n  }\n\n### Select cards\nIn renderLib(), if _libSelectMode: add a checkbox overlay to each card:\n  if(_libSelectMode) {\n    const cb = document.createElement('div');\n    cb.className = 'lib-checkbox' + (_libSelected.has(i) ? ' checked' : '');\n    cb.onclick = (e) => { e.stopPropagation(); toggleLibSelect(i); };\n    card.appendChild(cb);\n    if(_libSelected.has(i)) card.classList.add('lib-selected');\n  }\n\nAlso, in selection mode, card click selects rather than opens:\n  card.addEventListener('click', (e) => {\n    if(e.target.closest('.book-card-actions')) return;\n    if(_libSelectMode) { toggleLibSelect(i); return; }\n    openBook(i);\n  });\n\n  function toggleLibSelect(i) {\n    if(_libSelected.has(i)) _libSelected.delete(i); else _libSelected.add(i);\n    renderLib();\n  }\n\n### Bulk delete button\nAdd a \"Delete selected\" button near the lib header (hidden by default):\n  <button id=\"libBulkDeleteBtn\" class=\"btn btn-danger\" style=\"display:none\"\n    onclick=\"bulkDeleteSelected()\">Delete selected</button>\n\n  function bulkDeleteSelected() {\n    if(_libSelected.size === 0) return;\n    const indices = [..._libSelected].sort((a,b)=>b-a); // descending\n    indices.forEach(i => {\n      const b = library[i];\n      if(b.audioUrl) URL.revokeObjectURL(b.audioUrl);\n      _deleteBlobsFor(b.id);\n      library.splice(i, 1);\n    });\n    if(!IS_PWA) saveLibrary();\n    else {\n      const all = getPwaProgress();\n      indices.forEach(i => delete all[library[i]?.id]);\n      localStorage.setItem(PWA_PROG_KEY, JSON.stringify(all));\n    }\n    toggleLibSelectMode(); // exits select mode and re-renders\n    showToast(indices.length + ' book(s) deleted');\n  }\n\n### CSS\n  .lib-checkbox { position:absolute; top:8px; left:8px; width:20px; height:20px;\n    border:2px solid var(--border); border-radius:4px; background:var(--surface2);\n    cursor:pointer; z-index:2; }\n  .lib-checkbox.checked { background:var(--accent); border-color:var(--accent); }\n  .lib-checkbox.checked::after { content:'✓'; color:#fff; font-size:13px;\n    display:flex; align-items:center; justify-content:center; height:100%; }\n  .lib-selected { border-color:var(--accent) !important; }\n\n## Constraints\n- Normal (non-select) mode: no UI change on cards.\n- bulkDeleteSelected() must delete in descending index order to avoid\n  index shifting during splice.\n- Do not remove the individual deleteBook() inline confirm.\n\n## Verification\n- Tap select button: checkboxes appear on cards.\n- Select 3 cards, tap Delete: confirmation? (add if desired) → all 3 removed.\n- Exit select mode: cards return to normal.\n- Run syntax check."
   },
+
   {
-    num:'47', status:'backlog', type:'feat', model:'sonnet', effort:'high',
-    title:'Per-book display settings',
-    desc:"Font, size, line height, and theme are global \u2014 users reading books in different languages or formats must manually adjust typography every time they switch books.",
-    prompt:''
+  num:"51", status:"backlog", type:"feat", model:"sonnet", effort:"high",
+  title:"Manage files from library screen",
+  desc:"No way to edit or remove book files from the library view — user must open the book first. Should support edit/remove from the library card or a long-press menu.",
+  prompt:"# Feature: Manage files from library screen in index.html\n\n## Context\nRead openBookInfoModal() in full. The book info modal lets users view and\nchange files for the currently-open book. It's only accessible from inside\nthe player screen. Library cards have only rename and delete actions.\n\n## Implementation\nAdd an \"Info\" or \"Files\" action button to each library card that opens the\nbook info modal directly from the library screen.\n\n### HTML — per-card action\nIn renderLib(), add a files action button alongside rename/delete:\n  <button class=\"card-action-btn\" title=\"Files\" onclick=\"openBookInfoFromLib(${i},event)\">📋</button>\n\n### JS\n  function openBookInfoFromLib(i, e) {\n    e.stopPropagation();\n    // Temporarily set curBookIdx so openBookInfoModal() works\n    curBookIdx = i;\n    openBookInfoModal();\n    // On modal close, reset curBookIdx if we're still on library screen\n    // (_prevFocus and _closeModalRestore handle focus)\n  }\n\nThe modal's save actions (biReassign) use curBookIdx, so setting it before\nopening is sufficient. After the modal closes:\n  - If the user changed the ebook: loadEbook would be called, but we're on\n    the library screen. Guard: in biReassign(), if the player is not visible,\n    don't call loadEbook() — just save the data and update the library card.\n\nAdd the guard in biReassign() ebook branch:\n  const playerVisible = document.getElementById('player')?.style.display !== 'none';\n  if(playerVisible) {\n    loadEbook(b, () => { curSent=0; curWord=0; updateHL(); updateProg(); });\n  }\n  openBookInfoModal(); // refresh modal\n\nSimilarly guard the ebook reassign render in the transcript branch.\n\n## Constraints\n- Do not move the book info modal out of the player screen HTML.\n- curBookIdx must be restored to -1 if the modal is closed without opening\n  a book. Add to _closeModalRestore() (or use the existing flow since\n  the modal closers call _closeModalRestore already).\n- In browser mode, the modal shows \"click to change\" affordances — these\n  should work from library too.\n- In PWA mode, the modal shows \"from folder\" labels — also works from library.\n\n## Verification\n- Library screen: each card has Files button.\n- Tap Files on a card: book info modal opens.\n- Change cover image from library: cover updates on card.\n- Run syntax check."
   },
+
   {
-    num:'48', status:'backlog', type:'feat', model:'sonnet', effort:'high',
-    title:'No manual library rescan button',
-    desc:"There is no way to manually trigger a rescan of book folders in PWA mode. If files are added or changed outside the app the user must remove and re-add the book to pick up changes \u2014 should have a visible rescan/refresh action on the library screen.",
-    prompt:''
+  num:"52", status:"backlog", type:"feat", model:"sonnet", effort:"high",
+  title:"Search within book",
+  desc:"There is no way to find a word or phrase in the current ebook text — a significant gap for non-fiction and reference books where users need to locate specific passages.",
+  prompt:"# Feature: Search within book in index.html\n\n## Context\nRead sentences[] structure: each sentence has a .text string. Read updateHL()\nand scrollToSent(). The player screen top bar has icon buttons.\n\n## Implementation\n\n### State\n  let _searchQuery = '';\n  let _searchResults = []; // sentence indices matching query\n  let _searchResultIdx = 0; // current match index\n\n### UI\nAdd a search toggle button to the top bar:\n  <button id=\"searchBtn\" class=\"ic-btn\" title=\"Search\" onclick=\"toggleSearch()\">🔍</button>\n\nAdd a search bar below the top bar (hidden by default):\n  <div id=\"searchBar\" style=\"display:none\" class=\"search-bar\">\n    <input id=\"searchInput\" type=\"search\" placeholder=\"Search…\"\n      oninput=\"onSearchInput(this.value)\"\n      onkeydown=\"onSearchKey(event)\" />\n    <span id=\"searchCount\" class=\"search-count\"></span>\n    <button onclick=\"searchNav(-1)\">↑</button>\n    <button onclick=\"searchNav(1)\">↓</button>\n    <button onclick=\"closeSearch()\">✕</button>\n  </div>\n\n### JS\n  function toggleSearch() {\n    const bar = document.getElementById('searchBar');\n    if(bar.style.display === 'none') {\n      bar.style.display = '';\n      document.getElementById('searchInput').focus();\n    } else {\n      closeSearch();\n    }\n  }\n\n  function closeSearch() {\n    _searchQuery = '';\n    _searchResults = [];\n    document.getElementById('searchBar').style.display = 'none';\n    document.querySelectorAll('.sent.search-match').forEach(el =>\n      el.classList.remove('search-match', 'search-active'));\n  }\n\n  function onSearchInput(q) {\n    _searchQuery = q.trim().toLowerCase();\n    _searchResults = [];\n    document.querySelectorAll('.sent.search-match').forEach(el =>\n      el.classList.remove('search-match', 'search-active'));\n    if(!_searchQuery) { document.getElementById('searchCount').textContent=''; return; }\n    sentences.forEach((s, i) => {\n      if(s.text.toLowerCase().includes(_searchQuery)) {\n        _searchResults.push(i);\n        s.el.classList.add('search-match');\n      }\n    });\n    _searchResultIdx = 0;\n    document.getElementById('searchCount').textContent =\n      _searchResults.length ? '1/' + _searchResults.length : 'No results';\n    if(_searchResults.length) _jumpToSearchResult(0);\n  }\n\n  function _jumpToSearchResult(idx) {\n    document.querySelectorAll('.sent.search-active').forEach(el =>\n      el.classList.remove('search-active'));\n    const si = _searchResults[idx];\n    if(si == null) return;\n    sentences[si].el.classList.add('search-active');\n    scrollToSent(si, true);\n  }\n\n  function searchNav(dir) {\n    if(!_searchResults.length) return;\n    _searchResultIdx = (_searchResultIdx + dir + _searchResults.length) % _searchResults.length;\n    document.getElementById('searchCount').textContent =\n      (_searchResultIdx + 1) + '/' + _searchResults.length;\n    _jumpToSearchResult(_searchResultIdx);\n  }\n\n  function onSearchKey(e) {\n    if(e.key === 'Enter') searchNav(1);\n    if(e.key === 'Escape') closeSearch();\n  }\n\n### CSS\n  .search-bar {\n    background: var(--surface2); border-bottom: 1px solid var(--border);\n    padding: 8px 12px; display: flex; align-items: center; gap: 8px;\n  }\n  #searchInput {\n    flex: 1; background: var(--surface); border: 1px solid var(--border);\n    color: var(--text); border-radius: 6px; padding: 6px 10px;\n    font: inherit; font-size: 14px; outline: none;\n  }\n  .search-count { font-size: 12px; color: var(--text2); min-width: 48px; text-align: right; }\n  .sent.search-match { background: rgba(210,153,34,.15); }\n  .sent.search-active { background: rgba(210,153,34,.35) !important; outline: 2px solid var(--yellow); }\n\n## Constraints\n- Search is purely within sentences[] (already in memory) — no backend.\n- Close search (closeSearch()) when goLib() is called.\n- Do not interfere with normal sentence highlighting (.sent-active).\n- Search bar hidden when no book is open.\n\n## Verification\n- Search \"the\": all matching sentences highlighted, first one in view.\n- ↑ / ↓ navigate between matches.\n- Press Escape: search bar closes, highlights removed.\n- Run syntax check."
+  },
+
+  {
+  num:"53", status:"backlog", type:"feat", model:"sonnet", effort:"high",
+  title:"Per-book display settings",
+  desc:"Font, size, line height, and theme are global — users reading books in different languages or formats must manually adjust typography every time they switch books.",
+  prompt:"# Feature: Per-book display settings in index.html\n\n## Context\nRead saveDisplayPrefs() and loadDisplayPrefs(). Display preferences are global\n(one set for all books). Read the book object structure in folio-context.md —\nit has wpm and sentPauseMs per-book already. Font, size, lineHeight, and theme\nare currently global only.\n\n## Implementation\n\n### Approach: per-book typography overrides\nRather than full per-book settings (complex), add per-book overrides for\nfont size and line height — the two most common adjustments for language\ndifferences.\n\n### State on book object\nAdd optional fields to the book object:\n  b.fontSize    // px integer override, null = use global\n  b.lineHeight  // float override, null = use global\n  b.fontKey     // string override, null = use global\n\n### Apply on book open\nIn openBook() and pwaOpenBook(), after restoring wpm/syncOffset, apply\nper-book overrides if present:\n  if(b.fontSize) {\n    document.documentElement.style.setProperty('--font-size', b.fontSize + 'px');\n  } else {\n    document.documentElement.style.setProperty('--font-size', _fontSize + 'px');\n  }\n  // Same for lineHeight and fontKey\n\n### Restore on close\nIn goLib(), restore global preferences:\n  document.documentElement.style.setProperty('--font-size', _fontSize + 'px');\n  document.documentElement.style.setProperty('--line-height', String(_lineHeight));\n  // Restore font if per-book was set\n\n### UI — per-book toggle in Options panel\nIn the Display tab, add a \"Save for this book\" button near font size and\nline height controls:\n  <button onclick=\"saveBookDisplayPrefs()\">Save for this book</button>\n\n  function saveBookDisplayPrefs() {\n    if(curBookIdx < 0) return;\n    const b = library[curBookIdx];\n    b.fontSize = _fontSize;\n    b.lineHeight = _lineHeight;\n    saveBookProgress();\n    showToast('Typography saved for this book', 'success');\n  }\n\n  function clearBookDisplayPrefs() {\n    if(curBookIdx < 0) return;\n    const b = library[curBookIdx];\n    b.fontSize = null; b.lineHeight = null; b.fontKey = null;\n    saveBookProgress();\n    showToast('Using global typography', '', 2000);\n  }\n\n## Constraints\n- Global settings (setFS, setLH, etc.) continue to update _fontSize/_lineHeight\n  globals as before — per-book overrides only apply when a book is open.\n- In goLib(), always restore global CSS variables from _fontSize/_lineHeight.\n- Per-book settings are saved via saveBookProgress() (routes correctly for both modes).\n- Do not add per-book settings for theme, alignment, or max-width in this prompt\n  — only font size and line height to keep scope manageable.\n\n## Verification\n- Set font size 22px, tap \"Save for this book\". Reopen book: 22px applied.\n- Open a different book: global font size restored.\n- \"Clear for this book\": global size applies to book again.\n- Run syntax check."
+  },
+
+  {
+  num:"54", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"Remove playback rate display from play button",
+  desc:"The play button (#playBtn / .play-btn) shows the current playback rate as a badge or label. This is visual clutter — rate is already shown in the seek strip speed badge. Remove the rate display from the play button only; do not touch rate logic or the speed badge elsewhere.",
+  prompt:"# Fix: Remove playback rate display from play button in index.html\n\n## Context\nRead folio-context.md CSS SECTIONS (Top bar) and the HTML player screen breakdown before editing.\nThe play button is #playBtn (.play-btn) in the .top-bar.\nRate is also displayed in #speedBadge (.speed-badge) in the seek strip — do NOT touch that.\nupdateSpeedBadge() updates the badge — check what elements it targets.\n\n## Task\n1. Read the .top-bar HTML block in full (search for id=\"playBtn\").\n2. Identify any child element of #playBtn that displays a rate number or badge.\n3. Remove that child element from HTML only.\n4. Read updateSpeedBadge() in full. If it writes to an element inside #playBtn, remove that\n   write — but leave all writes to #speedBadge and the seek strip untouched.\n5. Do not change button sizing, icon, or onclick.\n\n## Verification\n- Play button shows only the play/pause icon, no rate text.\n- Speed badge in seek strip still updates correctly when rate changes.\n- Run syntax check.\n"
+  },
+
+  {
+  num:"55", status:"backlog", type:"feat", model:"sonnet", effort:"med",
+  title:"PWA: auto-hide navigation/controls unless screen is tapped",
+  desc:"In PWA mode the top bar and seek strip are always visible, reducing reading area. Controls should fade out after 3 seconds of inactivity and reappear on any tap or touch. This is a PWA-only feature — browser mode is unchanged.",
+  prompt:"# Feature: Auto-hide controls on inactivity in PWA mode in index.html\n\n## Context\nRead folio-context.md: CSS SECTIONS (Top bar, Seek strip), HTML player screen breakdown,\nand CLAUDE.md constraints (IS_PWA branch separation).\nAffected elements: .top-bar, #seekStrip, #ttsBar (when visible).\nIS_PWA is a boolean constant. Only apply this behaviour inside IS_PWA === true.\n\n## Implementation\n\n### CSS\nAdd a CSS class .controls-hidden to #player:\n  #player.controls-hidden .top-bar,\n  #player.controls-hidden #seekStrip,\n  #player.controls-hidden #ttsBar {\n    opacity: 0;\n    pointer-events: none;\n    transition: opacity 0.3s ease;\n  }\nAdd the base transition to .top-bar, #seekStrip, #ttsBar (opacity 0.3s) so the fade-in is smooth.\nDo not change any layout properties — controls must still occupy space (visibility not display).\n\n### JS\nAdd near the player initialisation block (inside or just after openBook or init()):\n\n  let _controlsTimer = null;\n  function _showControls() {\n    document.getElementById('player').classList.remove('controls-hidden');\n    clearTimeout(_controlsTimer);\n    _controlsTimer = setTimeout(_hideControls, 3000);\n  }\n  function _hideControls() {\n    document.getElementById('player').classList.add('controls-hidden');\n  }\n  function _initAutoHide() {\n    if (!IS_PWA) return;\n    ['touchstart','pointerdown','pointermove'].forEach(ev => {\n      document.getElementById('player').addEventListener(ev, _showControls, { passive: true });\n    });\n    _showControls(); // start the initial timer\n  }\n\nCall _initAutoHide() from init() after cacheDOM().\n\n### Rules\n- Auto-hide must pause while any modal is open — call _showControls() from _openModalEl and\n  clearTimeout(_controlsTimer) to freeze the timer while modal is visible, restart on _closeModalRestore.\n- Auto-hide must not trigger while the options panel (#optPanel) is open. Add a guard:\n  if (document.getElementById('optPanel').classList.contains('open')) { _showControls(); return; }\n  inside _hideControls() so it bails out if options are open.\n- Browser mode (IS_PWA===false): no changes, no classes added, no timers.\n- Do not change .top-bar or #seekStrip layout, position, or z-index.\n\n## Verification\n- PWA mode: controls visible on open, fade after 3s, reappear on tap.\n- PWA mode: tap seek bar — controls reappear and timer resets.\n- PWA mode: options panel open — controls do not hide.\n- Browser mode: controls always visible, no fade behaviour.\n- Run syntax check.\n"
+  },
+
+  {
+  num:"56", status:"backlog", type:"feat", model:"sonnet", effort:"med",
+  title:"Tap rate display to cycle speed presets",
+  desc:"Tapping #rateBtnInline on the seek strip cycles through RATE_STEPS presets. Long-press (400ms) still opens the options panel. Adds a brief flash animation on cycle.",
+  prompt:"# Feature: Tap rate display to cycle speed presets in index.html\n\n## Goal\nTapping the #rateBtnInline display on the seek strip cycles through\nRATE_STEPS presets instead of opening the options panel. Long-press\n(400ms+) still opens options for full control.\n\n## 1. Remove onclick from #rateBtnInline in HTML\nThe button currently has:\n  onclick=\"toggleOpts();switchOptTab('playback',document.querySelector('.op-tab'))\"\nRemove that onclick attribute entirely.\n\n## 2. Add press-duration handler in JS\nAdd near the other rate/speed functions:\n\n  function _initRateBtnBehaviour(){\n    const btn = document.getElementById('rateBtnInline');\n    if(!btn) return;\n    let t = 0;\n    btn.addEventListener('pointerdown', () => { t = Date.now(); });\n    btn.addEventListener('pointerup', () => {\n      const dur = Date.now() - t;\n      t = 0;\n      if(dur < 400){\n        changeSpeed(1);\n      } else {\n        toggleOpts();\n        switchOptTab('playback', document.querySelector('.op-tab'));\n      }\n    });\n    btn.addEventListener('pointercancel', () => { t = 0; });\n  }\n\nCall _initRateBtnBehaviour() once in init() after cacheDOM().\n\n## 3. Visual flash on cycle\nIn changeSpeed(), after calling setRate(next), briefly flash the button:\n\n  const b = document.getElementById('rateBtnInline');\n  if(b){ b.classList.add('rate-flash');\n    setTimeout(() => b.classList.remove('rate-flash'), 180); }\n\nAdd to stylesheet:\n  .rate-flash { background: var(--accent) !important;\n                color: #fff !important;\n                transition: none !important; }\n\n## Notes\n- changeSpeed() and setRate() already exist — no changes needed there\n- Do not remove the rate presets from the options panel\n- Do not add onclick back — the pointerdown/up pair handles both tap and long-press\n\nRun node --check index.html when done."
+  },
+
+  {
+  num:"57", status:"backlog", type:"fix", model:"sonnet", effort:"low",
+  title:"Remove transcript pill from add-book modal + remove WPM UI",
+  desc:"Two UI cleanups: (1) remove the redundant transcript file-pill from the add-book modal, (2) remove the WPM slider from the options panel. WPM logic stays — only the UI elements are removed.",
+  prompt:"# Cleanup: Remove transcript upload pill + remove WPM UI in index.html\n\n## Change 1 — Remove transcript file-pill from add-book modal\nThe transcript upload pill in the add-book modal is superseded by the\nbook info panel transcript slot. Remove the entire pill block that\ncontains id=\"transcriptPill\", id=\"transcriptInput\", id=\"transcriptName\".\n\nIt sits between the ebook pill and the cover pill in the modal HTML.\nRemove the full <div class=\"file-pill\" id=\"transcriptPill\"> block.\n\nAlso find fileChosen() and remove or guard any references to\n'transcriptPill', 'transcriptInput', 'transcriptName' in that\nfunction only. Do NOT touch transcript handling logic used elsewhere\n(txModal, biReassign, saveTranscript, removeTranscript, etc.).\n\n## Change 2 — Remove WPM section from options panel\nThe \"Text Scroll Speed (WPM)\" section in the playback tab is\nredundant. Remove from the HTML options panel (playback tab):\n- The entire op-sec containing the \"Text Scroll Speed (WPM)\" op-ttl\n- Its op-row with #defWpmSlider and #defWpmInput\n- Its op-row with #wpmSpeedLbl\n\nKEEP the JS functions setDefaultWpmFromSlider(), setDefaultWpmFromInput(),\nupdateWpmLabel() — they are called from loadDisplayPrefs() and\nsaveDisplayPrefs() and control TTS scroll timing internally.\nOnly remove the three HTML elements listed above.\n\nKeep the \"Sentence Pause\" op-sec directly below WPM — only remove\nthe WPM section itself.\n\n## Verification\nAfter changes:\n- Add-book modal shows: Audio, Ebook, Cover pills only\n- Options playback tab shows: Volume, Sentence Pause, Word Highlight,\n  Playback Rate, Controls — no WPM section\n\nRun node --check index.html when done."
+  },
+
+
+  // ── Deferred ──────────────────────────────────────
+  {
+  num:"D", status:"deferred", type:"fix", model:"sonnet", effort:"high",
+  title:"DEFERRED: Confidence-aware sync correction",
+  desc:"Stores Jaccard confidence scores during matching and re-matches low-confidence sentences at playback time using a ±5 sentence window. Deferred — do not build until explicitly requested.",
+  prompt:"# DEFERRED FEATURE: Confidence-Aware Sync Correction\n# Status: NOT implemented. Deliberately deferred.\n# Do not build until explicitly requested.\n\n## The Problem\nbuildSentenceTimings matches ebook sentences to transcript word runs via\nJaccard similarity in two passes. The fill pass accepts weak matches\n(bestScore > 0.35). During playback, timeupdate blindly trusts these\ntimestamps, which can cause highlight drift at poorly-matched sections.\n\n## The Approach (when ready to build)\nUse Option B: keep transcriptWords alive conditionally, store confidence\nscores alongside sentenceTimings, and add correctSyncDrift(audioTime)\nthat binary-searches transcriptWords by time, windows ~10 words, and\nre-checks similarity against +-5 ebook sentences around curSent.\n\n## Full spec\n\n1. Store bestScore in a parallel sentenceConfidence[] array in\n   buildSentenceTimings / _buildSentenceTimingsSync / worker\n   doSentenceTimings. Include in worker postMessage payload.\n\n2. Add: const SYNC_CONFIDENCE_THRESHOLD = 0.3;\n\n3. Only null transcriptWords if all confidence scores are above\n   threshold. If any are weak, keep transcriptWords alive.\n\n4. Add correctSyncDrift(audioTime): binary search transcriptWords for\n   word at audioTime, window ~10 words, run similarity() against\n   sentences[curSent-5..curSent+5], return best index or curSent.\n\n5. In timeupdate: if bestSent !== curSent AND confidence below\n   threshold, call correctSyncDrift(t) and use result instead.\n   High-confidence path must have zero additional overhead.\n\n6. Toast \"Sync corrected\" debounced to 30s between toasts.\n\n7. Update folio-context.md with sentenceConfidence,\n   _lastCorrectionToast, correctSyncDrift.\n\n8. Run node --check index.html when done.\n\n## Known limitation\nOnly helps when original match was weak due to OCR noise or minor text\ndifferences. Won't help with genuine ebook/transcript divergence."
+  },
+
+
+  // ── Completed ─────────────────────────────────────
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"PWA: playback hangs on random sentences mid-book",
+  desc:"Separated _scrollPauseTimer from scrollTimer so the scroll-pause IIFE no longer kills the advanceSent chain. Added curSent bounds guard and rAF re-registration to _wordTick to prevent stalls on out-of-bounds or undefined entries.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"No freeze/resume page lifecycle handling — TTS breaks on Android Chrome",
+  desc:"Added TTS branches to the freeze/resume listeners (shared _wasPlayingBeforeFreeze flag). Freeze calls ttsPause(), resume calls ttsPlay() after 200ms. Expanded visibilitychange to detect dead speechSynthesis engine and restart from curSent.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"PWA: pause and resume breaks playback state",
+  desc:"Fixed mediaPlay() .catch() to call full state quad with paused state on play rejection. Added releaseWakeLock() to wireAudioEvents pause handler so browser-initiated pauses release the wake lock.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"PWA: audio stops when leaving and returning to app",
+  desc:"Added freeze/resume Page Lifecycle listeners (IS_PWA-guarded) that cleanly pause audio before freeze and resume after 150ms delay. Expanded visibilitychange handler to recover silently-paused audio via _audio.play().catch().",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"TOC navigation bugs fixed in TTS mode",
+  desc:"Fixed three TOC navigation bugs: sidebar now closes before scroll fires (fixing wrong position on mobile/long ebooks), ttsStop()+ttsPlay() replaces advanceSent() to prevent double-advance while playing, and ttsStop() clears the stale utterance when paused so the next play press starts from the correct sentence.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"Linking audio via Book Files now switches out of TTS mode",
+  desc:"Fixed biReassign() audio branch — removed pre-load of _audio.src that caused self-revocation of the blob URL, and called configurePlayerForMode() directly to switch the player into audio mode immediately when audio is linked via Book Files.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"feat", model:"sonnet",
+  title:"Reading progress bar as TTS scrubber",
+  desc:"Added scrubToPosition() making the reading progress bar tappable in TTS mode — tap percentage maps to sentence index via Math.round(pct*(sentences.length-1)), bar expands to 12px with .scrubbing class in TTS mode, and TTS restarts from new position if playing.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"Seek bar updates ebook position while paused",
+  desc:"Added binary search in onSeekChange() to immediately update the sentence highlight and scroll position when the seek bar is dragged while paused or stopped.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"EPUB paragraph fragmentation fix",
+  desc:"Rewrote extractFromDom() to collect text at block element boundaries, fixing paragraph fragmentation from inline elements in EPUB/HTML. Also fixed empty TOC for EPUBs where headings are nested inside div containers.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"TTS auto-scroll stops working after navigation",
+  desc:"Added _programmaticScroll flag to prevent programmatic scroll events from triggering the 2s auto-scroll cooldown; TOC click now restarts advanceSent() when TTS is playing.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"TTS play/pause unresponsive after pausing",
+  desc:"Removed ttsSpeaking=false from stopScrollEngine() to fix TTS play/pause state corruption caused by the scroll engine timer firing during active playback.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"Two speed controls visible in TTS mode + TTS rate not synced",
+  desc:"Hidden speed-strip in TTS mode by adding explicit hide in configurePlayerForMode(). Unified rate state by routing setTtsRate() through setRate() and syncing #ttsRateLbl / #ttsRateSlider from setRate().",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"TTS sentence highlight off by one after click",
+  desc:"Added re-anchor guard inside utt.onboundary: if _activeSentEl has drifted from the current sentence element, it is corrected before the word highlight updates.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"TTS sentence skip on click",
+  desc:"Added _ttsGeneration counter. onend/onerror closures capture gen at speak() time and bail out if gen !== _ttsGeneration, preventing stale cancel callbacks from advancing curSent.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"TTS play button unresponsive after returning to app",
+  desc:"Expanded the visibilitychange wake-lock handler to detect a dead SpeechSynthesis engine on return from background and reset ttsSpeaking/mediaState to stopped so play works on the first press.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"TTS → audiobook position lost on mode switch",
+  desc:"Guarded audioTime writes in saveBookProgress() and flushPositionSync() with !ttsMode. Added sentenceTimings fallback seek in configurePlayerForMode()'s loadedmetadata handler when audioTime is 0.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"TTS click navigation",
+  desc:"Clicking a sentence in TTS mode now stops the current utterance and restarts speech from the tapped sentence. Both word-click and sentence-click paths updated.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"fix", model:"sonnet",
+  title:"Instant scroll to resume position on book open",
+  desc:"Book open now scrolls instantly to the saved sentence position. scrollToSent() gained an instant=true parameter; pulseResumeSent(true) is passed from both openBook and pwaOpenBook.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"feat", model:"sonnet",
+  title:"Inline speed controls on seek strip",
+  desc:"− / rate / + buttons sit directly on the seek strip. Mobile users can change speed without opening the options panel. RATE_STEPS array and changeSpeed() function added.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"feat", model:"sonnet",
+  title:"Progress percentage in top bar",
+  desc:"Top bar now shows \"Chapter 3 · 15%\" instead of the raw sentence count. Chapter label is derived from tocEntries[] and truncated to 28 chars.",
+  prompt:""
+  },
+
+  {
+  num:"✓", status:"done", type:"feat", model:"sonnet",
+  title:"Sync offset hint toast",
+  desc:"One-time toast appears after the first Whisper transcript sync pointing users to Options > Sync offset. Guarded by folio_sync_hint_v1 localStorage flag.",
+  prompt:""
   },
 
 ];
-// ══════════════════════════════════════════════════════════╝
 
 function matches(p, f) {
-  if(f === 'all')     return true;
-  if(f === 'active')  return p.status === 'active' || p.status === 'deferred';
-  if(f === 'done')    return p.status === 'done';
-  if(f === 'backlog') return p.status === 'backlog';
-  if(f === 'fix')     return p.type === 'fix';
-  if(f === 'feat')    return p.type === 'feat';
-  if(f === 'perf')    return p.type === 'perf';
+  if(f === 'all')      return true;
+  if(f === 'active')   return p.status === 'active';
+  if(f === 'deferred') return p.status === 'deferred';
+  if(f === 'done')     return p.status === 'done';
+  if(f === 'backlog')  return p.status === 'backlog';
+  if(f === 'fix')      return p.type === 'fix';
+  if(f === 'feat')     return p.type === 'feat';
+  if(f === 'perf')     return p.type === 'perf';
   return true;
 }
 
-function renderAll(f) {
-  const container = document.getElementById('cards');
-  container.innerHTML = '';
+// ── Custom prompts (localStorage) ─────────────────────────
+const CUSTOM_KEY = 'folio_custom_prompts_v1';
+function loadCustom() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]'); } catch(e){ return []; }
+}
+function saveCustom(arr) { localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr)); }
+function allPrompts() { return [...PROMPTS, ...loadCustom()]; }
 
-  const active   = PROMPTS.filter(p => (p.status==='active'||p.status==='deferred') && matches(p,f));
-  const done     = PROMPTS.filter(p => p.status==='done' && matches(p,f));
-  const backlog  = PROMPTS.filter(p => p.status==='backlog' && matches(p,f));
-  const total    = active.length + done.length + backlog.length;
-
-  document.getElementById('empty').style.display = total === 0 ? 'block' : 'none';
-  if(active.length)  appendSection('Active', active, container);
-  if(backlog.length) appendSection('Backlog — prompts not yet written', backlog, container);
-  if(done.length)    appendSection('Completed', done, container);
+// ── Core render ────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function appendSection(label, items, container) {
+  // Sort by numeric num ascending; non-numeric (✓, D) keep file order
+  items = [...items].sort((a, b) => {
+    const na = parseInt(a.num), nb = parseInt(b.num);
+    if(isNaN(na) && isNaN(nb)) return 0;
+    if(isNaN(na)) return 1;
+    if(isNaN(nb)) return -1;
+    return na - nb;
+  });
+
   const h = document.createElement('div');
   h.className = 'section-heading';
-  h.textContent = label;
+  h.innerHTML = `${escHtml(label)}<span class="section-count">${items.length}</span>`;
   container.appendChild(h);
 
-  items.forEach((p, i) => {
+  items.forEach((p) => {
     const isDone     = p.status === 'done';
     const isDeferred = p.status === 'deferred';
     const isBacklog  = p.status === 'backlog';
-    const uid        = p.status + '_' + i;
 
-    const typTag   = p.type==='fix' ? '<span class="tag tag-fix">Fix</span>' : p.type==='perf' ? '<span class="tag tag-perf">Perf</span>' : '<span class="tag tag-feat">Feature</span>';
-    const modelTag = '<span class="tag tag-sonnet">Sonnet</span>';
+    const typTag    = p.type==='fix'  ? '<span class="tag tag-fix">Fix</span>'
+                    : p.type==='perf' ? '<span class="tag tag-perf">Perf</span>'
+                    : '<span class="tag tag-feat">Feature</span>';
+    const modelTag  = '<span class="tag tag-sonnet">Sonnet</span>';
     const effortLabels = { low:'Low', med:'Med', high:'High' };
     const effortTag = p.effort ? `<span class="tag tag-effort-${p.effort}">${effortLabels[p.effort]} effort</span>` : '';
-    const extraTag = isDone     ? '<span class="tag tag-done">Done</span>'
-                   : isDeferred ? '<span class="tag tag-defer">Deferred</span>'
-                   : isBacklog  ? '<span class="tag tag-backlog">Needs prompt</span>'
-                   : '';
+    const hasPrompt  = p.prompt && p.prompt.trim().length > 0;
+    const extraTag  = isDone     ? '<span class="tag tag-done">Done</span>'
+                    : isDeferred ? '<span class="tag tag-defer">Deferred</span>'
+                    : isBacklog  ? (hasPrompt ? '' : '<span class="tag tag-backlog">Needs prompt</span>')
+                    : '';
+    const customTag = p.custom ? '<span class="tag tag-custom">Custom</span>' : '';
 
-    const bodyInner = (isDone || isBacklog)
-      ? `<div class="card-desc" style="padding-bottom:14px">${p.desc}</div>`
-      : `<div class="card-desc">${p.desc}</div>
+    const showPrompt = !isDone && hasPrompt;
+
+    const bodyInner = !showPrompt
+      ? `<div class="card-desc" style="padding-bottom:14px">${escHtml(p.desc)}</div>`
+      : `<div class="card-desc">${escHtml(p.desc)}</div>
          <div class="prompt-wrap">
            <div class="prompt-text">${escHtml(p.prompt)}</div>
            <div class="copy-bar">
@@ -810,27 +912,51 @@ function appendSection(label, items, container) {
            </div>
          </div>`;
 
+    const deleteBtn = p.custom
+      ? `<button class="modal-close" title="Delete" style="margin-left:4px;font-size:14px" onclick="deleteCustom('${escHtml(p.num)}',event)">&#x2715;</button>`
+      : '';
+
     const card = document.createElement('div');
-    card.className = 'prompt-card' + (isDone ? ' done-card' : '') + (isBacklog ? ' backlog-card' : '');
+    card.className = 'prompt-card' + (isDone ? ' done-card' : '') + (isBacklog && !hasPrompt ? ' backlog-card' : '');
     card.innerHTML = `
       <div class="card-header" onclick="this.closest('.prompt-card').classList.toggle('open')">
         <div class="card-num">${escHtml(p.num)}</div>
         <div class="card-meta">
-          <div class="card-title">${p.title}</div>
-          <div class="card-tags">${typTag}${modelTag}${effortTag}${extraTag}</div>
+          <div class="card-title">${escHtml(p.title)}</div>
+          <div class="card-tags">${typTag}${modelTag}${effortTag}${extraTag}${customTag}</div>
         </div>
+        ${deleteBtn}
         <span class="card-chevron">&#9660;</span>
       </div>
       <div class="card-body">${bodyInner}</div>`;
     container.appendChild(card);
-    // Store raw prompt text directly on the DOM node — avoids all attribute-escaping issues with backticks etc.
     const copyBtn = card.querySelector('.copy-btn');
-    if(copyBtn) copyBtn._promptText = p.prompt;
+    if(copyBtn) copyBtn._promptText = p.prompt || '';
   });
 }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function renderAll(f) {
+  const all = allPrompts();
+  const container = document.getElementById('cards');
+  container.innerHTML = '';
+
+  const active   = all.filter(p => p.status==='active'   && matches(p,f));
+  const backlog  = all.filter(p => p.status==='backlog'  && matches(p,f));
+  const deferred = all.filter(p => p.status==='deferred' && matches(p,f));
+  const done     = all.filter(p => p.status==='done'     && matches(p,f));
+  const total    = active.length + backlog.length + deferred.length + done.length;
+
+  document.getElementById('empty').style.display = total===0 ? 'block' : 'none';
+  if(active.length)   appendSection('Active', active, container);
+  if(backlog.length)  appendSection('Backlog', backlog, container);
+  if(deferred.length) appendSection('Deferred', deferred, container);
+  if(done.length)     appendSection('Completed', done, container);
+}
+
+function filter(f, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll(f);
 }
 
 function copyText(btn) {
@@ -845,22 +971,63 @@ function copyText(btn) {
   });
 }
 
-function filter(f, btn) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderAll(f);
+// ── Add-prompt modal ───────────────────────────────────────
+function openAddModal() {
+  document.getElementById('f-title').value  = '';
+  document.getElementById('f-desc').value   = '';
+  document.getElementById('f-prompt').value = '';
+  document.getElementById('f-status').value = 'active';
+  document.getElementById('f-type').value   = 'feat';
+  document.getElementById('f-effort').value = 'low';
+  document.getElementById('addModal').classList.add('open');
+  setTimeout(()=>document.getElementById('f-title').focus(), 50);
 }
 
-// Populate stats
-document.getElementById('statActive').textContent =
-  PROMPTS.filter(p => p.status==='active').length;
-document.getElementById('statDone').textContent =
-  PROMPTS.filter(p => p.status==='done').length;
-document.getElementById('statBacklog').textContent =
-  PROMPTS.filter(p => p.status==='backlog').length;
-document.getElementById('statDefer').textContent =
-  PROMPTS.filter(p => p.status==='deferred').length;
+function closeAddModal() {
+  document.getElementById('addModal').classList.remove('open');
+}
 
+function saveNewPrompt() {
+  const title = document.getElementById('f-title').value.trim();
+  if(!title){ document.getElementById('f-title').focus(); return; }
+  const custom = loadCustom();
+  const maxNum = allPrompts().reduce((m,p)=>Math.max(m, parseInt(p.num)||0), 0);
+  custom.push({
+    num:    String(maxNum + 1),
+    status: document.getElementById('f-status').value,
+    type:   document.getElementById('f-type').value,
+    model:  'sonnet',
+    effort: document.getElementById('f-effort').value,
+    title,
+    desc:   document.getElementById('f-desc').value.trim(),
+    prompt: document.getElementById('f-prompt').value,
+    custom: true
+  });
+  saveCustom(custom);
+  closeAddModal();
+  refreshStats();
+  const activeBtn = document.querySelector('.filter-btn.active');
+  renderAll(activeBtn ? activeBtn.textContent.toLowerCase().replace('completed','done').trim() : 'all');
+}
+
+function deleteCustom(num, e) {
+  e.stopPropagation();
+  saveCustom(loadCustom().filter(p => p.num !== num));
+  refreshStats();
+  const activeBtn = document.querySelector('.filter-btn.active');
+  renderAll(activeBtn ? activeBtn.textContent.toLowerCase().replace('completed','done').trim() : 'all');
+}
+
+// ── Stats ──────────────────────────────────────────────────
+function refreshStats() {
+  const all = allPrompts();
+  document.getElementById('statActive').textContent  = all.filter(p=>p.status==='active').length;
+  document.getElementById('statDone').textContent    = all.filter(p=>p.status==='done').length;
+  document.getElementById('statBacklog').textContent = all.filter(p=>p.status==='backlog').length;
+  document.getElementById('statDefer').textContent   = all.filter(p=>p.status==='deferred').length;
+}
+
+refreshStats();
 renderAll('all');
 </script>
 </body>

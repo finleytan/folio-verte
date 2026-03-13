@@ -894,6 +894,8 @@ let ttsVoice = null; let ttsPaused = false; let _ttsGeneration = 0;
 let txPending = null; let laPending = null;
 let pwaRootHandle = null;
 let _contentClickHandler = null;
+let _wasPlayingBeforeFreeze = false;
+let _scrollPauseTimer = null;
 let folderFiles = [];
 let _fontBody = "'Lora',Georgia,serif";
 let _fontSize = 18;
@@ -951,15 +953,45 @@ function releaseWakeLock(){
 }
 // Re-acquire when page becomes visible again (screen lock can release it)
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible' && mediaState==='playing'){
-    acquireWakeLock();
-    if(ttsMode && !speechSynthesis.speaking && !speechSynthesis.pending){
-      ttsSpeaking=false; ttsPaused=false; ttsUtterance=null;
-      setMediaState('stopped'); setPlayBtnIcon(false);
-      stopScrollEngine(); releaseWakeLock(); updatePageTitle();
+  if(document.visibilityState==='visible'){
+    if(mediaState==='playing'){
+      acquireWakeLock();
+      // Audio recovery: browser may have paused audio without firing a state event
+      if(!ttsMode && _audio.paused){
+        _audio.play().catch(()=>{});
+      }
+      // TTS dead-engine recovery
+      if(ttsMode && !speechSynthesis.speaking && !speechSynthesis.pending){
+        ttsSpeaking=false; ttsPaused=false; ttsUtterance=null;
+        setMediaState('stopped'); setPlayBtnIcon(false);
+        stopScrollEngine(); releaseWakeLock(); updatePageTitle();
+      }
     }
   }
 });
+// PWA Page Lifecycle: freeze/resume
+if(IS_PWA){
+  document.addEventListener('freeze',()=>{
+    if(!ttsMode && mediaState==='playing'){
+      _wasPlayingBeforeFreeze=true;
+      mediaPause();
+    }
+    if(ttsMode && mediaState==='playing'){
+      _wasPlayingBeforeFreeze=true;
+      ttsPause();
+    }
+  });
+  document.addEventListener('resume',()=>{
+    if(!ttsMode && _wasPlayingBeforeFreeze){
+      _wasPlayingBeforeFreeze=false;
+      setTimeout(()=>{ mediaPlay(); },150);
+    }
+    if(ttsMode && _wasPlayingBeforeFreeze){
+      _wasPlayingBeforeFreeze=false;
+      setTimeout(()=>{ if(mediaState!=='playing') ttsPlay(); },200);
+    }
+  });
+}
 
 // ══════════════════════════════════════════════════════
 // MEDIA SESSION API (lock screen / Bluetooth controls)
@@ -1628,7 +1660,13 @@ function mediaPlay(){
     acquireWakeLock();
     updateMediaSessionState(true);
     updatePageTitle();
-  }).catch(()=>{});
+  }).catch(()=>{
+    setPlayBtnIcon(false);
+    setMediaState('paused');
+    releaseWakeLock();
+    updateMediaSessionState(false);
+    updatePageTitle();
+  });
 }
 function mediaPause(){
   if(ttsMode){ ttsPause(); return; }
@@ -1799,7 +1837,7 @@ function wireAudioEvents(){
   });
   audioEl.addEventListener('pause',function(){
     stopWordTicker();
-    if(mediaState==='playing'){ setPlayBtnIcon(false); setMediaState('paused'); }
+    if(mediaState==='playing'){ setPlayBtnIcon(false); setMediaState('paused'); releaseWakeLock(); }
     updateMediaSessionState(false); updatePageTitle();
   });
 }
@@ -2142,8 +2180,8 @@ function toggleOpInfo(el){ const parent=el.closest('.op-ttl')||el.closest('.op-r
       _scrollRaf=null;
       if(!autoScroll) return;
       scrollPaused=true;
-      if(scrollTimer) clearTimeout(scrollTimer);
-      scrollTimer=setTimeout(()=>{ scrollPaused=false; },2000);
+      if(_scrollPauseTimer) clearTimeout(_scrollPauseTimer);
+      _scrollPauseTimer=setTimeout(()=>{ scrollPaused=false; _scrollPauseTimer=null; },2000);
     });
   },{passive:true});
 })();

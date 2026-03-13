@@ -165,6 +165,52 @@ const PROMPTS = [
 
   // ── SESSION START ─────────────────────────────────────
   {
+    icon:'📂', stage:'start',
+    title:'Session setup',
+    subtitle:'Project files, workflow, and task queue for every session',
+    detailed:
+`## Session setup
+
+Project files:
+- \`index.html\` — the app (~3,430 lines, no build step)
+- \`folio-context.md\` — full function map, read this before touching any code
+- \`CLAUDE.md\` — hard constraints, read this before touching any code
+- \`folio-prompts.html\` — prompt library (tracks what to work on)
+- \`folio-prompts-edit.js\` — CLI tool for updating the prompt library
+
+Before starting any task:
+1. Read \`folio-context.md\` and \`CLAUDE.md\` in full
+2. Run \`node folio-prompts-edit.js list\` to see current priorities
+
+When a fix or feature is complete and verified:
+1. Run the syntax check: \`node -e "const fs=require('fs'),html=fs.readFileSync('index.html','utf8'),m=html.match(/<script>([\\s\\S]*?)<\\/script>/);try{new Function(m[1]);console.log('OK');}catch(e){console.error(e.message);}"\`
+2. Run \`node folio-prompts-edit.js done <num>\` to mark it complete in the library
+3. Tell me what number it was and confirm it's marked done before moving to the next item
+
+Work through items in priority order (lowest number first) unless I say otherwise.`,
+    quick:
+`## Session setup
+
+Project files:
+- \`index.html\` — the app (~3,430 lines, no build step)
+- \`folio-context.md\` — full function map, read this before touching any code
+- \`CLAUDE.md\` — hard constraints, read this before touching any code
+- \`folio-prompts.html\` — prompt library (tracks what to work on)
+- \`folio-prompts-edit.js\` — CLI tool for updating the prompt library
+
+Before starting any task:
+1. Read \`folio-context.md\` and \`CLAUDE.md\` in full
+2. Run \`node folio-prompts-edit.js list\` to see current priorities
+
+When a fix or feature is complete and verified:
+1. Run the syntax check: \`node -e "const fs=require('fs'),html=fs.readFileSync('index.html','utf8'),m=html.match(/<script>([\\s\\S]*?)<\\/script>/);try{new Function(m[1]);console.log('OK');}catch(e){console.error(e.message);}"\`
+2. Run \`node folio-prompts-edit.js done <num>\` to mark it complete in the library
+3. Tell me what number it was and confirm it's marked done before moving to the next item
+
+Work through items in priority order (lowest number first) unless I say otherwise.`
+  },
+
+  {
     icon:'🚀', stage:'start',
     title:'Start a new session',
     subtitle:'Orient Claude to the codebase before any task',
