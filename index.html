@@ -241,6 +241,7 @@ body.theme-night{
 .tx-banner.ready::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#28a060,#50e888,#28a060);opacity:.6;}
 @keyframes tx-ready-in{0%{background:#1a6838;border-bottom-color:#50e888;}50%{background:#124a28;}100%{background:#0a2a18;}}
 .tx-banner.error{display:flex;background:#2a0a08;border-bottom:1px solid #5a2010;color:#e06040;}
+.tx-banner.tx-fade{opacity:0;transition:opacity 0.3s ease;}
 .tx-spinner{width:16px;height:16px;border:2.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .tx-detail{font-size:11px;font-weight:400;color:inherit;opacity:.75;margin-left:4px;}
@@ -544,7 +545,7 @@ html,body,
     </div>
     <div class="top-bar-right">
       <button class="ic-btn" onclick="skip(-15)" title="−15s" aria-label="Skip back 15 seconds">⏮</button>
-      <button class="play-btn" id="playBtn" onclick="togglePlay()" aria-label="Play">▶</button><span class="speed-badge" id="speedBadge"></span>
+      <button class="play-btn" id="playBtn" onclick="togglePlay()" aria-label="Play">▶</button>
       <button class="ic-btn" onclick="skip(15)" title="+15s" aria-label="Skip forward 15 seconds">⏭</button>
       <div class="vdiv"></div>
       <button class="ic-btn" onclick="toggleToc()" title="Contents" aria-label="Table of contents">☰</button>
@@ -1707,6 +1708,16 @@ function setRate(v){
   if(!isFinite(v)||v<=0) return;
   v=Math.round(v*100)/100;
   _audio.playbackRate=v;
+  // Force immediate sentence/word position recalculation after rate change
+  if(mediaState==='playing'&&sentenceTimings.length){
+    const t=_audio.currentTime+syncOffset;
+    let bestSent=curSent;
+    for(let i=sentenceTimings.length-1;i>=0;i--){
+      if(sentenceTimings[i]&&t>=sentenceTimings[i].start){bestSent=i;break;}
+    }
+    if(bestSent!==curSent){ curSent=bestSent; curWord=-1; updateHL(); updateProg(); if(autoScroll) scrollToSent(curSent); }
+    else { curWord=-1; } // force _wordTick to recalculate word position
+  }
   const presets=[0.75,1,1.25,1.5,2];
   document.querySelectorAll('.rate-preset-btn').forEach((btn,i)=>{
     if(i<presets.length) btn.classList.toggle('active',Math.abs(presets[i]-v)<0.001);
@@ -1750,13 +1761,17 @@ function onSeekInput(v){ isSeeking=true; $('tCur').textContent=fmt(_audio.durati
 function onSeekChange(v){
   if(isFinite(_audio.duration)) _audio.currentTime=_audio.duration*v/100;
   isSeeking=false;
-  if(mediaState!=='playing' && sentenceTimings.length){
+  if(sentenceTimings.length){
     const t=_audio.currentTime+syncOffset;
     let best=curSent;
     for(let i=sentenceTimings.length-1;i>=0;i--){
       if(sentenceTimings[i]&&t>=sentenceTimings[i].start){ best=i; break; }
     }
-    if(best!==curSent){ curSent=best; curWord=0; updateHL(); updateProg(); if(autoScroll) scrollToSent(curSent); }
+    if(best!==curSent){
+      const instant=Math.abs(best-curSent)>5;
+      curSent=best; curWord=0; updateHL(); updateProg();
+      if(autoScroll) scrollToSent(curSent,instant);
+    }
   }
 }
 
@@ -1821,9 +1836,10 @@ function wireAudioEvents(){
       if(sentenceTimings[i] && t >= sentenceTimings[i].start){ bestSent = i; break; }
     }
     if(bestSent !== curSent){
-      curSent = bestSent; curWord = 0;
+      const instant=Math.abs(bestSent-curSent)>5;
+      curSent = bestSent; curWord = -1; // let _wordTick find correct word
       updateHL(); updateProg();
-      if(autoScroll) scrollToSent(curSent);
+      if(autoScroll) scrollToSent(curSent,instant);
       saveBookProgressDebounced();
     }
   });
@@ -2019,7 +2035,7 @@ function updateHL(){
   const s=sentences[curSent];
   if(!s) return;
   s.el.classList.add('sent-active'); _activeSentEl=s.el;
-  if(wordHlOn&&s.words[curWord]){ s.words[curWord].el.classList.add('word-active'); _activeWordEl=s.words[curWord].el; }
+  if(wordHlOn&&curWord>=0&&s.words[curWord]){ s.words[curWord].el.classList.add('word-active'); _activeWordEl=s.words[curWord].el; }
   updateTocActive();
 }
 function updateProg(){
@@ -2116,6 +2132,9 @@ function buildToc(){
     });
     list.appendChild(btn);
   });
+  updateTocActive();
+  const activeBtn=_tocItems[_prevTocActive>=0?_prevTocActive:0];
+  if(activeBtn) activeBtn.scrollIntoView({block:'center',behavior:'instant'});
 }
 let _tocItems=[];  // cached TOC button elements
 let _prevTocActive=-1;
@@ -2217,6 +2236,11 @@ async function loadTranscriptData(b){
   try{
     if(b.transcriptType==='whisper'){
       const data=typeof b.transcriptData==='string'?JSON.parse(b.transcriptData):b.transcriptData;
+      // Validate: Whisper JSON must have .segments or .words at top level
+      if(!Array.isArray(data.segments)&&!Array.isArray(data.words)){
+        setBannerState('error','Not a transcript','JSON file does not contain Whisper data');
+        b.transcriptType=null; b.transcriptData=null; return;
+      }
       // Try word-level first (segments[].words or top-level .words)
       const wordLevel=data.segments?data.segments.flatMap(s=>s.words||[]):data.words||[];
       if(wordLevel.length){
@@ -2251,7 +2275,9 @@ async function loadTranscriptData(b){
     setBannerState('error','Error parsing transcript: '+e.message);
   }
 }
+let _bannerHideTimer=null;
 function setBannerState(state,text,detail){
+  if(_bannerHideTimer){ clearTimeout(_bannerHideTimer); _bannerHideTimer=null; }
   const b=document.getElementById('txBanner');
   b.className='tx-banner';
   if(state==='hidden'){ return; }
@@ -2261,6 +2287,12 @@ function setBannerState(state,text,detail){
   else icon.textContent='📝';
   document.getElementById('txBannerText').textContent=text||'';
   document.getElementById('txBannerDetail').textContent=detail||'';
+  if(state==='ready'){
+    _bannerHideTimer=setTimeout(()=>{
+      b.classList.add('tx-fade');
+      setTimeout(()=>{ setBannerState('hidden'); b.classList.remove('tx-fade'); },300);
+    },5000);
+  }
 }
 // wordTimings[sentIdx] = [{start,end}] one entry per word span in sentence
 let wordTimings = [];
@@ -3322,6 +3354,8 @@ async function pwaScanBookFolder(folderName,entry){
   const imageCandidates=[];
   for await (const [name,fEntry] of entry.entries()){
     if(fEntry.kind!=='file') continue;
+    const baseName=name.replace(/\.[^.]+$/,'').toLowerCase();
+    if(baseName==='metadata') continue; // skip sidecar/system files
     const ext=name.split('.').pop().toLowerCase();
     if(AUDIO_EXTS.has(ext)&&!audioFile) audioFile={name,handle:fEntry,ext};
     else if(EBOOK_EXTS.has(ext)&&!ebookFile) ebookFile={name,handle:fEntry,ext};
@@ -3329,9 +3363,9 @@ async function pwaScanBookFolder(folderName,entry){
     else if(ext==='txt'&&!ebookFile&&!transcriptFile) transcriptFile={name,handle:fEntry,ext};
     else if(IMAGE_EXTS.has(ext)) imageCandidates.push({name,handle:fEntry,ext});
   }
-  // Prefer JSON with "transcript" in the name, fallback to first JSON
+  // Only auto-assign JSON if filename clearly indicates transcript
   if(jsonCandidates.length){
-    transcriptFile=jsonCandidates.find(f=>/transcript/i.test(f.name.replace(/\.[^.]+$/,'')))||jsonCandidates[0];
+    transcriptFile=jsonCandidates.find(f=>/transcript|whisper/i.test(f.name.replace(/\.[^.]+$/,'')))||null;
   }
   // Prefer image named "cover", fallback to first image
   if(imageCandidates.length){
@@ -3366,6 +3400,11 @@ async function pwaOpenBook(i){
   syncOffset=b.syncOffset||0; updateOffsetUI();
   showScreen('player');
   $('pTitle').textContent=b.title;
+  // Show saved progress immediately while ebook loads
+  if(b.totalSents>1&&_pProg){
+    const pct=Math.round((b.curSent||0)/(b.totalSents-1)*100);
+    _pProg.textContent=pct+'%';
+  }
   const rate=b.playbackRate||1;
   // Resolve audio URL from file handle if needed
   let resolvedAudioUrl=null;
