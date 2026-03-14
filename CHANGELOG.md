@@ -2,6 +2,16 @@
 
 ---
 
+## v1.14 — 2026-03-14
+
+### Fixed
+- Transcript matching skips short sentences (3–5 words) — widened search window, capped run length for short sentences, and tiered acceptance threshold so short sentences are no longer systematically missed
+- OpenDyslexic font doesn't render on Android — font name corrected to match CDN `@font-face` declaration (`'Open Dyslexic'` with space)
+- OpenDyslexic font lost on app reload — `loadDisplayPrefs()` now injects the CDN stylesheet when Dyslexic is the saved font
+- OpenDyslexic stays in fallback font on slow connections — `link.onload` callback forces repaint after stylesheet arrives
+
+---
+
 ## v1.13 — 2026-03-14
 
 ### Added

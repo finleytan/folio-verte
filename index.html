@@ -668,7 +668,7 @@ html,body,
             <button class="pill" id="fontPill-georgia" onclick="setFont('Georgia,serif','georgia',this)">Georgia</button>
             <button class="pill" id="fontPill-sans" onclick="setFont('DM Sans,sans-serif','sans',this)">Sans</button>
             <button class="pill" id="fontPill-mono" onclick="setFont('Courier New,monospace','mono',this)">Mono</button>
-            <button class="pill" id="fontPill-dyslexic" onclick="setFont('OpenDyslexic,sans-serif','dyslexic',this)">Dyslexic</button>
+            <button class="pill" id="fontPill-dyslexic" onclick="setFont(&quot;'Open Dyslexic',sans-serif&quot;,'dyslexic',this)">Dyslexic</button>
           </div>
         </div>
         <div class="op-sec">
@@ -1465,6 +1465,13 @@ function loadDisplayPrefs(){
       document.documentElement.style.setProperty('--font-body',p.fontBody);
       document.querySelectorAll('[id^=fontPill]').forEach(b=>b.classList.remove('active'));
       if(p.fontKey) document.getElementById('fontPill-'+p.fontKey)?.classList.add('active');
+      if(p.fontKey==='dyslexic'&&!document.getElementById('font-opendyslexic')){
+        const link=document.createElement('link');
+        link.id='font-opendyslexic'; link.rel='stylesheet';
+        link.href='https://fonts.cdnfonts.com/css/open-dyslexic';
+        link.onload=()=>{ document.documentElement.style.setProperty('--font-body',_fontBody); };
+        document.head.appendChild(link);
+      }
     }
     if(p.fontSize){ _fontSize=parseInt(p.fontSize); document.documentElement.style.setProperty('--font-size',p.fontSize); const v=parseInt(p.fontSize); document.getElementById('fsSlider').value=v; document.getElementById('fsLbl').textContent=p.fontSize; }
     if(p.lineHeight){ _lineHeight=parseFloat(p.lineHeight); document.documentElement.style.setProperty('--line-height',p.lineHeight); document.getElementById('lhSlider').value=parseFloat(p.lineHeight); document.getElementById('lhLbl').textContent=parseFloat(p.lineHeight).toFixed(2); }
@@ -2236,6 +2243,7 @@ function setFont(f,key,btn){
     const link=document.createElement('link');
     link.id='font-opendyslexic'; link.rel='stylesheet';
     link.href='https://fonts.cdnfonts.com/css/open-dyslexic';
+    link.onload=()=>{ document.documentElement.style.setProperty('--font-body',_fontBody); };
     document.head.appendChild(link);
   }
   _fontBody=f;
@@ -2403,7 +2411,7 @@ function _timingWorkerFn(){
       var bestScore=0,bestStart=-1,bestEnd=-1;
       var sSize=sSet.size;
       var minRunLen=Math.max(1,sWords.length-2);
-      var maxRunLen=sWords.length*3;
+      var maxRunLen=sWords.length<=6?sWords.length+15:sWords.length*3;
       for(var wi=lo;wi<=hi;wi++){
         var runFreq=Object.create(null);
         var runDistinct=0,inter=0;
@@ -2468,9 +2476,10 @@ function _timingWorkerFn(){
       var tok=sentTokens[si];
       if(!tok.sWords.length) continue;
       var lo=Math.max(0,searchFrom-5);
-      var hi=Math.min(tw.length-tok.sWords.length,lo+tok.sWords.length*20+200);
+      var hi=Math.min(tw.length-tok.sWords.length,lo+tok.sWords.length*30+200);
+      var passThresh=tok.sWords.length<=4?0.45:tok.sWords.length<=7?0.52:0.6;
       var r=findMatch(tok.sWords,tok.sSet,lo,hi,0.85);
-      if(r.bestStart>=0&&r.bestScore>=0.6){
+      if(r.bestStart>=0&&r.bestScore>=passThresh){
         accept(si,r.bestStart,r.bestEnd);
         anchorTwIdx[si]=r.bestStart;
         searchFrom=Math.max(searchFrom,r.bestStart+1);
@@ -2496,7 +2505,7 @@ function _timingWorkerFn(){
         if(anchorTwIdx[j2]!=null){nextTwStart=anchorTwIdx[j2];break;}
       }
       var lo2=Math.max(0,prevTwEnd);
-      var hi2=Math.min(tw.length-tok2.sWords.length,nextTwStart,lo2+tok2.sWords.length*20+200);
+      var hi2=Math.min(tw.length-tok2.sWords.length,nextTwStart,lo2+tok2.sWords.length*30+200);
       if(lo2>hi2) continue;
       var r2=findMatch(tok2.sWords,tok2.sSet,lo2,hi2,0.85);
       if(r2.bestStart>=0&&r2.bestScore>0.35){
@@ -2655,7 +2664,7 @@ async function _buildSentenceTimingsSync(){
     let bestScore=0,bestStart=-1,bestEnd=-1;
     const sSize=sSet.size;
     const minRunLen=Math.max(1,sWords.length-2);
-    const maxRunLen=sWords.length*3;
+    const maxRunLen=sWords.length<=6?sWords.length+15:sWords.length*3;
     for(let wi=lo;wi<=hi;wi++){
       const runFreq=Object.create(null);
       let runDistinct=0,inter=0;
@@ -2721,9 +2730,10 @@ async function _buildSentenceTimingsSync(){
     const {sWords,sSet}=sentTokens[si];
     if(!sWords.length) continue;
     const lo=Math.max(0,searchFrom-5);
-    const hi=Math.min(tw.length-sWords.length,lo+sWords.length*20+200);
+    const hi=Math.min(tw.length-sWords.length,lo+sWords.length*30+200);
+    const passThresh=sWords.length<=4?0.45:sWords.length<=7?0.52:0.6;
     const {bestScore,bestStart,bestEnd}=findMatch(sWords,sSet,lo,hi,0.85);
-    if(bestStart>=0&&bestScore>=0.6){
+    if(bestStart>=0&&bestScore>=passThresh){
       acceptMatch(si,bestStart,bestEnd);
       anchorTwIdx[si]=bestStart;
       searchFrom=Math.max(searchFrom,bestStart+1);
@@ -2749,7 +2759,7 @@ async function _buildSentenceTimingsSync(){
       if(anchorTwIdx[j]!=null){nextTwStart=anchorTwIdx[j];break;}
     }
     const lo=Math.max(0,prevTwEnd);
-    const hi=Math.min(tw.length-sWords.length,nextTwStart,lo+sWords.length*20+200);
+    const hi=Math.min(tw.length-sWords.length,nextTwStart,lo+sWords.length*30+200);
     if(lo>hi) continue;
     const {bestScore,bestStart,bestEnd}=findMatch(sWords,sSet,lo,hi,0.85);
     if(bestStart>=0&&bestScore>0.35){

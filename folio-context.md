@@ -2,7 +2,7 @@
 
 # Folio — Living Context Document
 
-Single-file HTML PWA (~3,698 lines). Audiobook/ebook reader with synced word-level highlighting.
+Single-file HTML PWA (~3,709 lines). Audiobook/ebook reader with synced word-level highlighting.
 Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body), OpenDyslexic (on-demand CDN). Five themes: default dark, light, night, high-contrast dark, high-contrast light.
 
 ---
@@ -16,7 +16,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body), OpenDyslexic (on-dema
 | `<body>` | Static HTML (4 screens + 5 modals) |
 | `<script>` | All JS |
 
-**Approximate line ranges (index.html):** CSS `16–510` · HTML `513–896` · JS `898–3696`
+**Approximate line ranges (index.html):** CSS `16–511` · HTML `513–897` · JS `898–3706`
 
 ### CSS Sections
 
@@ -91,7 +91,7 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body), OpenDyslexic (on-dema
 | **DOM CACHE & UTILS** | `$()`, `cacheDOM()` (caches `_audio`, `_playBtn`, `_eContent`, `_readProg`, `_tCur`, `_seekBar`, `_eScroll`, `_pProg`), `setPlayBtnIcon()`, `xh()`, `fmt()`, `uid()` |
 | **INDEXEDDB** | `idbOpen()` (caches connection in `_idb`; `_idb.onclose` resets to `null` for auto-reconnect), `idbSet(key,val)`, `idbGet(key)` |
 | **LIBRARY PERSISTENCE** | `saveLibrary()`, `loadLibrary()`, `saveBookProgress()`, `flushPositionSync()`, `_saveBlobs()`, `_saveBlobsFor(bookId)`, `_deleteBlobsFor(bookId)`, `_stripBlobs()` |
-| **DISPLAY PREFERENCES** | `saveDisplayPrefs()` (reads `_fontBody/_fontSize/_lineHeight/_maxWidth`; saves `sentHl`/`wordHl`; no `getComputedStyle`), `loadDisplayPrefs()` (restores `sentHlOn` + syncs `#sentHlToggle`) |
+| **DISPLAY PREFERENCES** | `saveDisplayPrefs()` (reads `_fontBody/_fontSize/_lineHeight/_maxWidth`; saves `sentHl`/`wordHl`; no `getComputedStyle`), `loadDisplayPrefs()` (restores `sentHlOn` + syncs `#sentHlToggle`; if saved `fontKey==='dyslexic'`, injects CDN `<link>` with `onload` repaint — same guard as `setFont()`) |
 | **LIBRARY UI** | `renderLib()` (Add Book card gated by `!IS_PWA`), `renameBook()` (inline edit field on card — no `window.prompt()`; blur/Enter saves, Escape cancels; PWA mode persists title to `PWA_PROG_KEY`), `deleteBook()` (inline confirm, calls `_deleteBlobsFor`; PWA mode shows folder-specific toast), `configurePlayerForMode()` |
 | **PLAYER CONFIG** | `configurePlayerForMode(b, audioSrc, rate)` — decides ttsMode, shows/hides seek strip vs TTS bar; revokes previous `blob:` URL on `_audio.src` before assigning new src; toggles `.scrubbing` class on `.read-progress-wrap` (added when ttsMode=true, removed when false) |
 | **OPEN BOOK / GO LIB** | `openBook(i)` (now `async`; awaits `loadTranscriptData` before `loadEbook`; calls `pulseResumeSent()`), `goLib()` (resets `transcriptWords`, `transcriptText`, `sentenceTimings`, `wordTimings`, `sentences`, `tocEntries`, `_tocItems`, `_prevTocActive`, `syncOffset`, `_pendingTimingBookIdx`; also cancels `_plainTextRetryListener` and `_timingWorkerTimeout`) |
@@ -102,8 +102,8 @@ Dark-theme mobile-first. Fonts: DM Sans (UI), Lora (body), OpenDyslexic (on-dema
 | **TTS** | `getTtsVoices()`, `setTtsVoice()`, `setTtsRate()`, `ttsPlay()` (`utt.onboundary` gated by `sentHlOn && wordHlOn`), `ttsPause()`, `ttsStop()` |
 | **HIGHLIGHTING & PROGRESS** | `updateHL()` (gates `.sent-active`/`.word-active` on `sentHlOn`; guards `curWord>=0` — respects `-1` sentinel from `timeupdate`/`setRate`; `updateTocActive()` still runs when `sentHlOn` is false), `updateProg()` (shows `Chapter · pct%` using `tocEntries`; falls back to `pct%` if no TOC), `_cacheScrollMetrics()` (caches `_scrollEl`/`_scrollElH`/`_scrollElTop` from `_eScroll` rect; called at init and on resize), `scrollToSent(idx, instant=false)` (sets `_programmaticScroll=true` before `scrollIntoView`, clears after 100ms; instant=true also skips `scrollPaused` guard and safe-zone check; uses `'instant'` when `_reducedMotion` is true), `toggleAS()`, `toggleWordHl()`, `toggleSentHl()` (toggles `sentHlOn`; when off clears both active highlights immediately; when on calls `updateHL()` to re-apply; persists via `saveDisplayPrefs()`), `pulseResumeSent(instant=false)` (skips pulse animation when `sentHlOn` is false, still calls `scrollToSent`), `updateSpeedBadge()` (targets `#speedBadge`; no-ops if element is missing), `scrubToPosition(ev)` (click/touchend handler on `.read-progress-wrap`; no-ops if `!ttsMode` or `!sentences.length`; maps `clientX` position to `Math.round(pct*(sentences.length-1))`; calls `ttsStop()+ttsPlay()` only when `mediaState==='playing'`; wired once in `init()` — not per book-load) |
 | **TOC** | `toggleToc()`, `buildToc()` (populates `_tocItems[]`; calls `updateTocActive()` then scrolls active entry into view with `behavior:'instant'`; TOC item click: closes sidebar first on mobile ≤700px, then defers one `requestAnimationFrame`; inside rAF: `scrollPaused=false`, `scrollToSent(curSent, true)` (instant), then in TTS mode: `playing`→`ttsStop()+ttsPlay()` restarts from new `curSent`; `ttsPaused`→`ttsStop()` clears stale utterance so next play starts fresh; `stopped`→no-op), `updateTocActive()` (uses cached `_tocItems`/`_prevTocActive` to skip redundant DOM work) |
-| **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `updateThemeColor()`, `setFont()` (on-demand CDN injection for OpenDyslexic when `key==='dyslexic'`; guarded by `getElementById` to prevent duplicate `<link>`), `setFS/LH/MW()`, `setAlign()`, `setDefaultWpmFromSlider()`, `setDefaultWpmFromInput()`, `updateWpmLabel()`, `setSentPause()`, `toggleOpInfo(el)` (toggles `.op-desc` sibling of nearest `.op-ttl`/`.op-row` ancestor), scroll-pause IIFE (rAF-throttled), click-outside handler. WPM slider/input/label HTML removed from Playback tab (JS functions kept for `loadDisplayPrefs`/`saveDisplayPrefs` compat) |
-| **TRANSCRIPT** | `loadTranscriptData()` (handles segment-level Whisper JSON without word_timestamps; validates JSON structure — rejects files without `.segments` or `.words`), `setBannerState()` (auto-hides 'ready' state after 12s with fade via `_bannerHideTimer`), `_timingWorkerFn()` (serialised into Blob Worker), `getTimingWorker()`, `buildSentenceTimings()` (worker dispatch), `buildTimingsFromPlainText()` (worker dispatch), `_buildSentenceTimingsSync()` (fallback), `_buildTimingsFromPlainTextSync()` (fallback), `similarity()`, `updateTranscriptUI()`; after timing is built, `transcriptWords` and `transcriptText` are nulled (both worker onmessage path and sync fallback); worker onmessage calls `showSyncHintOnce()` only on `type==='buildSentenceTimings'` (Whisper word-level), not plain-text path |
+| **OPTIONS PANEL** | `toggleOpts()`, `switchOptTab()`, `setTheme()`, `updateThemeColor()`, `setFont()` (on-demand CDN injection for OpenDyslexic when `key==='dyslexic'`; guarded by `getElementById` to prevent duplicate `<link>`; `link.onload` re-sets `--font-body` to force repaint after stylesheet arrives), `setFS/LH/MW()`, `setAlign()`, `setDefaultWpmFromSlider()`, `setDefaultWpmFromInput()`, `updateWpmLabel()`, `setSentPause()`, `toggleOpInfo(el)` (toggles `.op-desc` sibling of nearest `.op-ttl`/`.op-row` ancestor), scroll-pause IIFE (rAF-throttled), click-outside handler. WPM slider/input/label HTML removed from Playback tab (JS functions kept for `loadDisplayPrefs`/`saveDisplayPrefs` compat) |
+| **TRANSCRIPT** | `loadTranscriptData()` (handles segment-level Whisper JSON without word_timestamps; validates JSON structure — rejects files without `.segments` or `.words`), `setBannerState()` (auto-hides 'ready' state after 12s with fade via `_bannerHideTimer`), `_timingWorkerFn()` (serialised into Blob Worker), `getTimingWorker()`, `buildSentenceTimings()` (worker dispatch), `buildTimingsFromPlainText()` (worker dispatch), `_buildSentenceTimingsSync()` (fallback), `_buildTimingsFromPlainTextSync()` (fallback), `similarity()`, `updateTranscriptUI()`; after timing is built, `transcriptWords` and `transcriptText` are nulled (both worker onmessage path and sync fallback); worker onmessage calls `showSyncHintOnce()` only on `type==='buildSentenceTimings'` (Whisper word-level), not plain-text path. Matching tuning: search window `sWords.length*30+200` (both passes), `maxRunLen` capped at `sWords.length+15` for ≤6-word sentences, pass 1 threshold tiered (`≤4` words→0.45, `≤7`→0.52, else 0.6) |
 | **EBOOK LOADING** | `yieldToMain()` (prefers `scheduler.postTask` with `'background'` priority, falls back to `setTimeout`), `loadEbook(book, onDone)` (chunked DOM build with progress banner via `setBannerState`, delegated click handler via module-level `_contentClickHandler`; click handler is TTS-aware: playing→`ttsStop()+ttsPlay()`, paused→`ttsStop()` only, audio mode unchanged) |
 | **SENTENCE SPLITTER** | `splitSentences(text)` |
 | **EBOOK PARSERS** | `parseTxt()`, `parseMd()`, `parseHtml()`, `extractFromDom()` (walks element nodes only; BLOCK set = `['p','li','blockquote','td','dd','dt','figcaption']` consumed via `textContent`; container elements `div/section/article/aside` are descended into; headings `h1–h6` emitted with level capped at 3; skips `script/style/head/nav/footer/figure`), `parseEpub()` (tries cdnjs then unpkg fallback for JSZip; user-friendly error on both-fail), `loadScript()`, `arrayBufferToBase64()` (chunked `String.fromCharCode.apply` + `btoa`; 8KB chunks to avoid call stack overflow) |
@@ -363,17 +363,20 @@ buildSentenceTimings()
       After postMessage, starts an 8-second watchdog (_timingWorkerTimeout): if the worker
       doesn't respond in time, terminates it, shows toast, falls back to _buildSentenceTimingsSync().
       Worker runs two-pass greedy Jaccard match off main thread:
-        Pass 1 (anchor): greedy forward search, window = sWords.length*20+200
-        Pass 2 (fill): searches between anchors, same window formula
-        findMatch() outer wi-loop breaks early when bestScore>0.7 (confident match found);
-        inner wj-loop breaks at earlyStop=0.85. Object.create(null) for GC efficiency.
+        Pass 1 (anchor): greedy forward search, window = sWords.length*30+200;
+          acceptance threshold tiered: ≤4 words→0.45, ≤7→0.52, else 0.6
+        Pass 2 (fill): searches between anchors, window = sWords.length*30+200
+        findMatch(): maxRunLen capped at sWords.length+15 for ≤6-word sentences
+          (prevents run overgrowth on short sentences); outer wi-loop breaks early
+          when bestScore>0.7; inner wj-loop breaks at earlyStop=0.85.
+          Object.create(null) for GC efficiency.
       onmessage handler: clears _timingWorkerTimeout, stale-guard (bookIdx===_pendingTimingBookIdx —
       mismatch shows toast + console.warn instead of silent discard),
       length-guard (sentences still match), then applies sentenceTimings[] +
       wordTimings[] → nulls transcriptWords + transcriptText → setBannerState('ready') →
       showSyncHintOnce() (Whisper word-level path only; not called for plain-text).
       try/catch falls back to _buildSentenceTimingsSync() (file:// or worker error);
-      sync fallback uses same window formula (sWords.length*20+200), YIELD_EVERY=30.
+      sync fallback uses same tuning (sWords.length*30+200, tiered threshold, capped maxRunLen), YIELD_EVERY=30.
       buildTimingsFromPlainText() dispatches plain-text timing to the same worker with
       type='buildTimingsFromPlainText'; if _audio.duration is 0 at call time, registers a
       one-shot loadedmetadata listener (_plainTextRetryListener) and retries automatically.
@@ -564,7 +567,7 @@ Blobs stripped via `_stripBlobs()` before every write.
 1. **Stale DOM refs**: `sentences[]` holds live DOM refs — any `#eContent` innerHTML wipe without clearing `sentences`, `_activeSentEl`, `_activeWordEl` causes stale-ref bugs. `goLib()` now clears `sentences=[]` and `tocEntries=[]`.
 2. **Fire-and-forget blobs**: `saveLibrary()` blob write is async fire-and-forget; closing tab before IDB flush = data loss for new books.
 3. **Yield-to-main**: Transcript state machine needs `await yieldToMain()` — missing `await` = banner states don't paint.
-4. **Sync window cap**: `buildSentenceTimings` search window is capped — long audio intros not in ebook can desync cursor.
+4. **Sync window cap**: `buildSentenceTimings` search window is `sWords.length*30+200` — larger than before but still capped. Very long audio intros not in ebook can still desync cursor.
 5. **PWA folder hash**: book.id = folder name hash — renaming folder loses all saved progress.
 6. **No audio persistence**: blob URLs are runtime-only. Browser mode reload = must re-link audio.
 7. **`scrollTimer` / `_scrollPauseTimer` separation**: `scrollTimer` is now used exclusively by `advanceSent()` / `stopScrollEngine()`. The scroll-pause IIFE uses `_scrollPauseTimer` for its 2s cooldown. These must remain separate — re-merging them reintroduces the hang bug where user scrolling kills the TTS advance chain.
@@ -583,4 +586,5 @@ Blobs stripped via `_stripBlobs()` before every write.
 20. **PWA safe-area padding on `.top-bar` only**: `padding-top:env(safe-area-inset-top)` must be applied to `.top-bar` only, not to both `.top-bar` and `#player`. Since `.top-bar` is a child of `#player`, applying to both doubles the notch inset on mobile devices.
 21. **`sentHlOn` gates both sentence and word highlights**: When `sentHlOn` is false, `updateHL()` skips `.sent-active` and `.word-active`, and `_wordTick()` skips word-active class application. `wordHlOn` is a sub-toggle — only effective when `sentHlOn` is true. `updateTocActive()` still runs regardless. `pulseResumeSent()` skips the pulse animation but still calls `scrollToSent()`.
 22. **`setTheme()` wipes `body.className`**: `setTheme()` sets `document.body.className = t?'theme-'+t:''`, which removes ALL classes including `is-pwa`. The `is-pwa` class is re-added on next `init()` but is lost during the session after a theme change. CSS rules using `body.is-pwa` (e.g. safe-area padding) break until reload. Known pre-existing issue.
-23. **`setFont()` OpenDyslexic CDN injection**: When `key==='dyslexic'`, `setFont()` injects a `<link>` element for the CDN stylesheet, guarded by `getElementById('font-opendyslexic')` to prevent duplicates. `loadDisplayPrefs()` calls `setFont()` on load, so the CDN link is re-injected on every page load when Dyslexic is the saved font. The font may take a moment to load — text will flash from fallback `sans-serif` to OpenDyslexic.
+23. **`setFont()` OpenDyslexic CDN injection**: When `key==='dyslexic'`, `setFont()` injects a `<link>` element for the CDN stylesheet, guarded by `getElementById('font-opendyslexic')` to prevent duplicates. `link.onload` re-sets `--font-body` to force a repaint after the stylesheet arrives (fixes slow-connection rendering). `loadDisplayPrefs()` also injects the CDN link on reload when `fontKey==='dyslexic'` (same guard + onload pattern). The font-family string must be `'Open Dyslexic'` (with space) to match the CDN's `@font-face` declaration — Android Chrome requires exact name matching.
+24. **Transcript matching tuning is duplicated**: The Jaccard matching logic exists in two identical copies — inside `_timingWorkerFn()` (worker, uses `var`) and `_buildSentenceTimingsSync()` (main thread, uses `const`/`let`). All tuning parameters (window multiplier, maxRunLen cap, pass 1 threshold) must be changed in both copies simultaneously. The three tuning knobs are: search window (`sWords.length*30+200`), maxRunLen cap (`sWords.length+15` when `≤6` words), and pass 1 acceptance threshold (tiered: `≤4`→0.45, `≤7`→0.52, else 0.6).
