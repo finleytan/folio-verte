@@ -563,7 +563,7 @@ html,body,
     <div class="lib-logo">Folio</div>
     <div class="lib-tagline">Audiobook &amp; Ebook Reader</div>
     <div id="libVersion" style="font-size:10px;color:var(--text3);margin-top:6px;letter-spacing:.04em"></div>
-    <div id="pwaFolderBadge" style="display:none;margin-top:8px;font-size:11px;color:var(--text3);cursor:pointer" onclick="pwaPickFolder()">📁 <span id="pwaFolderName"></span> · <span style="color:var(--accent)">Change</span></div>
+    <div id="pwaFolderBadge" style="display:none;margin-top:8px;font-size:11px;color:var(--text3);cursor:pointer" onclick="pwaFolderChangeTap()">📁 <span id="pwaFolderName"></span> · <span style="color:var(--accent)">Change</span></div>
   </div>
   <div class="lib-grid" id="libGrid"></div>
 </div>
@@ -611,10 +611,19 @@ html,body,
           <div class="op-row"><span class="op-val" id="sentPauseLbl">500ms</span><input type="range" class="op-slider" min="0" max="2000" step="50" value="500" oninput="setSentPause(this.value)"></div>
         </div>
         <div class="op-sec">
-          <div class="op-ttl">Word Highlight <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></div>
-          <div class="op-desc" style="display:none">Underlines the current word as it's read aloud.</div>
-          <div class="op-row"><span class="op-lbl">Show current word</span><button class="toggle on" id="wordHlToggle" onclick="toggleWordHl()"></button></div>
-          <div class="op-row"><span class="op-lbl">Sentence highlight</span><button class="toggle on" id="sentHlToggle" onclick="toggleSentHl()"></button></div>
+          <div class="op-ttl">Highlight <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></div>
+          <div class="op-desc" style="display:none">
+            <strong style="color:var(--text2)">Off</strong> — no highlighting while playing.<br>
+            <strong style="color:var(--text2)">Sentence</strong> — the sentence currently being read glows.<br>
+            <strong style="color:var(--text2)">Sentence + Word</strong> — sentence glows and a moving underline tracks each word.
+          </div>
+          <div class="op-row" style="margin-top:2px">
+            <div class="pills" style="width:100%">
+              <button class="pill" id="hlPill-off" onclick="setHighlightMode('off')" style="flex:1;text-align:center">Off</button>
+              <button class="pill" id="hlPill-sentence" onclick="setHighlightMode('sentence')" style="flex:1.4;text-align:center">Sentence</button>
+              <button class="pill" id="hlPill-word" onclick="setHighlightMode('word')" style="flex:2.2;text-align:center">Sentence + Word</button>
+            </div>
+          </div>
         </div>
         <div class="op-sec">
           <div class="op-ttl">Playback Rate <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></div>
@@ -927,6 +936,7 @@ let _contentClickHandler = null;
 let _wasPlayingBeforeFreeze = false;
 let _scrollPauseTimer = null;
 let folderFiles = [];
+let _hiddenBooks = [];
 let _fontBody = "'Lora',Georgia,serif";
 let _fontSize = 18;
 let _lineHeight = 1.88;
@@ -1447,7 +1457,9 @@ function saveDisplayPrefs(){
     lineHeight:String(_lineHeight),
     maxWidth:_maxWidth+'px',
     textAlign:document.getElementById('eContent')?.style.textAlign||'left',
-    wordHl:wordHlOn, sentHl:sentHlOn, wpm, sentPauseMs,
+    wordHl:wordHlOn, sentHl:sentHlOn,
+    hlMode:!sentHlOn?'off':wordHlOn?'word':'sentence',
+    wpm, sentPauseMs,
   };
   localStorage.setItem(DISPLAY_PREFS_KEY,JSON.stringify(prefs));
 }
@@ -1477,8 +1489,15 @@ function loadDisplayPrefs(){
     if(p.lineHeight){ _lineHeight=parseFloat(p.lineHeight); document.documentElement.style.setProperty('--line-height',p.lineHeight); document.getElementById('lhSlider').value=parseFloat(p.lineHeight); document.getElementById('lhLbl').textContent=parseFloat(p.lineHeight).toFixed(2); }
     if(p.maxWidth){ _maxWidth=parseInt(p.maxWidth); document.documentElement.style.setProperty('--max-width',p.maxWidth); const v=parseInt(p.maxWidth); document.getElementById('mwSlider').value=v; document.getElementById('mwLbl').textContent=p.maxWidth; }
     if(p.textAlign){ const ec=document.getElementById('eContent'); if(ec) ec.style.textAlign=p.textAlign; document.querySelectorAll('[id^=alignPill]').forEach(b=>b.classList.remove('active')); document.getElementById('alignPill-'+p.textAlign)?.classList.add('active'); }
-    if(p.wordHl!==undefined){ wordHlOn=p.wordHl; document.getElementById('wordHlToggle')?.classList.toggle('on',wordHlOn); }
-    if(p.sentHl!==undefined){ sentHlOn=p.sentHl; document.getElementById('sentHlToggle')?.classList.toggle('on',sentHlOn); }
+    if(p.wordHl!==undefined){ wordHlOn=p.wordHl; const wt=document.getElementById('wordHlToggle'); if(wt) wt.classList.toggle('on',wordHlOn); }
+    if(p.sentHl!==undefined){ sentHlOn=p.sentHl; const st=document.getElementById('sentHlToggle'); if(st) st.classList.toggle('on',sentHlOn); }
+    // hlMode overrides individual booleans if present (new format)
+    if(p.hlMode){
+      if(p.hlMode==='off'){    sentHlOn=false; wordHlOn=false; }
+      else if(p.hlMode==='sentence'){ sentHlOn=true;  wordHlOn=false; }
+      else if(p.hlMode==='word'){     sentHlOn=true;  wordHlOn=true;  }
+    }
+    _syncHlPills();
     if(p.wpm){ wpm=p.wpm; document.getElementById('defWpmSlider').value=wpm; document.getElementById('defWpmInput').value=wpm; updateWpmLabel(); }
     if(p.sentPauseMs!==undefined){ sentPauseMs=p.sentPauseMs; document.getElementById('sentPauseLbl').textContent=sentPauseMs+'ms'; }
     updateThemeColor();
@@ -1525,7 +1544,7 @@ function renderLib(){
       </div>
       <div class="book-card-actions">
         <button class="card-action-btn" title="Rename" onclick="renameBook(${i},event)">✏️</button>
-        <button class="card-action-btn" title="Delete" onclick="deleteBook(${i},event)">🗑️</button>
+        <button class="card-action-btn" title="${IS_PWA?'Hide':'Delete'}" onclick="deleteBook(${i},event)">${IS_PWA?'🙈':'🗑️'}</button>
       </div>
       <div class="book-info">
         <div class="book-title">${xh(b.title)}</div>
@@ -1544,6 +1563,58 @@ function renderLib(){
     add.onclick=()=>openModal();
     grid.appendChild(add);
   }
+  if(IS_PWA&&_hiddenBooks.length){
+    const section=document.createElement('div');
+    section.style.cssText='grid-column:1/-1;margin-top:8px;';
+    const toggle=document.createElement('button');
+    toggle.style.cssText='width:100%;background:transparent;border:none;border-top:1px solid var(--border);padding:12px 4px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text3);font-family:var(--font-ui);font-size:12px;font-weight:500;';
+    toggle.innerHTML='<span id="hiddenChevron" style="font-size:10px;transition:transform .2s">▶</span> Hidden books ('+_hiddenBooks.length+')';
+    const hiddenGrid=document.createElement('div');
+    hiddenGrid.style.cssText='display:none;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding-top:12px;';
+    let hiddenOpen=false;
+    toggle.addEventListener('click',()=>{
+      hiddenOpen=!hiddenOpen;
+      hiddenGrid.style.display=hiddenOpen?'grid':'none';
+      const chev=document.getElementById('hiddenChevron');
+      if(chev) chev.style.transform=hiddenOpen?'rotate(90deg)':'rotate(0deg)';
+    });
+    _hiddenBooks.forEach(b=>{
+      const [c1,c2]=coverGrad(b.title);
+      const initials=coverInitials(b.title);
+      const card=document.createElement('div');
+      card.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative;opacity:0.55;';
+      const coverInner=b.coverUrl
+        ?`<img class="book-cover-img" src="${xh(b.coverUrl)}" alt="">`
+        :`<div class="book-cover-art">${xh(initials)}</div>`;
+      card.innerHTML=`
+        <div class="book-cover" style="background:linear-gradient(135deg,${c1},${c2})">
+          ${coverInner}
+        </div>
+        <div class="book-info">
+          <div class="book-title">${xh(b.title)}</div>
+          <div class="book-meta" style="margin-top:4px">
+            <button onclick="unhideBook('${xh(b.id)}')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:11px;font-weight:500;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:var(--font-ui);">Show</button>
+          </div>
+        </div>`;
+      hiddenGrid.appendChild(card);
+    });
+    section.appendChild(toggle);
+    section.appendChild(hiddenGrid);
+    grid.appendChild(section);
+  }
+}
+function unhideBook(id){
+  const all=getPwaProgress();
+  if(all[id]) delete all[id].hidden;
+  localStorage.setItem(PWA_PROG_KEY,JSON.stringify(all));
+  const idx=_hiddenBooks.findIndex(b=>b.id===id);
+  if(idx>=0){
+    const b=_hiddenBooks.splice(idx,1)[0];
+    library.push(b);
+    library.sort((a,b2)=>a.title.localeCompare(b2.title));
+  }
+  renderLib();
+  showToast('Book restored');
 }
 function renameBook(i,e){
   e.stopPropagation();
@@ -1588,25 +1659,35 @@ function deleteBook(i,e){
   const title = library[i].title;
   const conf = document.createElement('div');
   conf.className='delete-confirm';
-  conf.innerHTML=`<div class="delete-confirm-msg">Delete<br><strong>${xh(title)}</strong>?</div>
+  const actionLabel=IS_PWA?'Hide':'Delete';
+  conf.innerHTML=`<div class="delete-confirm-msg">${IS_PWA?'Hide':'Delete'}<br><strong>${xh(title)}</strong>?</div>
+    ${IS_PWA?'<div class="delete-confirm-msg" style="font-size:10px;opacity:.7;margin-top:-4px">Folder stays on your device</div>':''}
     <div class="delete-confirm-row">
-      <button class="delete-confirm-yes">Delete</button>
+      <button class="delete-confirm-yes">${actionLabel}</button>
       <button class="delete-confirm-no">Cancel</button>
     </div>`;
   conf.querySelector('.delete-confirm-yes').addEventListener('click',ev=>{
     ev.stopPropagation();
     const b=library[i];
-    if(b.audioUrl) URL.revokeObjectURL(b.audioUrl);
-    _deleteBlobsFor(b.id);
-    library.splice(i,1);
-    if(!IS_PWA) saveLibrary();
-    else{
-      // PWA: remove saved progress. The folder still exists on disk — book will reappear on next scan.
-      const all=getPwaProgress(); delete all[b.id]; localStorage.setItem(PWA_PROG_KEY,JSON.stringify(all));
+    if(!IS_PWA){
+      if(b.audioUrl) URL.revokeObjectURL(b.audioUrl);
+      _deleteBlobsFor(b.id);
+      library.splice(i,1);
+      saveLibrary();
+      showToast('"'+title+'" deleted');
+    } else {
+      // PWA: hide the book — write hidden:true to saved progress so it
+      // survives the next scan without reappearing in the main grid.
+      if(b.audioUrl) URL.revokeObjectURL(b.audioUrl);
+      b.audioUrl=null;
+      const all=getPwaProgress();
+      all[b.id]=Object.assign(all[b.id]||{},{hidden:true});
+      localStorage.setItem(PWA_PROG_KEY,JSON.stringify(all));
+      _hiddenBooks.push(b);
+      library.splice(i,1);
+      showToast('"'+title+'" hidden');
     }
     renderLib();
-    if(IS_PWA) showToast('Removed from library. Move the folder out of your library to delete permanently.','',4000);
-    else showToast('"'+title+'" deleted');
   });
   conf.querySelector('.delete-confirm-no').addEventListener('click',ev=>{
     ev.stopPropagation();
@@ -2133,19 +2214,60 @@ function toggleAS(){
 }
 function toggleWordHl(){
   wordHlOn=!wordHlOn;
-  document.getElementById('wordHlToggle').classList.toggle('on',wordHlOn);
+  const wt=document.getElementById('wordHlToggle');
+  if(wt) wt.classList.toggle('on',wordHlOn);
   if(!wordHlOn&&_activeWordEl){ _activeWordEl.classList.remove('word-active'); _activeWordEl=null; }
   saveDisplayPrefs();
 }
 function toggleSentHl(){
   sentHlOn=!sentHlOn;
-  document.getElementById('sentHlToggle').classList.toggle('on',sentHlOn);
+  const st=document.getElementById('sentHlToggle');
+  if(st) st.classList.toggle('on',sentHlOn);
   if(!sentHlOn){
     if(_activeSentEl){ _activeSentEl.classList.remove('sent-active'); _activeSentEl=null; }
     if(_activeWordEl){ _activeWordEl.classList.remove('word-active'); _activeWordEl=null; }
   } else {
-    updateHL();
+    _resyncAndHL();
   }
+  saveDisplayPrefs();
+}
+function _resyncAndHL(){
+  // When re-enabling highlighting, resync curSent to actual audio position.
+  // Without this, curSent may be inside an unmatched sentenceTimings gap on
+  // low match % books, causing the highlight to snap backward on re-enable.
+  if(!ttsMode && sentenceTimings.length && isFinite(_audio.currentTime)){
+    const t=_audio.currentTime+syncOffset;
+    let best=curSent;
+    for(let i=sentenceTimings.length-1;i>=0;i--){
+      if(sentenceTimings[i]&&t>=sentenceTimings[i].start){ best=i; break; }
+    }
+    curSent=best; curWord=-1;
+  }
+  updateHL();
+  if(autoScroll) scrollToSent(curSent,true);
+}
+function _syncHlPills(){
+  const mode=!sentHlOn?'off':wordHlOn?'word':'sentence';
+  ['off','sentence','word'].forEach(m=>{
+    document.getElementById('hlPill-'+m)?.classList.toggle('active',m===mode);
+  });
+}
+function setHighlightMode(mode){
+  if(mode==='off'){
+    sentHlOn=false; wordHlOn=false;
+    if(_activeSentEl){ _activeSentEl.classList.remove('sent-active'); _activeSentEl=null; }
+    if(_activeWordEl){ _activeWordEl.classList.remove('word-active'); _activeWordEl=null; }
+  } else if(mode==='sentence'){
+    const wasOff=!sentHlOn;
+    sentHlOn=true; wordHlOn=false;
+    if(_activeWordEl){ _activeWordEl.classList.remove('word-active'); _activeWordEl=null; }
+    if(wasOff) _resyncAndHL(); else updateHL();
+  } else if(mode==='word'){
+    const wasOff=!sentHlOn;
+    sentHlOn=true; wordHlOn=true;
+    if(wasOff) _resyncAndHL(); else updateHL();
+  }
+  _syncHlPills();
   saveDisplayPrefs();
 }
 
@@ -3378,33 +3500,25 @@ function rlLoad(f){
 // ══════════════════════════════════════════════════════
 // PWA FILE SYSTEM
 // ══════════════════════════════════════════════════════
-function _confirmFolder(name,isChange=false){
-  return new Promise(resolve=>{
-    const sheet=document.createElement('div');
-    sheet.className='folder-confirm-sheet';
-    const cancelRow=isChange
-      ?'<button class="btn btn-ghost" id="folderConfirmCancel" style="width:100%;margin-bottom:4px">Keep current folder</button>'
-      :'';
-    sheet.innerHTML='<div class="folder-confirm-name">📁 '+name+'</div>'
-      +'<div class="folder-confirm-sub">Use this folder as your Folio library?</div>'
-      +cancelRow
-      +'<div class="folder-confirm-row">'
-      +'<button class="btn btn-ghost" id="folderConfirmNo">Choose another</button>'
-      +'<button class="btn btn-primary" id="folderConfirmYes">Use this folder</button>'
-      +'</div>';
-    document.body.appendChild(sheet);
-    sheet.querySelector('#folderConfirmYes').addEventListener('click',()=>{ sheet.remove(); resolve(true); });
-    sheet.querySelector('#folderConfirmNo').addEventListener('click',()=>{ sheet.remove(); resolve(false); });
-    if(isChange) sheet.querySelector('#folderConfirmCancel').addEventListener('click',()=>{ sheet.remove(); resolve('cancel'); });
-  });
+function pwaFolderChangeTap(){
+  const sheet=document.createElement('div');
+  sheet.className='folder-confirm-sheet';
+  const folderName=document.getElementById('pwaFolderName')?.textContent||'current folder';
+  sheet.innerHTML='<div class="folder-confirm-name">Change library folder?</div>'
+    +'<div class="folder-confirm-sub">Currently: '+xh(folderName)+'</div>'
+    +'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;display:flex;gap:10px;align-items:flex-start">'
+    +'<span style="font-size:15px;flex-shrink:0">⚠️</span>'
+    +'<span style="font-size:12px;color:var(--text2);line-height:1.5">The Android folder picker will open. If you press back, you\'ll go to your home screen — just tap the <strong style="color:var(--text)">Folio icon</strong> to come back.</span>'
+    +'</div>'
+    +'<button class="btn btn-primary" id="folderChangeGo" style="width:100%;justify-content:center">📂 Open folder picker</button>'
+    +'<button class="btn btn-ghost" id="folderChangeCancel" style="width:100%;justify-content:center">Cancel</button>';
+  document.body.appendChild(sheet);
+  sheet.querySelector('#folderChangeGo').addEventListener('click',()=>{ sheet.remove(); pwaPickFolder(); });
+  sheet.querySelector('#folderChangeCancel').addEventListener('click',()=>{ sheet.remove(); });
 }
 async function pwaPickFolder(){
   try{
     const handle=await window.showDirectoryPicker({mode:'read'});
-    const isChange=!!pwaRootHandle;
-    const ok=await _confirmFolder(handle.name,isChange);
-    if(ok==='cancel') return;  // keep current folder
-    if(!ok) return;            // user wants to choose another
     pwaRootHandle=handle;
     await idbSet('rootHandle',handle);
     await idbSet('rootName',handle.name);
@@ -3443,7 +3557,9 @@ async function pwaScanAndRender(){
   }
   scanned.sort((a,b)=>a.title.localeCompare(b.title));
   const saved=getPwaProgress();
-  library=scanned.map(b=>({...b,...(saved[b.id]||{})}));
+  const merged=scanned.map(b=>({...b,...(saved[b.id]||{})}));
+  _hiddenBooks=merged.filter(b=>b.hidden);
+  library=merged.filter(b=>!b.hidden);
   renderLib();
   await _resolveAmbiguousTranscripts();
   if(scanned.length===0&&grid){
