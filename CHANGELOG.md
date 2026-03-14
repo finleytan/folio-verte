@@ -2,6 +2,25 @@
 
 ---
 
+## v1.11 — 2026-03-14
+
+### Fixed
+- **Toast notifications hidden behind Android gesture nav bar** — `#toastContainer` now uses `env(safe-area-inset-bottom)` to clear the system UI
+- **PWA player top bar clipped under status bar** — added `is-pwa` body class with `env(safe-area-inset-top)` padding on `.top-bar` and `#player` in mobile query
+- **No visual feedback when adjusting sync offset** — `adjustOffset()` now shows a brief toast with the current offset value (e.g. "Sync offset: +1.5s")
+- **Top bar icons shift position between books** — `.speed-badge` pinned with `flex-shrink:0` and `min-width`; desktop `.bk-info` changed to `flex:1` so title absorbs variable space
+- **Book rename used `window.prompt()`** — replaced with an inline edit field on the library card; Enter saves, Escape cancels, blur saves if changed
+
+### Changed
+- **Transcript pill removed from add-book modal** — transcript management is now exclusively through the Book Info panel
+- **WPM slider removed from options panel** — internal WPM logic retained for TTS scroll timing; UI control removed to reduce clutter
+
+### Added
+- **Folder selection confirmation sheet** — after picking a PWA library folder, a bottom sheet asks "Use this folder?" before committing; "Choose another" returns to the picker without saving
+- Playwright regression tests for UI cleanup batch (tests/specs/11-ui-cleanup.spec.js)
+
+---
+
 ## v1.10 — 2026-03-13
 
 ### Fixed
