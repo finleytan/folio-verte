@@ -37,6 +37,16 @@ body.theme-night{
   --border:#1e2230; --text:#c0c8d8; --text2:#707888; --text3:#383d50;
   --accent:#4a7ad0;
 }
+body.theme-hc{
+  --bg:#000000; --bg2:#0a0a0a; --surface:#0a0a0a; --surface2:#111111;
+  --border:#ffffff; --text:#ffffff; --text2:#cccccc; --text3:#888888;
+  --accent:#ffff00; --hl-bg:#333300; --hl-border:#ffff00; --word-hl:#ffff00;
+}
+body.theme-hclight{
+  --bg:#ffffff; --bg2:#f8f8f8; --surface:#f8f8f8; --surface2:#eeeeee;
+  --border:#000000; --text:#000000; --text2:#333333; --text3:#666666;
+  --accent:#0000cc; --hl-bg:#cce5ff; --hl-border:#0000cc; --word-hl:#0000cc;
+}
 
 /* ── SCREENS ── */
 #pwaFirstRun,#pwaRegrant,#library{
@@ -575,7 +585,6 @@ html,body,
       <button class="ic-btn" onclick="skip(15)" title="+15s" aria-label="Skip forward 15 seconds">⏭</button>
       <div class="vdiv"></div>
       <button class="ic-btn" onclick="toggleToc()" title="Contents" aria-label="Table of contents">☰</button>
-      <button class="ic-btn" id="transcriptBtn" onclick="openTranscriptModal()" title="Transcript" aria-label="Transcript">📝</button>
       <button class="ic-btn" id="bookInfoBtn" onclick="openBookInfoModal()" title="Book files" aria-label="Book files">ℹ</button>
       <button class="ic-btn" id="optBtn" onclick="toggleOpts()" aria-label="Settings">⚙</button>
       <button class="ic-btn" id="sleepTimerBtn" onclick="cycleSleepTimer()" title="Sleep timer" aria-label="Sleep timer">🌙<span id="sleepTimerBadge"></span></button>
@@ -605,6 +614,7 @@ html,body,
           <div class="op-ttl">Word Highlight <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></div>
           <div class="op-desc" style="display:none">Underlines the current word as it's read aloud.</div>
           <div class="op-row"><span class="op-lbl">Show current word</span><button class="toggle on" id="wordHlToggle" onclick="toggleWordHl()"></button></div>
+          <div class="op-row"><span class="op-lbl">Sentence highlight</span><button class="toggle on" id="sentHlToggle" onclick="toggleSentHl()"></button></div>
         </div>
         <div class="op-sec">
           <div class="op-ttl">Playback Rate <span class="op-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></div>
@@ -647,6 +657,8 @@ html,body,
             <button class="pill" id="themePill-light" onclick="setTheme('light',this)">Parchment</button>
             <button class="pill active" id="themePill-dark" onclick="setTheme('',this)">Dark</button>
             <button class="pill" id="themePill-night" onclick="setTheme('night',this)">Night</button>
+            <button class="pill" id="themePill-hc" onclick="setTheme('hc',this)">Hi-C Dark</button>
+            <button class="pill" id="themePill-hclight" onclick="setTheme('hclight',this)">Hi-C Light</button>
           </div>
         </div>
         <div class="op-sec">
@@ -656,6 +668,7 @@ html,body,
             <button class="pill" id="fontPill-georgia" onclick="setFont('Georgia,serif','georgia',this)">Georgia</button>
             <button class="pill" id="fontPill-sans" onclick="setFont('DM Sans,sans-serif','sans',this)">Sans</button>
             <button class="pill" id="fontPill-mono" onclick="setFont('Courier New,monospace','mono',this)">Mono</button>
+            <button class="pill" id="fontPill-dyslexic" onclick="setFont('OpenDyslexic,sans-serif','dyslexic',this)">Dyslexic</button>
           </div>
         </div>
         <div class="op-sec">
@@ -897,13 +910,15 @@ let sentences = [];
 let tocEntries = [];
 let curSent = 0; let curWord = 0;
 let autoScroll = true; let scrollPaused = false; let scrollTimer = null; let _programmaticScroll = false;
-let lastAdvanceTime = 0; let wpm = 150; let sentPauseMs = 500;
-let mediaState = 'stopped'; let tocOpen = false; let wordHlOn = true;
+let wpm = 150; let sentPauseMs = 500;
+let mediaState = 'stopped'; let tocOpen = false; let wordHlOn = true; let sentHlOn = true;
 let isSeeking = false;
 let sentenceTimings = [];
 let syncOffset = 0;
 let transcriptWords = null; let transcriptText = null;
 let _timingWorker = null; let _timingWorkerBlobUrl = null; let _pendingTimingBookIdx = -1; let _timingWorkerTimeout = null; let _plainTextRetryListener = null;
+let _reducedMotion = false;
+(function(){ const mq=window.matchMedia('(prefers-reduced-motion: reduce)'); _reducedMotion=mq.matches; mq.addEventListener('change',e=>{_reducedMotion=e.matches;}); })();
 let ttsMode = false; let ttsSpeaking = false; let ttsUtterance = null;
 let ttsVoice = null; let ttsPaused = false; let _ttsGeneration = 0;
 let txPending = null; let laPending = null;
@@ -1432,7 +1447,7 @@ function saveDisplayPrefs(){
     lineHeight:String(_lineHeight),
     maxWidth:_maxWidth+'px',
     textAlign:document.getElementById('eContent')?.style.textAlign||'left',
-    wordHl:wordHlOn, wpm, sentPauseMs,
+    wordHl:wordHlOn, sentHl:sentHlOn, wpm, sentPauseMs,
   };
   localStorage.setItem(DISPLAY_PREFS_KEY,JSON.stringify(prefs));
 }
@@ -1456,6 +1471,7 @@ function loadDisplayPrefs(){
     if(p.maxWidth){ _maxWidth=parseInt(p.maxWidth); document.documentElement.style.setProperty('--max-width',p.maxWidth); const v=parseInt(p.maxWidth); document.getElementById('mwSlider').value=v; document.getElementById('mwLbl').textContent=p.maxWidth; }
     if(p.textAlign){ const ec=document.getElementById('eContent'); if(ec) ec.style.textAlign=p.textAlign; document.querySelectorAll('[id^=alignPill]').forEach(b=>b.classList.remove('active')); document.getElementById('alignPill-'+p.textAlign)?.classList.add('active'); }
     if(p.wordHl!==undefined){ wordHlOn=p.wordHl; document.getElementById('wordHlToggle')?.classList.toggle('on',wordHlOn); }
+    if(p.sentHl!==undefined){ sentHlOn=p.sentHl; document.getElementById('sentHlToggle')?.classList.toggle('on',sentHlOn); }
     if(p.wpm){ wpm=p.wpm; document.getElementById('defWpmSlider').value=wpm; document.getElementById('defWpmInput').value=wpm; updateWpmLabel(); }
     if(p.sentPauseMs!==undefined){ sentPauseMs=p.sentPauseMs; document.getElementById('sentPauseLbl').textContent=sentPauseMs+'ms'; }
     updateThemeColor();
@@ -1640,6 +1656,7 @@ async function openBook(i){
 
 function pulseResumeSent(instant=false){
   if(curSent<=0||!sentences[curSent]) return;
+  if(!sentHlOn){ scrollToSent(curSent,instant); return; }
   const el=sentences[curSent].el;
   el.classList.add('sent-resume-pulse');
   el.addEventListener('animationend',()=>el.classList.remove('sent-resume-pulse'),{once:true});
@@ -1821,10 +1838,12 @@ function _wordTick(){
     if(w !== curWord){
       curWord = w;
       if(_activeWordEl){ _activeWordEl.classList.remove('word-active'); _activeWordEl=null; }
-      const s = sentences[curSent];
-      if(s && wordHlOn && s.words[curWord]){
-        s.words[curWord].el.classList.add('word-active');
-        _activeWordEl=s.words[curWord].el;
+      if(sentHlOn && wordHlOn){
+        const s = sentences[curSent];
+        if(s && s.words[curWord]){
+          s.words[curWord].el.classList.add('word-active');
+          _activeWordEl=s.words[curWord].el;
+        }
       }
     }
   }
@@ -1994,7 +2013,7 @@ function ttsPlay(){
     utt.rate=parseFloat(document.getElementById('ttsRateSlider').value)||1;
     if(ttsVoice) utt.voice=ttsVoice;
     utt.onboundary=ev=>{
-      if(ev.name!=='word'||!wordHlOn) return;
+      if(ev.name!=='word'||!sentHlOn||!wordHlOn) return;
       const ci=ev.charIndex;
       // Map charIndex in the utterance text to the word span index
       const words=s.words; if(!words||!words.length) return;
@@ -2063,8 +2082,10 @@ function updateHL(){
   if(!sentences.length) return;
   const s=sentences[curSent];
   if(!s) return;
-  s.el.classList.add('sent-active'); _activeSentEl=s.el;
-  if(wordHlOn&&curWord>=0&&s.words[curWord]){ s.words[curWord].el.classList.add('word-active'); _activeWordEl=s.words[curWord].el; }
+  if(sentHlOn){
+    s.el.classList.add('sent-active'); _activeSentEl=s.el;
+    if(wordHlOn&&curWord>=0&&s.words[curWord]){ s.words[curWord].el.classList.add('word-active'); _activeWordEl=s.words[curWord].el; }
+  }
   updateTocActive();
 }
 function updateProg(){
@@ -2096,7 +2117,7 @@ function scrollToSent(idx,instant=false){
   const safeBot=_scrollElTop+_scrollElH*0.70;
   if(!instant&&rect.top>=safeTop&&rect.bottom<=safeBot) return; // already comfortable — no jump
   _programmaticScroll=true;
-  s.el.scrollIntoView({behavior:instant?'instant':'smooth',block:'center'});
+  s.el.scrollIntoView({behavior:(instant||_reducedMotion)?'instant':'smooth',block:'center'});
   setTimeout(()=>{ _programmaticScroll=false; },100);
 }
 function toggleAS(){
@@ -2107,6 +2128,17 @@ function toggleWordHl(){
   wordHlOn=!wordHlOn;
   document.getElementById('wordHlToggle').classList.toggle('on',wordHlOn);
   if(!wordHlOn&&_activeWordEl){ _activeWordEl.classList.remove('word-active'); _activeWordEl=null; }
+  saveDisplayPrefs();
+}
+function toggleSentHl(){
+  sentHlOn=!sentHlOn;
+  document.getElementById('sentHlToggle').classList.toggle('on',sentHlOn);
+  if(!sentHlOn){
+    if(_activeSentEl){ _activeSentEl.classList.remove('sent-active'); _activeSentEl=null; }
+    if(_activeWordEl){ _activeWordEl.classList.remove('word-active'); _activeWordEl=null; }
+  } else {
+    updateHL();
+  }
   saveDisplayPrefs();
 }
 
@@ -2200,6 +2232,12 @@ function updateThemeColor(){
   if(m) m.setAttribute('content',getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
 }
 function setFont(f,key,btn){
+  if(key==='dyslexic'&&!document.getElementById('font-opendyslexic')){
+    const link=document.createElement('link');
+    link.id='font-opendyslexic'; link.rel='stylesheet';
+    link.href='https://fonts.cdnfonts.com/css/open-dyslexic';
+    document.head.appendChild(link);
+  }
   _fontBody=f;
   document.documentElement.style.setProperty('--font-body',f);
   document.querySelectorAll('[id^=fontPill]').forEach(b=>b.classList.remove('active'));
@@ -2320,7 +2358,7 @@ function setBannerState(state,text,detail){
     _bannerHideTimer=setTimeout(()=>{
       b.classList.add('tx-fade');
       setTimeout(()=>{ setBannerState('hidden'); b.classList.remove('tx-fade'); },300);
-    },5000);
+    },12000);
   }
 }
 // wordTimings[sentIdx] = [{start,end}] one entry per word span in sentence
@@ -2941,7 +2979,8 @@ function extractFromDom(root){
 }
 async function parseEpub(data){
   if(typeof JSZip==='undefined') await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
-  if(typeof JSZip==='undefined') return [{type:'text',text:'Could not load EPUB parser (JSZip).'}];
+  if(typeof JSZip==='undefined') await loadScript('https://unpkg.com/jszip@3.10.1/dist/jszip.min.js');
+  if(typeof JSZip==='undefined') return [{type:'text',text:'Could not load EPUB parser. Check your internet connection and try again.'}];
   try{
     let arrayBuffer;
     if(typeof data==='string'){
@@ -2977,9 +3016,13 @@ async function parseEpub(data){
 }
 function loadScript(src){ return new Promise(res=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=res; document.head.appendChild(s); }); }
 function arrayBufferToBase64(buf){
-  const bytes=new Uint8Array(buf); let bin='';
-  bytes.forEach(b=>bin+=String.fromCharCode(b));
-  return btoa(bin);
+  const bytes=new Uint8Array(buf);
+  let result='';
+  const CHUNK=8192;
+  for(let i=0;i<bytes.length;i+=CHUNK){
+    result+=String.fromCharCode.apply(null,bytes.subarray(i,i+CHUNK));
+  }
+  return btoa(result);
 }
 
 // ══════════════════════════════════════════════════════
@@ -3325,12 +3368,16 @@ function rlLoad(f){
 // ══════════════════════════════════════════════════════
 // PWA FILE SYSTEM
 // ══════════════════════════════════════════════════════
-function _confirmFolder(name){
+function _confirmFolder(name,isChange=false){
   return new Promise(resolve=>{
     const sheet=document.createElement('div');
     sheet.className='folder-confirm-sheet';
+    const cancelRow=isChange
+      ?'<button class="btn btn-ghost" id="folderConfirmCancel" style="width:100%;margin-bottom:4px">Keep current folder</button>'
+      :'';
     sheet.innerHTML='<div class="folder-confirm-name">📁 '+name+'</div>'
       +'<div class="folder-confirm-sub">Use this folder as your Folio library?</div>'
+      +cancelRow
       +'<div class="folder-confirm-row">'
       +'<button class="btn btn-ghost" id="folderConfirmNo">Choose another</button>'
       +'<button class="btn btn-primary" id="folderConfirmYes">Use this folder</button>'
@@ -3338,13 +3385,16 @@ function _confirmFolder(name){
     document.body.appendChild(sheet);
     sheet.querySelector('#folderConfirmYes').addEventListener('click',()=>{ sheet.remove(); resolve(true); });
     sheet.querySelector('#folderConfirmNo').addEventListener('click',()=>{ sheet.remove(); resolve(false); });
+    if(isChange) sheet.querySelector('#folderConfirmCancel').addEventListener('click',()=>{ sheet.remove(); resolve('cancel'); });
   });
 }
 async function pwaPickFolder(){
   try{
     const handle=await window.showDirectoryPicker({mode:'read'});
-    const ok=await _confirmFolder(handle.name);
-    if(!ok) return;
+    const isChange=!!pwaRootHandle;
+    const ok=await _confirmFolder(handle.name,isChange);
+    if(ok==='cancel') return;  // keep current folder
+    if(!ok) return;            // user wants to choose another
     pwaRootHandle=handle;
     await idbSet('rootHandle',handle);
     await idbSet('rootName',handle.name);
@@ -3385,6 +3435,7 @@ async function pwaScanAndRender(){
   const saved=getPwaProgress();
   library=scanned.map(b=>({...b,...(saved[b.id]||{})}));
   renderLib();
+  await _resolveAmbiguousTranscripts();
   if(scanned.length===0&&grid){
     grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;">
       <div style="font-size:32px;margin-bottom:12px">📂</div>
@@ -3392,6 +3443,37 @@ async function pwaScanAndRender(){
       <div>Each book should be in its own subfolder with an audio or ebook file.</div>
     </div>`;
   }
+}
+async function _resolveAmbiguousTranscripts(){
+  for(const b of library){
+    if(!b._unresolvedJsonCandidates||!b._unresolvedJsonCandidates.length) continue;
+    const candidates=b._unresolvedJsonCandidates;
+    const chosen=await _pickJsonFile(b.title,candidates);
+    if(chosen){
+      b.transcriptHandle=chosen.handle;
+      b.transcriptName=chosen.name;
+      b.transcriptExt='json';
+    }
+    b._unresolvedJsonCandidates=[];
+  }
+}
+function _pickJsonFile(bookTitle,candidates){
+  return new Promise(resolve=>{
+    const sheet=document.createElement('div');
+    sheet.className='folder-confirm-sheet';
+    let html='<div class="folder-confirm-name">'+xh(bookTitle)+'</div>'
+      +'<div class="folder-confirm-sub">Multiple JSON files found — which is the transcript?</div>';
+    candidates.forEach((c,i)=>{
+      html+='<button class="btn btn-ghost" style="width:100%;text-align:left;margin-bottom:6px" data-i="'+i+'">'+xh(c.name)+'</button>';
+    });
+    html+='<div class="folder-confirm-row"><button class="btn btn-ghost" id="_jsonSkip">Skip</button></div>';
+    sheet.innerHTML=html;
+    document.body.appendChild(sheet);
+    sheet.querySelectorAll('[data-i]').forEach(btn=>{
+      btn.addEventListener('click',()=>{ sheet.remove(); resolve(candidates[parseInt(btn.dataset.i)]); });
+    });
+    sheet.querySelector('#_jsonSkip').addEventListener('click',()=>{ sheet.remove(); resolve(null); });
+  });
 }
 async function pwaScanBookFolder(folderName,entry){
   let audioFile=null,ebookFile=null,transcriptFile=null,coverFile=null;
@@ -3409,9 +3491,24 @@ async function pwaScanBookFolder(folderName,entry){
     else if(ext==='txt'&&!ebookFile&&!transcriptFile) transcriptFile={name,handle:fEntry,ext};
     else if(IMAGE_EXTS.has(ext)) imageCandidates.push({name,handle:fEntry,ext});
   }
-  // Only auto-assign JSON if filename clearly indicates transcript
+  // Auto-assign JSON transcript using tiered matching
   if(jsonCandidates.length){
+    // Tier 1: filename contains 'transcript' or 'whisper'
     transcriptFile=jsonCandidates.find(f=>/transcript|whisper/i.test(f.name.replace(/\.[^.]+$/,'')))||null;
+    // Tier 2: filename contains any meaningful word from the folder name (3+ chars)
+    if(!transcriptFile){
+      const titleWords=folderName.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>=3);
+      if(titleWords.length){
+        transcriptFile=jsonCandidates.find(f=>{
+          const base=f.name.replace(/\.[^.]+$/,'').toLowerCase();
+          return titleWords.some(w=>base.includes(w));
+        })||null;
+      }
+    }
+    // Tier 3: only one JSON file — use it unconditionally
+    if(!transcriptFile&&jsonCandidates.length===1){
+      transcriptFile=jsonCandidates[0];
+    }
   }
   // Prefer image named "cover", fallback to first image
   if(imageCandidates.length){
@@ -3419,6 +3516,8 @@ async function pwaScanBookFolder(folderName,entry){
   }
   if(!audioFile&&!ebookFile) return null;
   const id='pwa_'+folderName.toLowerCase().replace(/[^a-z0-9]/g,'_');
+  // Flag ambiguous multi-JSON books for post-scan user resolution
+  const _unresolvedJsonCandidates=(!transcriptFile&&jsonCandidates.length>1)?jsonCandidates:[];
   return {
     id, title:folderName,
     audioHandle:audioFile?.handle||null, audioName:audioFile?.name||null, audioExt:audioFile?.ext||null,
@@ -3427,6 +3526,7 @@ async function pwaScanBookFolder(folderName,entry){
     coverHandle:coverFile?.handle||null, coverName:coverFile?.name||null,
     audioUrl:null, ebookData:null, transcriptType:null, transcriptData:null, coverUrl:null,
     curSent:0, curWord:0, audioTime:0, wpm:150, sentPauseMs:500, playbackRate:1,
+    _unresolvedJsonCandidates,
   };
 }
 function getPwaProgress(){ try{ return JSON.parse(localStorage.getItem(PWA_PROG_KEY)||'{}'); }catch(e){ return {}; } }

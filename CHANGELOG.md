@@ -2,6 +2,34 @@
 
 ---
 
+## v1.13 — 2026-03-14
+
+### Added
+- Sentence highlight toggle in Display settings — disables visual tracking while keeping auto-scroll and position advancement working
+- High-contrast dark theme (black/white/yellow accent) and high-contrast light theme (white/black/blue accent)
+- OpenDyslexic font option — loads from CDN on demand, no impact on initial page load
+- "Keep current folder" cancel option when changing PWA library folder
+- Tiered JSON transcript auto-assignment in PWA folder scan: keyword match → folder-name match → lone-file fallback
+- Picker sheet for ambiguous multi-JSON transcript folders after PWA scan
+
+### Changed
+- Transcript banner auto-hide delay increased from 5 seconds to 12 seconds
+- Transcript button removed from player top bar (still accessible via Book Info modal)
+- `scrollToSent()` respects `prefers-reduced-motion: reduce` — uses instant scroll when enabled
+- JSZip CDN error message rewritten to suggest checking internet connection
+
+### Fixed
+- EPUB loading fails silently when primary CDN is unreachable — now falls back to unpkg before showing error
+- Reduced-motion JS support added to complement existing CSS media query
+
+### Performance
+- `arrayBufferToBase64()` rewritten with chunked `String.fromCharCode.apply` + single `btoa()` call — eliminates main-thread stall on large EPUBs
+
+### Removed
+- Dead `lastAdvanceTime` state variable (declared but never read or written)
+
+---
+
 ## v1.12 — 2026-03-14
 
 ### Performance
