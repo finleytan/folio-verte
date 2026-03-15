@@ -1,10 +1,10 @@
 # Folio
 
-Single-file HTML PWA (~3,961 lines). Audiobook/ebook reader with synced highlighting.
+Single-file HTML PWA (~4,078 lines). Audiobook/ebook reader with synced highlighting.
 
 ## CSS variable groups
 - Core palette: `--bg`, `--surface`, `--border`, `--text`, `--accent`, etc.
-- Amber palette (notx banner): `--amber-bg`, `--amber-border`, `--amber-text`, `--amber-muted` — defined in `:root` and overridden per theme
+- Amber palette (notx banner + relink badge): `--amber-bg`, `--amber-border`, `--amber-text`, `--amber-muted` — defined in `:root` and overridden per theme
 
 ## Before every edit
 

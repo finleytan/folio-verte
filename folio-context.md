@@ -4,9 +4,9 @@
 
 | Zone | Lines | Contents |
 |------|-------|----------|
-| CSS | 16–542 | All styles |
-| HTML | 544–933 | 4 screens + 5 modals |
-| JS | 935–3961 | All logic |
+| CSS | 16–550 | All styles |
+| HTML | 552–950 | 4 screens + 4 modals |
+| JS | 952–4078 | All logic |
 
 ### HTML Structure
 
@@ -16,14 +16,14 @@
 | `#installBanner` | PWA install prompt |
 | `#pwaFirstRun` | First-run folder picker screen |
 | `#pwaRegrant` | Re-grant permissions screen |
-| `#library` | Library screen: header + `#libGrid` card grid |
+| `#library` | Library screen: header (with settings gear) + `#libSettingsPanel` + `#libGrid` card grid |
 | `#player` | Player screen (audio, top bar, options, transcript banner, reader body, bottom controls) |
 | `#bottomControls` | Bottom controls bar: seek strip + play/skip/vol/speed ctrl-row (hidden when ebook-only and TTS off) |
-| `#modal` | Add Book modal (Audio, Ebook, Transcript, Cover pills) |
+| `#modal` | Add Book modal (Audio, Ebook, Transcript, Cover pills — clickable to pick individual files) |
 | `#txModal` | Transcript modal (add/replace transcript) |
 | `#linkAudioModal` | Link Audio modal (add audio to ebook-only book) |
-| `#bookInfoModal` | Book Info modal (view/reassign files); amber dot indicator when audio needs relink |
-| `#relinkOverlay` | Relink audio overlay (expired audio URL); auto-shown on book open when audio needs relink |
+| `#editBookModal` | Edit Book Details modal (title, author, file slots — opened from library pencil icon) |
+| `#relinkOverlay` | Relink audio overlay (expired audio URL); auto-shown on book open unless dismissed |
 
 ---
 
@@ -31,116 +31,124 @@
 
 | Function | Line | Area | Notes |
 |----------|------|------|-------|
-| `showSyncHintOnce` | 989 | Toast | One-time hint after first transcript sync |
-| `showToast` | 995 | Toast | |
-| `acquireWakeLock` | 1012 | Wake Lock | |
-| `setupMediaSession` | 1068 | Media Session | |
-| `saveBookProgressDebounced` | 1096 | Save | |
-| `updatePageTitle` | 1104 | Page Title | |
-| `cycleSleepTimer` | 1120 | Sleep Timer | |
-| `_openModalEl` / `_closeModalRestore` | 1160 | Modal Helpers | |
-| `cacheDOM` | 1276 | DOM Cache | |
-| `setPlayBtnIcon` | 1290 | DOM Cache | |
-| `idbOpen` / `idbSet` / `idbGet` | 1302 | IndexedDB | |
-| `saveLibrary` | 1342 | Library Persistence | |
-| `loadLibrary` | 1387 | Library Persistence | |
-| `saveBookProgress` | 1423 | Library Persistence | ⚠️ Call this not saveLibrary() from playback code |
-| `flushPositionSync` | 1437 | Library Persistence | |
-| `saveDisplayPrefs` | 1479 | Display Prefs | |
-| `loadDisplayPrefs` | 1494 | Display Prefs | |
-| `renderLib` | 1543 | Library UI | Shows onboarding card when library is empty (browser mode) |
-| `unhideBook` | 1645 | Library UI | |
-| `renameBook` | 1658 | Library UI | ⚠️ Remove blur listener before Enter/Escape to prevent double-fire |
-| `deleteBook` | 1692 | Library UI | |
-| `configurePlayerForMode` | 1740 | Player Config | ⚠️ Owns _audio.src — do not assign src before calling this. Also sets `needsRelink` indicator and defaults highlighting (off for TTS, word for audio) |
-| `toggleTtsMode` | 1769 | Player Config | Toggles TTS on/off for ebook-only books; auto-enables sentence HL on, disables HL on off |
-| `openBook` | 1784 | Open/Close | ⚠️ Auto-shows relink overlay if `audioName` set but `audioUrl` lost |
-| `pulseResumeSent` | 1801 | Open/Close | |
-| `goLib` | 1810 | Open/Close | ⚠️ Must clear sentences[], tocEntries[], sentenceTimings[] — already does |
-| `seekAudioToSentence` | 1835 | Media Controls | ⚠️ Sparse sentenceTimings — linear scan only, not binary search |
-| `setMediaState` | 1842 | Media Controls | |
-| `togglePlay` | 1845 | Media Controls | ⚠️ Shows toast if no audio and TTS off |
-| `mediaPlay` / `mediaPause` / `mediaStop` | 1850 | Media Controls | |
-| `skip` | 1885 | Media Controls | |
-| `changeSpeed` | 1890 | Media Controls | |
-| `cycleSpeed` | 1896 | Media Controls | Tap-to-cycle through RATE_STEPS; reads from `rateCustom` in TTS mode |
-| `setRate` | 1902 | Media Controls | |
-| `setVol` / `setVolBoth` / `toggleMute` | 1939 | Media Controls | |
-| `toggleVolPop` | 1955 | Media Controls | Opens/closes volume popover; closes on outside tap |
-| `onSeekInput` | 1968 | Media Controls | |
-| `onSeekChange` | 1969 | Media Controls | ⚠️ Sparse sentenceTimings — linear scan only, not binary search |
-| `_wordTick` | 1991 | Audio Events | ⚠️ curWord=-1 sentinel prevents word-0 flash — do not change to 0 |
-| `startWordTicker` / `stopWordTicker` | 2015 | Audio Events | |
-| `wireAudioEvents` | 2019 | Audio Events | ⚠️ timeupdate self-heal for Samsung audio-focus steal — do not remove |
-| `startScrollEngine` | 2082 | Scroll Engine | ⚠️ scrollTimer separate from _scrollPauseTimer — do not merge |
-| `stopScrollEngine` | 2087 | Scroll Engine | |
-| `advanceSent` | 2090 | Scroll Engine | |
-| `nudge` | 2104 | Scroll Engine | |
-| `resync` | 2111 | Scroll Engine | |
-| `adjustOffset` / `updateOffsetUI` | 2121 | Sync Offset | |
-| `getTtsVoices` | 2135 | TTS | |
-| `setTtsVoice` / `setTtsRate` | 2150 | TTS | |
-| `ttsPlay` | 2160 | TTS | ⚠️ ttsSpeaking owned here — stopScrollEngine must never set it. Reads rate from `rateCustom` input |
-| `ttsPause` / `ttsStop` | 2210 | TTS | |
-| `scrubToPosition` | 2221 | TTS | |
-| `updateHL` | 2242 | Highlighting | ⚠️ sentences[] holds live DOM refs — stale after any #eContent innerHTML wipe |
-| `updateProg` | 2254 | Highlighting | Guards null `_readProg` (progress bar removed from DOM) |
-| `_cacheScrollMetrics` | 2266 | Highlighting | |
-| `scrollToSent` | 2273 | Highlighting | |
-| `toggleAS` | 2286 | Highlighting | |
-| `toggleWordHl` / `toggleSentHl` | 2290 | Highlighting | |
-| `_resyncAndHL` | 2309 | Highlighting | ⚠️ Sparse sentenceTimings — linear scan only, not binary search |
-| `_syncHlPills` | 2324 | Highlighting | |
-| `setHighlightMode` | 2330 | Highlighting | ⚠️ Updates notx banner reactively — shows/hides based on sentHlOn + ttsMode + transcript state |
-| `toggleToc` | 2360 | TOC | |
-| `buildToc` | 2365 | TOC | |
-| `updateTocActive` | 2414 | TOC | |
-| `toggleOpts` / `switchOptTab` | 2426 | Options | |
-| `setTheme` | 2435 | Options | ⚠️ Wipes body.className — loses is-pwa class until reload (known issue #22) |
-| `updateThemeColor` | 2442 | Options | |
-| `setFont` | 2446 | Options | |
-| `setFS` / `setLH` / `setMW` | 2463 | Options | |
-| `setAlign` | 2466 | Options | |
-| `setSentPause` / `toggleOpInfo` | 2478 | Options | |
-| `loadTranscriptData` | 2511 | Transcript | ⚠️ Shows notx banner if no transcript + audio + sentHlOn + !ttsMode |
-| `setBannerState` | 2565 | Transcript | ⚠️ notx state has separate HTML elements (txBannerTop/txBannerActions) from other states |
-| `_timingWorkerFn` | 2607 | Transcript | ⚠️ Two copies of splitSentences + matching logic — worker copy must stay in sync (~2607) |
-| `getTimingWorker` | 2785 | Transcript | |
-| `buildSentenceTimings` | 2823 | Transcript | ⚠️ Sparse sentenceTimings — linear scan only, not binary search |
-| `buildTimingsFromPlainText` | 2857 | Transcript | |
-| `_buildSentenceTimingsSync` | 2890 | Transcript | |
-| `_buildTimingsFromPlainTextSync` | 3016 | Transcript | |
-| `similarity` / `updateTranscriptUI` | 3044 | Transcript | |
-| `yieldToMain` | 3059 | Ebook | |
-| `loadEbook` | 3065 | Ebook | ⚠️ No cancellation guard — race possible on rapid book switch (see folio-fragile.md #4) |
-| `splitSentences` | 3168 | Ebook | ⚠️ Two copies must stay in sync — worker copy inside _timingWorkerFn (~2607) |
-| `parseTxt` / `parseMd` / `parseHtml` | 3187 | Ebook | |
-| `extractFromDom` | 3209 | Ebook | ⚠️ Skips bare text nodes in divs — text with no block children silently dropped |
-| `parseEpub` | 3231 | Ebook | |
-| `arrayBufferToBase64` | 3269 | Ebook | |
-| `openModal` / `closeModal` | 3283 | Add Book Modal | |
-| `resetModal` | 3286 | Add Book Modal | |
-| `folderChosen` | 3317 | Add Book Modal | |
-| `folderAssign` | 3379 | Add Book Modal | |
-| `addBook` | 3388 | Add Book Modal | |
-| `openTranscriptModal` | 3435 | Transcript Modal | |
-| `saveTranscript` / `removeTranscript` | 3464 | Transcript Modal | |
-| `openLinkAudioModal` | 3487 | Link Audio Modal | |
-| `saveLinkAudio` | 3508 | Link Audio Modal | ⚠️ Shows notx banner if no transcript after linking audio. Clears needs-relink indicator |
-| `openBookInfoModal` / `closeBookInfoModal` | 3529 | Book Info Modal | |
-| `biReassign` | 3562 | Book Info Modal | ⚠️ Do not pre-set _audio.src before configurePlayerForMode. Clears needs-relink indicator |
-| `showRelink` / `closeRelink` / `rlLoad` | 3619 | Relink | ⚠️ `closeRelink` no longer resets `curBookIdx` — book stays open underneath |
-| `pwaFolderChangeTap` | 3646 | PWA | ⚠️ Pre-pick warning only — pwaPickFolder commits immediately (see fragile #18) |
-| `pwaPickFolder` | 3662 | PWA | |
-| `pwaRegrantAccess` | 3671 | PWA | |
-| `pwaScanAndRender` | 3684 | PWA | |
-| `pwaScanBookFolder` | 3746 | PWA | |
-| `getPwaProgress` / `savePwaProgress` | 3800 | PWA | |
-| `pwaOpenBook` | 3810 | PWA | |
-| `showScreen` | 3867 | Screen Router | |
-| `pwaCheckOnLaunch` | 3876 | Screen Router | |
-| `__testBridge` | 3916 | Test Bridge | |
-| `init` | 3933 | Init | |
+| `showSyncHintOnce` | 1030 | Toast | One-time hint after first transcript sync |
+| `showToast` | 1036 | Toast | |
+| `acquireWakeLock` | 1053 | Wake Lock | |
+| `setupMediaSession` | 1109 | Media Session | |
+| `saveBookProgressDebounced` | 1137 | Save | |
+| `updatePageTitle` | 1145 | Page Title | |
+| `cycleSleepTimer` | 1161 | Sleep Timer | |
+| `_openModalEl` / `_closeModalRestore` | 1201 | Modal Helpers | |
+| `cacheDOM` | 1317 | DOM Cache | |
+| `setPlayBtnIcon` | 1331 | DOM Cache | |
+| `idbOpen` / `idbSet` / `idbGet` | 1343 | IndexedDB | |
+| `saveLibrary` | 1383 | Library Persistence | |
+| `loadLibrary` | 1428 | Library Persistence | |
+| `saveBookProgress` | 1464 | Library Persistence | ⚠️ Call this not saveLibrary() from playback code |
+| `flushPositionSync` | 1478 | Library Persistence | |
+| `saveDisplayPrefs` | 1520 | Display Prefs | |
+| `loadDisplayPrefs` | 1535 | Display Prefs | |
+| `toggleLibSettings` | 1584 | Library UI | Toggles `#libSettingsPanel` visibility |
+| `renderLib` | 1588 | Library UI | Shows onboarding card when library is empty (browser mode); pencil icon opens Edit Book modal |
+| `unhideBook` | 1691 | Library UI | |
+| `renameBook` | 1704 | Library UI | ⚠️ Remove blur listener before Enter/Escape to prevent double-fire |
+| `deleteBook` | 1738 | Library UI | |
+| `configurePlayerForMode` | 1786 | Player Config | ⚠️ Owns _audio.src — do not assign src before calling this. Defaults highlighting (off for TTS, word for audio). Calls `_updateSkipBtns()` |
+| `toggleTtsMode` | 1814 | Player Config | Toggles TTS on/off for ebook-only books; auto-enables sentence HL on, disables HL on off. Calls `_updateSkipBtns()` |
+| `openBook` | 1830 | Open/Close | ⚠️ Auto-shows relink overlay if `audioName` set but `audioUrl` lost (unless dismissed). Sets `#pAuthor` from `b.author` |
+| `pulseResumeSent` | 1848 | Open/Close | |
+| `goLib` | 1857 | Open/Close | ⚠️ Must clear sentences[], tocEntries[], sentenceTimings[] — already does |
+| `seekAudioToSentence` | 1882 | Media Controls | ⚠️ Sparse sentenceTimings — linear scan only, not binary search |
+| `setMediaState` | 1889 | Media Controls | |
+| `togglePlay` | 1892 | Media Controls | ⚠️ Shows toast if no audio and TTS off |
+| `mediaPlay` / `mediaPause` / `mediaStop` | 1897 | Media Controls | |
+| `_updateSkipBtns` | 1932 | Media Controls | Swaps skip button icons/labels: circular-arrow+15 for audio, chevrons for TTS; also handles big-skip (1m / 5 sentences) |
+| `skip` | 1947 | Media Controls | In TTS mode: ±1 sentence (15s) or ±5 sentences (60s). In audio mode: seeks by seconds |
+| `changeSpeed` | 1952 | Media Controls | |
+| `cycleSpeed` | 1958 | Media Controls | Tap-to-cycle through RATE_STEPS; reads from `rateCustom` in TTS mode |
+| `setRate` | 1964 | Media Controls | |
+| `setVol` / `setVolBoth` / `toggleMute` | 2001 | Media Controls | |
+| `toggleVolPop` | 2017 | Media Controls | Opens/closes volume popover; closes on outside tap |
+| `onSeekInput` | 2030 | Media Controls | |
+| `onSeekChange` | 2031 | Media Controls | ⚠️ Sparse sentenceTimings — linear scan only, not binary search |
+| `_wordTick` | 2053 | Audio Events | ⚠️ curWord=-1 sentinel prevents word-0 flash — do not change to 0 |
+| `startWordTicker` / `stopWordTicker` | 2077 | Audio Events | |
+| `wireAudioEvents` | 2081 | Audio Events | ⚠️ timeupdate self-heal for Samsung audio-focus steal — do not remove |
+| `startScrollEngine` | 2144 | Scroll Engine | ⚠️ scrollTimer separate from _scrollPauseTimer — do not merge |
+| `stopScrollEngine` | 2149 | Scroll Engine | |
+| `advanceSent` | 2152 | Scroll Engine | |
+| `nudge` | 2166 | Scroll Engine | In TTS mode while playing: calls `ttsStop(); ttsPlay()` to restart from new sentence |
+| `resync` | 2173 | Scroll Engine | |
+| `adjustOffset` / `updateOffsetUI` | 2183 | Sync Offset | |
+| `getTtsVoices` | 2197 | TTS | |
+| `setTtsVoice` / `setTtsRate` | 2212 | TTS | |
+| `ttsPlay` | 2222 | TTS | ⚠️ ttsSpeaking owned here — stopScrollEngine must never set it. Reads rate from `rateCustom` input |
+| `ttsPause` / `ttsStop` | 2272 | TTS | |
+| `scrubToPosition` | 2283 | TTS | |
+| `updateHL` | 2304 | Highlighting | ⚠️ sentences[] holds live DOM refs — stale after any #eContent innerHTML wipe |
+| `updateProg` | 2316 | Highlighting | Guards null `_readProg` (progress bar removed from DOM) |
+| `_cacheScrollMetrics` | 2328 | Highlighting | |
+| `scrollToSent` | 2335 | Highlighting | |
+| `toggleAS` | 2348 | Highlighting | |
+| `toggleWordHl` / `toggleSentHl` | 2352 | Highlighting | |
+| `_resyncAndHL` | 2371 | Highlighting | ⚠️ Sparse sentenceTimings — linear scan only, not binary search |
+| `_syncHlPills` | 2386 | Highlighting | |
+| `setHighlightMode` | 2392 | Highlighting | ⚠️ Updates notx banner reactively — shows/hides based on sentHlOn + ttsMode + transcript state |
+| `toggleToc` | 2422 | TOC | |
+| `buildToc` | 2427 | TOC | |
+| `updateTocActive` | 2476 | TOC | |
+| `toggleOpts` / `switchOptTab` | 2488 | Options | |
+| `setTheme` | 2497 | Options | ⚠️ Wipes body.className — loses is-pwa class until reload (known issue #22) |
+| `updateThemeColor` | 2504 | Options | |
+| `setFont` | 2508 | Options | |
+| `setFS` / `setLH` / `setMW` | 2525 | Options | |
+| `setAlign` | 2528 | Options | |
+| `setSentPause` / `toggleOpInfo` | 2540 | Options | |
+| `loadTranscriptData` | 2573 | Transcript | ⚠️ Shows notx banner if no transcript + audio + sentHlOn + !ttsMode |
+| `setBannerState` | 2627 | Transcript | ⚠️ notx state has separate HTML elements (txBannerTop/txBannerActions) from other states |
+| `_timingWorkerFn` | 2669 | Transcript | ⚠️ Two copies of splitSentences + matching logic — worker copy must stay in sync (~2669) |
+| `getTimingWorker` | 2847 | Transcript | |
+| `buildSentenceTimings` | 2885 | Transcript | ⚠️ Sparse sentenceTimings — linear scan only, not binary search |
+| `buildTimingsFromPlainText` | 2919 | Transcript | |
+| `_buildSentenceTimingsSync` | 2952 | Transcript | |
+| `_buildTimingsFromPlainTextSync` | 3078 | Transcript | |
+| `similarity` / `updateTranscriptUI` | 3106 | Transcript | |
+| `yieldToMain` | 3121 | Ebook | |
+| `loadEbook` | 3127 | Ebook | ⚠️ No cancellation guard — race possible on rapid book switch (see folio-fragile.md #4) |
+| `splitSentences` | 3230 | Ebook | ⚠️ Two copies must stay in sync — worker copy inside _timingWorkerFn (~2669) |
+| `parseTxt` / `parseMd` / `parseHtml` | 3249 | Ebook | |
+| `extractFromDom` | 3271 | Ebook | ⚠️ Skips bare text nodes in divs — text with no block children silently dropped |
+| `parseEpub` | 3293 | Ebook | |
+| `arrayBufferToBase64` | 3331 | Ebook | |
+| `openModal` / `closeModal` | 3345 | Add Book Modal | |
+| `resetModal` | 3348 | Add Book Modal | |
+| `pillClick` | 3355 | Add Book Modal | Opens file picker for the clicked pill; skips if clear button was clicked |
+| `folderChosen` | 3380 | Add Book Modal | |
+| `folderAssign` | 3442 | Add Book Modal | |
+| `addBook` | 3451 | Add Book Modal | |
+| `openTranscriptModal` | 3498 | Transcript Modal | |
+| `saveTranscript` / `removeTranscript` | 3527 | Transcript Modal | |
+| `openLinkAudioModal` | 3550 | Link Audio Modal | |
+| `saveLinkAudio` | 3571 | Link Audio Modal | ⚠️ Shows notx banner if no transcript after linking audio |
+| `openEditBookModal` | 3592 | Edit Book Modal | Opens from library pencil icon; populates title, author, and file slots |
+| `_renderEditBookSlots` | 3605 | Edit Book Modal | Builds binfo-slot rows; shows amber "needs relink" badge on audio slot when URL lost |
+| `closeEditBookModal` | 3634 | Edit Book Modal | |
+| `saveEditBook` | 3639 | Edit Book Modal | Saves title and author; persists to localStorage (browser) or PWA_PROG_KEY (PWA) |
+| `editBookReassign` | 3662 | Edit Book Modal | Handles file replacement for audio/ebook/transcript/cover from library |
+| `showRelink` / `closeRelink` | 3714 | Relink | ⚠️ `showRelink` checks dismiss flags before showing. `closeRelink` no longer resets `curBookIdx` |
+| `rlDontRemind` / `rlDismissBook` / `rlDismissAll` / `rlDismissCancel` | 3725 | Relink | "Don't remind me" flow: per-book (`relinkDismissed`) or global (`folio_relink_dismissed_all` localStorage) |
+| `rlLoad` | 3748 | Relink | |
+| `pwaFolderChangeTap` | 3762 | PWA | ⚠️ Pre-pick warning only — pwaPickFolder commits immediately (see fragile #18) |
+| `pwaPickFolder` | 3778 | PWA | |
+| `pwaRegrantAccess` | 3787 | PWA | |
+| `pwaScanAndRender` | 3800 | PWA | |
+| `pwaScanBookFolder` | 3862 | PWA | |
+| `getPwaProgress` / `savePwaProgress` | 3916 | PWA | |
+| `pwaOpenBook` | 3926 | PWA | Sets `#pAuthor` from `b.author` |
+| `showScreen` | 3984 | Screen Router | |
+| `pwaCheckOnLaunch` | 3993 | Screen Router | |
+| `__testBridge` | 4033 | Test Bridge | |
+| `init` | 4050 | Init | |
 
 ---
 
@@ -148,7 +156,7 @@
 
 ```
 library[i] = {
-  id, title,
+  id, title, author,                     // author is optional, null if unset
   audioUrl, audioName, audioExt,
   ebookData, ebookName, ebookType,
   transcriptData, transcriptName, transcriptType,  // 'whisper'|'txt'|null
@@ -156,6 +164,7 @@ library[i] = {
   curSent, curWord, audioTime,
   wpm, sentPauseMs, playbackRate,
   syncOffset, totalSents,
+  relinkDismissed,                        // true = don't show relink prompt for this book
   // PWA-only:
   audioHandle, ebookHandle, transcriptHandle, coverHandle,
   _unresolvedJsonCandidates,  // transient, never persisted
@@ -181,6 +190,7 @@ transcriptWords[i] = { word: string, start: number, end: number }
 - **PWA mode** (`IS_PWA && CAN_FS`): files from disk via File System Access handles, progress in localStorage (`folio_pwa_progress_v1`)
 - `saveBookProgress()` routes correctly for both — always use it, not `saveLibrary()` directly
 - **Display prefs**: `folio_display_prefs_v1` (both modes)
+- **Relink dismiss (all books)**: `folio_relink_dismissed_all` in localStorage
 
 ---
 
@@ -197,17 +207,31 @@ transcriptWords[i] = { word: string, start: number, end: number }
 
 ## UI Architecture
 
-### Top Bar Icons (SVG)
-- Back chevron, TOC (hamburger), TTS toggle (mic, ebook-only), divider, Book files (folder, amber dot if needs relink), Settings (gear), Sleep timer (moon, badge overlay)
+### Top Bar Layout (flat flex, space-between)
+- Back chevron, TOC (hamburger), Title/Author/Progress (flex:1, centered), Sleep timer (moon, badge overlay), TTS toggle (mic, ebook-only, hidden by default), Settings (gear)
+- Title/author/progress use `clamp()` for responsive font sizing
 
 ### Bottom Controls
 - Volume popover (tap icon to open vertical slider, tap outside to close)
-- Skip back/forward, Play/pause, Speed pill (tap to cycle RATE_STEPS)
+- 4 skip buttons: big-skip-back (1m/5 sentences), skip-back (15s/1 sentence), skip-forward, big-skip-forward
+- Play/pause button centered between skip buttons
+- Speed pill (tap to cycle RATE_STEPS)
+- Skip button icons swap dynamically via `_updateSkipBtns()` — circular-arrow+15 for audio, chevrons for TTS
 - Bottom bar hidden for ebook-only books until TTS is toggled on
 - Seek strip shown only in audio mode
 
-### Needs-Relink Detection
-- `audioName && !audioUrl && !audioHandle` = book had audio but blob URL lost on refresh
-- Amber dot on `#bookInfoBtn` via `.needs-relink` CSS class
-- Relink overlay auto-shown on `openBook()` when detected
-- Indicator cleared in `saveLinkAudio`, `rlLoad`, `biReassign`
+### Library Settings
+- Gear icon in top-right of library header toggles `#libSettingsPanel`
+- Placeholder panel — content TBD
+
+### Edit Book Details
+- Opened from library card pencil icon (replaces old inline rename)
+- Title input, author input (optional), file slots (binfo-slot style)
+- File slots clickable in browser mode, read-only in PWA mode
+- Audio slot shows amber "needs relink" badge when blob URL lost
+
+### Relink Dismiss
+- "Don't remind me" button on relink overlay → choice of "This book" / "All books" / Cancel
+- Per-book: `b.relinkDismissed = true` (persisted in library)
+- Global: `folio_relink_dismissed_all` localStorage flag
+- `showRelink()` checks both flags before displaying

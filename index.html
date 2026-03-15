@@ -60,7 +60,7 @@ body.theme-hclight{
 #player{display:none;height:100vh;flex-direction:column;background:var(--bg);}
 
 /* ── LIBRARY ── */
-.lib-header{text-align:center;padding:48px 20px 32px;flex-shrink:0;position:relative;}
+.lib-header{text-align:center;padding:48px 20px 32px;flex-shrink:0;position:relative;width:100%;box-sizing:border-box;}
 .lib-logo{
   font-family:var(--font-body);font-size:42px;font-weight:600;color:var(--text);
   letter-spacing:-.03em;position:relative;display:inline-block;
@@ -71,6 +71,13 @@ body.theme-hclight{
   border-radius:1px;opacity:.6;
 }
 .lib-tagline{font-size:13px;color:var(--text3);margin-top:10px;letter-spacing:.04em;text-transform:uppercase;font-size:11px;font-weight:500;}
+.lib-settings-btn{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:var(--radius-sm);background:transparent;border:none;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background-color .15s,color .15s;}
+.lib-settings-btn:hover{background:var(--surface2);color:var(--text);}
+.lib-settings-btn .ic-svg{width:22px;height:22px;}
+.lib-settings-panel{width:100%;max-width:900px;padding:0 20px 8px;}
+.lib-settings-inner{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:8px;}
+.lib-settings-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px;}
+.lib-settings-placeholder{font-size:13px;color:var(--text3);margin:0;}
 .lib-grid{
   width:100%;max-width:900px;padding:0 20px 40px;
   display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;
@@ -137,6 +144,8 @@ body.theme-hclight{
 .fp-name.empty{color:var(--text3);font-style:italic;font-weight:400;}
 .fp-clear{width:26px;height:26px;border-radius:5px;background:transparent;border:none;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;transition:background-color .15s,border-color .15s,color .15s;}
 .fp-clear:hover{background:var(--surface2);color:var(--text);}
+.file-pill.clickable{cursor:pointer;}
+.file-pill.clickable:hover{border-color:var(--accent);background:var(--hl-bg);}
 .folder-pick-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
 .folder-pick-btn{display:flex;align-items:center;gap:6px;padding:9px 14px;font-size:13px;cursor:pointer;flex-shrink:0;}
 .folder-pick-hint{font-size:12px;color:var(--text3);}
@@ -164,6 +173,9 @@ body.theme-hclight{
 .binfo-slot-name.empty{color:var(--text3);font-style:italic;font-weight:400;}
 .binfo-slot-action{font-size:11px;color:var(--accent);flex-shrink:0;font-weight:600;}
 .binfo-slot-badge{font-size:9px;padding:2px 6px;border-radius:20px;background:var(--accent);color:white;font-weight:700;flex-shrink:0;text-transform:uppercase;}
+.binfo-slot-badge.relink{background:var(--amber-bg,#fef3c7);color:var(--amber-text,#d97706);border:1px solid var(--amber-border,#f59e0b);}
+.binfo-slot-remove{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;transition:background-color .15s,border-color .15s,color .15s;}
+.binfo-slot-remove:hover{background:rgba(220,80,80,.15);border-color:rgba(220,80,80,.5);color:#e06050;}
 
 /* ── BUTTONS ── */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--radius-sm);font-family:var(--font-ui);font-size:13px;font-weight:600;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;border:1px solid transparent;white-space:nowrap;}
@@ -184,20 +196,22 @@ body.theme-hclight{
 .toggle.on::after{left:22px;}
 
 /* ── TOP BAR ── */
-.top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 14px;height:56px;display:flex;align-items:center;gap:8px;flex-shrink:0;box-shadow:0 2px 12px var(--shadow);z-index:100;position:relative;}
+.top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 10px;height:56px;display:flex;align-items:center;justify-content:space-between;gap:4px;flex-shrink:0;box-shadow:0 2px 12px var(--shadow);z-index:100;position:relative;}
 .back-btn{width:var(--touch);height:var(--touch);border-radius:var(--radius-sm);background:var(--bg2);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background-color .15s,border-color .15s,color .15s;flex-shrink:0;}
 .back-btn:hover{background:var(--surface2);color:var(--text);}
-.bk-info{flex:1;min-width:0;overflow:hidden;}
-.bk-title{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.bk-prog{font-size:11px;color:var(--text3);}
-.top-bar-right{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.bk-info{flex:1;min-width:0;overflow:hidden;text-align:center;}
+.bk-title{font-size:clamp(12px,2vw,16px);font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bk-author{font-size:clamp(11px,1.6vw,14px);color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bk-author:empty{display:none;}
+.bk-prog{font-size:clamp(10px,1.4vw,12px);color:var(--text3);}
 .ic-btn{width:var(--touch);height:var(--touch);border-radius:var(--radius-sm);background:transparent;border:none;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background-color .15s,border-color .15s,color .15s;flex-shrink:0;}
 .ic-btn:hover{background:var(--surface2);color:var(--text);}
 .ic-btn.active{color:var(--accent);}
 .ic-svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;flex-shrink:0;}
-.top-bar-divider{width:1px;height:22px;background:var(--border);flex-shrink:0;margin:0 2px;}
 .play-btn{width:var(--touch);height:var(--touch);border-radius:50%;background:var(--accent);border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background-color .15s,border-color .15s,color .15s;flex-shrink:0;box-shadow:0 2px 12px rgba(91,141,239,.3);}
 .play-btn:hover{filter:brightness(1.12);box-shadow:0 4px 20px rgba(91,141,239,.45);transform:scale(1.05);}
+.skip-btn{width:44px;height:44px;}
+.skip-btn .ic-svg{width:28px;height:28px;}
 .speed-badge{display:none;font-size:10px;font-weight:700;color:var(--accent);background:rgba(91,141,239,.12);border-radius:4px;padding:1px 5px;margin-left:-4px;align-self:center;pointer-events:none;font-family:var(--font-ui);flex-shrink:0;min-width:30px;text-align:center;}
 .speed-badge.show{display:inline-block;}
 
@@ -369,8 +383,7 @@ body.theme-hclight{
   .lib-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:20px;}
   .modal-overlay{align-items:center;}
   .modal{border-radius:18px;max-height:none;}
-  .top-bar{height:64px;padding:0 18px;gap:12px;}
-  .bk-info{flex:1;min-width:0;max-width:260px;overflow:hidden;}
+  .top-bar{height:64px;padding:0 18px;}
   .ic-btn{width:32px;height:32px;font-size:13px;}
   .play-btn{width:40px;height:40px;font-size:15px;}
   .seek-strip{padding:8px 18px 0;}
@@ -389,15 +402,15 @@ body.theme-hclight{
 /* ── MOBILE ── */
 @media(max-width:639px){
   .top-bar{height:60px;padding:0 6px;gap:2px;}
-  .bk-title{font-size:13px;}
-  .bk-prog{font-size:10px;}
   .ic-btn{width:44px;height:44px;font-size:20px;}
   .play-btn{width:46px;height:46px;font-size:17px;}
   .back-btn{width:44px;height:44px;}
   .seek-strip{padding:4px 12px 0;}
   .seek-time{font-size:11px;min-width:32px;}
   .seek-strip-bar::-webkit-slider-thumb{width:22px;height:22px;}
-  .ctrl-row{padding:6px 12px calc(8px + env(safe-area-inset-bottom,0px));}
+  .ctrl-row{padding:6px 8px calc(8px + env(safe-area-inset-bottom,0px));gap:2px;}
+  .ctrl-row .skip-btn{width:40px;height:40px;}
+  .ctrl-row .skip-btn .ic-svg{width:24px;height:24px;}
   .opt-panel{position:fixed;top:auto !important;bottom:0;left:0;right:0;width:auto !important;border-radius:20px 20px 0 0;max-height:78vh;padding-bottom:env(safe-area-inset-bottom,0px);}
   .lib-grid{grid-template-columns:repeat(2,1fr);gap:12px;padding:0 14px 40px;}
   .lib-header{padding:28px 20px 20px;}
@@ -480,10 +493,6 @@ html,body,
 .delete-confirm-no{background:var(--surface2);border:1px solid var(--border);color:var(--text2);
   font-size:12px;font-weight:500;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:var(--font-ui);}
 
-/* ── RELINK INDICATOR ── */
-#bookInfoBtn.needs-relink{position:relative;}
-#bookInfoBtn.needs-relink::after{content:'';position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--amber-text,#d97706);border:1.5px solid var(--bg);pointer-events:none;}
-
 /* ── SLEEP TIMER BADGE ── */
 #sleepTimerBtn{position:relative;}
 #sleepTimerBadge{
@@ -530,7 +539,7 @@ html,body,
 
 /* ── PWA SAFE-AREA ── */
 @media(max-width:639px){
-  body.is-pwa .top-bar{padding-top:env(safe-area-inset-top,0px);}
+  body.is-pwa .top-bar{padding-top:env(safe-area-inset-top,0px);height:auto;min-height:60px;}
 }
 
 /* ── REDUCED MOTION ── */
@@ -591,10 +600,19 @@ html,body,
 <!-- ════ LIBRARY ════ -->
 <div id="library" style="display:none">
   <div class="lib-header">
+    <button class="lib-settings-btn" onclick="toggleLibSettings()" aria-label="Settings">
+      <svg class="ic-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
     <div class="lib-logo">Folio</div>
     <div class="lib-tagline">Audiobook &amp; Ebook Reader</div>
     <div id="libVersion" style="font-size:10px;color:var(--text3);margin-top:6px;letter-spacing:.04em"></div>
     <div id="pwaFolderBadge" style="display:none;margin-top:8px;font-size:11px;color:var(--text3);cursor:pointer" onclick="pwaFolderChangeTap()">📁 <span id="pwaFolderName"></span> · <span style="color:var(--accent)">Change</span></div>
+  </div>
+  <div class="lib-settings-panel" id="libSettingsPanel" style="display:none">
+    <div class="lib-settings-inner">
+      <div class="lib-settings-title">Settings</div>
+      <p class="lib-settings-placeholder">Settings coming soon.</p>
+    </div>
   </div>
   <div class="lib-grid" id="libGrid"></div>
 </div>
@@ -608,28 +626,23 @@ html,body,
     <button class="back-btn" onclick="goLib()" aria-label="Back to library">
       <svg class="ic-svg" viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8"/></svg>
     </button>
+    <button class="ic-btn" onclick="toggleToc()" title="Contents" aria-label="Table of contents">
+      <svg class="ic-svg" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="15" y2="18"/></svg>
+    </button>
     <div class="bk-info">
       <div class="bk-title" id="pTitle">—</div>
+      <div class="bk-author" id="pAuthor"></div>
       <div class="bk-prog" id="pProg">—</div>
     </div>
-    <div class="top-bar-right">
-      <button class="ic-btn" onclick="toggleToc()" title="Contents" aria-label="Table of contents">
-        <svg class="ic-svg" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="15" y2="18"/></svg>
-      </button>
-      <button class="ic-btn" id="ttsToggleBtn" onclick="toggleTtsMode()" title="Text-to-speech" aria-label="Text-to-speech" style="display:none">
-        <svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-      </button>
-      <div class="top-bar-divider"></div>
-      <button class="ic-btn" id="bookInfoBtn" onclick="openBookInfoModal()" title="Book files" aria-label="Book files">
-        <svg class="ic-svg" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
-      </button>
-      <button class="ic-btn" id="optBtn" onclick="toggleOpts()" aria-label="Settings">
-        <svg class="ic-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      </button>
-      <button class="ic-btn" id="sleepTimerBtn" onclick="cycleSleepTimer()" title="Sleep timer" aria-label="Sleep timer">
-        <svg class="ic-svg" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg><span id="sleepTimerBadge"></span>
-      </button>
-    </div>
+    <button class="ic-btn" id="sleepTimerBtn" onclick="cycleSleepTimer()" title="Sleep timer" aria-label="Sleep timer">
+      <svg class="ic-svg" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg><span id="sleepTimerBadge"></span>
+    </button>
+    <button class="ic-btn" id="ttsToggleBtn" onclick="toggleTtsMode()" title="Text-to-speech" aria-label="Text-to-speech" style="display:none">
+      <svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    </button>
+    <button class="ic-btn" id="optBtn" onclick="toggleOpts()" aria-label="Settings">
+      <svg class="ic-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
 
     <!-- OPTIONS PANEL -->
     <div class="opt-panel" id="optPanel">
@@ -780,9 +793,19 @@ html,body,
           <span class="vol-pop-label" id="volPopLabel">100%</span>
         </div>
       </div>
-      <button class="ic-btn" onclick="skip(-15)" title="−15s" aria-label="Skip back 15 seconds">⏮</button>
+      <button class="ic-btn skip-btn" id="bigSkipBackBtn" onclick="skip(-60)" title="−1m" aria-label="Skip back 1 minute">
+        <svg class="ic-svg" viewBox="0 0 24 24"><polygon points="11 19 2 12 11 5"/><polygon points="22 19 13 12 22 5"/></svg>
+      </button>
+      <button class="ic-btn skip-btn" id="skipBackBtn" onclick="skip(-15)" title="−15s" aria-label="Skip back 15 seconds">
+        <svg class="ic-svg" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4"/><line x1="5" y1="4" x2="5" y2="20"/></svg>
+      </button>
       <button class="play-btn" id="playBtn" onclick="togglePlay()" aria-label="Play">▶</button>
-      <button class="ic-btn" onclick="skip(15)" title="+15s" aria-label="Skip forward 15 seconds">⏭</button>
+      <button class="ic-btn skip-btn" id="skipFwdBtn" onclick="skip(15)" title="+15s" aria-label="Skip forward 15 seconds">
+        <svg class="ic-svg" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20"/><line x1="19" y1="4" x2="19" y2="20"/></svg>
+      </button>
+      <button class="ic-btn skip-btn" id="bigSkipFwdBtn" onclick="skip(60)" title="+1m" aria-label="Skip forward 1 minute">
+        <svg class="ic-svg" viewBox="0 0 24 24"><polygon points="13 19 22 12 13 5"/><polygon points="2 19 11 12 2 5"/></svg>
+      </button>
       <button class="speed-pill" id="rateBtnInline" onclick="cycleSpeed()" title="Tap to cycle speed" aria-label="Playback speed">1×</button>
     </div>
   </div>
@@ -796,7 +819,7 @@ html,body,
     <div class="modal-body">
       <div class="folder-pick-row">
         <label class="btn btn-ghost folder-pick-btn">
-          📁 Browse Folder
+          📁 Select Folder
           <input type="file" id="folderInput" webkitdirectory multiple style="display:none" onchange="folderChosen(event)">
         </label>
         <span class="folder-pick-hint">or fill slots individually below</span>
@@ -807,28 +830,28 @@ html,body,
         <div class="folder-assign-hint">Tap a file to assign it to the correct slot ↓</div>
       </div>
       <div class="file-pills">
-        <div class="file-pill" id="audioPill"
+        <div class="file-pill clickable" id="audioPill" onclick="pillClick(event,'audioInput')"
           ondragover="dzOver(event,'audioPill')" ondragleave="dzLeave('audioPill')" ondrop="dzDrop(event,'audio')">
           <span class="fp-icon">🎧</span>
           <div class="fp-info"><div class="fp-label">Audio File</div><div class="fp-name empty" id="audioName">No file selected</div></div>
           <input type="file" id="audioInput" accept=".mp3,.m4a,.m4b,.ogg,.wav,.aac,.flac,.opus" style="display:none" onchange="fileChosen(event,'audio')">
           <button class="fp-clear" onclick="clearSlot('audio')" title="Clear">✕</button>
         </div>
-        <div class="file-pill" id="ebookPill"
+        <div class="file-pill clickable" id="ebookPill" onclick="pillClick(event,'ebookInput')"
           ondragover="dzOver(event,'ebookPill')" ondragleave="dzLeave('ebookPill')" ondrop="dzDrop(event,'ebook')">
           <span class="fp-icon">📄</span>
           <div class="fp-info"><div class="fp-label">Ebook</div><div class="fp-name empty" id="ebookName">No file selected</div></div>
           <input type="file" id="ebookInput" accept=".txt,.epub,.html,.htm,.md,.xhtml" style="display:none" onchange="fileChosen(event,'ebook')">
           <button class="fp-clear" onclick="clearSlot('ebook')" title="Clear">✕</button>
         </div>
-        <div class="file-pill" id="transcriptPill"
+        <div class="file-pill clickable" id="transcriptPill" onclick="pillClick(event,'transcriptInput')"
           ondragover="dzOver(event,'transcriptPill')" ondragleave="dzLeave('transcriptPill')" ondrop="dzDrop(event,'transcript')">
           <span class="fp-icon">📝</span>
           <div class="fp-info"><div class="fp-label">Transcript (optional)</div><div class="fp-name empty" id="transcriptName">No file selected</div></div>
           <input type="file" id="transcriptInput" accept=".json,.txt" style="display:none" onchange="fileChosen(event,'transcript')">
           <button class="fp-clear" onclick="clearSlot('transcript')" title="Clear">✕</button>
         </div>
-        <div class="file-pill" id="coverPill"
+        <div class="file-pill clickable" id="coverPill" onclick="pillClick(event,'coverInput')"
           ondragover="dzOver(event,'coverPill')" ondragleave="dzLeave('coverPill')" ondrop="dzDrop(event,'cover')">
           <span class="fp-icon">🖼️</span>
           <div class="fp-info"><div class="fp-label">Cover Image (optional)</div><div class="fp-name empty" id="coverName">No file selected</div></div>
@@ -897,20 +920,29 @@ html,body,
   </div>
 </div>
 
-<!-- ════ BOOK INFO MODAL ════ -->
-<div class="modal-overlay" id="bookInfoModal" style="display:none" onclick="if(event.target===this)closeBookInfoModal()" role="dialog" aria-modal="true" aria-label="Book files">
+<!-- ════ EDIT BOOK MODAL ════ -->
+<div class="modal-overlay" id="editBookModal" style="display:none" onclick="if(event.target===this)closeEditBookModal()" role="dialog" aria-modal="true" aria-label="Edit book details">
   <div class="modal">
-    <div class="modal-title">Book Files</div>
-    <p class="modal-sub" id="bookInfoSub">Files assigned to this book. Click a slot to change it.</p>
+    <div class="modal-title">Edit Book Details</div>
+    <p class="modal-sub" id="editBookSub">Change the title or reassign files for this book.</p>
     <div class="modal-body">
-      <div class="binfo-slots" id="bookInfoSlots"></div>
-      <input type="file" id="biAudioInput" accept=".mp3,.m4a,.m4b,.ogg,.wav,.aac,.flac,.opus" style="display:none" onchange="biReassign(event,'audio')">
-      <input type="file" id="biEbookInput" accept=".txt,.epub,.html,.htm,.md,.xhtml" style="display:none" onchange="biReassign(event,'ebook')">
-      <input type="file" id="biTxInput" accept=".json,.txt" style="display:none" onchange="biReassign(event,'transcript')">
-      <input type="file" id="biCoverInput" accept=".jpg,.jpeg,.png,.webp,.gif,.avif" style="display:none" onchange="biReassign(event,'cover')">
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-weight:600;display:block;margin-bottom:6px">Title</label>
+        <input type="text" id="editBookTitleInput" placeholder="Book title" style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:var(--font-ui);font-size:14px;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-weight:600;display:block;margin-bottom:6px">Author <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input type="text" id="editBookAuthorInput" placeholder="Author name" style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:var(--font-ui);font-size:14px;outline:none;box-sizing:border-box;">
+      </div>
+      <div class="binfo-slots" id="editBookSlots"></div>
+      <input type="file" id="ebAudioInput" accept=".mp3,.m4a,.m4b,.ogg,.wav,.aac,.flac,.opus" style="display:none" onchange="editBookReassign(event,'audio')">
+      <input type="file" id="ebEbookInput" accept=".txt,.epub,.html,.htm,.md,.xhtml" style="display:none" onchange="editBookReassign(event,'ebook')">
+      <input type="file" id="ebTxInput" accept=".json,.txt" style="display:none" onchange="editBookReassign(event,'transcript')">
+      <input type="file" id="ebCoverInput" accept=".jpg,.jpeg,.png,.webp,.gif,.avif" style="display:none" onchange="editBookReassign(event,'cover')">
     </div>
     <div class="modal-acts">
-      <button class="btn btn-ghost" onclick="closeBookInfoModal()">Close</button>
+      <button class="btn btn-ghost" onclick="closeEditBookModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditBook()">Save</button>
     </div>
   </div>
 </div>
@@ -926,8 +958,17 @@ html,body,
       <div class="dz-title" id="relinkDropLbl">Select audio file</div>
       <div class="dz-hint" id="relinkDropHint">Tap to browse</div>
     </div>
-    <div style="display:flex;justify-content:flex-end;gap:10px">
+    <div id="relinkActions" style="display:flex;justify-content:space-between;gap:10px">
+      <button class="btn btn-ghost" onclick="rlDontRemind()">Don't remind me</button>
       <button class="btn btn-ghost" onclick="closeRelink()">Cancel</button>
+    </div>
+    <div id="relinkDismissChoice" style="display:none">
+      <p style="font-size:13px;color:var(--text2);margin:0 0 12px;line-height:1.5">Stop showing the re-link prompt for:</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="rlDismissBook()">This book only</button>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="rlDismissAll()">All books</button>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="rlDismissCancel()">Cancel</button>
+      </div>
     </div>
   </div>
 </div>
@@ -936,7 +977,7 @@ html,body,
 'use strict';
 
 // ── App version ───────────────────────────────────
-const APP_VERSION = '1.17.0';
+const APP_VERSION = '1.18.0';
 
 // ══════════════════════════════════════════════════════
 // STATE
@@ -1155,8 +1196,8 @@ function _updateSleepBadge(){
 // MODAL KEYBOARD NAV (Escape to close, focus trap)
 // ══════════════════════════════════════════════════════
 let _prevFocus=null;
-const _modalIds=['modal','txModal','linkAudioModal','bookInfoModal'];
-const _modalClosers={modal:closeModal,txModal:closeTxModal,linkAudioModal:closeLinkAudioModal,bookInfoModal:closeBookInfoModal};
+const _modalIds=['modal','txModal','linkAudioModal','editBookModal'];
+const _modalClosers={modal:closeModal,txModal:closeTxModal,linkAudioModal:closeLinkAudioModal,editBookModal:closeEditBookModal};
 function _openModalEl(id){
   _prevFocus=document.activeElement;
   const el=document.getElementById(id);
@@ -1206,11 +1247,11 @@ document.addEventListener('keydown', function(e){
       break;
     case 'ArrowRight':
       e.preventDefault();
-      e.shiftKey ? skip(15) : nudge(1);
+      e.shiftKey ? skip(60) : skip(15);
       break;
     case 'ArrowLeft':
       e.preventDefault();
-      e.shiftKey ? skip(-15) : nudge(-1);
+      e.shiftKey ? skip(-60) : skip(-15);
       break;
     case '[':
     case '-':
@@ -1540,6 +1581,10 @@ function loadDisplayPrefs(){
 // ══════════════════════════════════════════════════════
 // LIBRARY UI
 // ══════════════════════════════════════════════════════
+function toggleLibSettings(){
+  const panel=$('libSettingsPanel');
+  panel.style.display=panel.style.display==='none'?'':'none';
+}
 function renderLib(){
   const grid=document.getElementById('libGrid');
   grid.innerHTML='';
@@ -1576,11 +1621,12 @@ function renderLib(){
         <div class="book-cover-bar"><div class="book-cover-prog" style="width:${prog}%"></div></div>
       </div>
       <div class="book-card-actions">
-        <button class="card-action-btn" title="Rename" onclick="renameBook(${i},event)">✏️</button>
+        <button class="card-action-btn" title="Edit" onclick="openEditBookModal(${i},event)">✏️</button>
         <button class="card-action-btn" title="${IS_PWA?'Hide':'Delete'}" onclick="deleteBook(${i},event)">${IS_PWA?'🙈':'🗑️'}</button>
       </div>
       <div class="book-info">
         <div class="book-title">${xh(b.title)}</div>
+        ${b.author?`<div class="book-meta" style="margin-bottom:1px">${xh(b.author)}</div>`:''}
         <div class="book-meta">${prog>0?prog+'% complete':'Not started'}</div>
       </div>`;
     card.addEventListener('click',(e)=>{
@@ -1745,8 +1791,7 @@ function configurePlayerForMode(b, audioSrc, rate){
   $('ttsToggleBtn').classList.remove('active');
   $('ttsVoiceSec').style.display = canTts ? '' : 'none';
   $('bottomControls').style.display = canTts ? 'none' : '';
-  const needsRelink=!!(b.audioName&&!audioSrc&&!b.audioHandle);
-  $('bookInfoBtn').classList.toggle('needs-relink',needsRelink);
+  _updateSkipBtns();
   if(canTts) setHighlightMode('off');
   else if(!sentHlOn) setHighlightMode('word');
   if(!canTts && audioSrc){
@@ -1770,6 +1815,7 @@ function toggleTtsMode(){
   ttsMode=!ttsMode;
   $('ttsToggleBtn').classList.toggle('active',ttsMode);
   $('bottomControls').style.display=ttsMode?'':'none';
+  _updateSkipBtns();
   if(ttsMode){
     if(!sentHlOn) setHighlightMode('sentence');
   } else {
@@ -1790,6 +1836,7 @@ async function openBook(i){
   $('library').style.display='none';
   $('player').style.display='flex';
   $('pTitle').textContent=b.title;
+  $('pAuthor').textContent=b.author||'';
   configurePlayerForMode(b, b.audioUrl||null, b.playbackRate||1);
   if(b.audioName&&!b.audioUrl&&!b.audioHandle) showRelink(i);
   await loadTranscriptData(b);
@@ -1882,8 +1929,23 @@ function mediaStop(){
   releaseWakeLock();
   updatePageTitle();
 }
+function _updateSkipBtns(){
+  const bb=$('bigSkipBackBtn'), sb=$('skipBackBtn'), sf=$('skipFwdBtn'), bf=$('bigSkipFwdBtn');
+  if(!sb||!sf) return;
+  if(ttsMode){
+    if(bb){ bb.title='Back 5 sentences'; bb.setAttribute('aria-label','Back 5 sentences'); }
+    sb.title='Previous sentence'; sb.setAttribute('aria-label','Previous sentence');
+    sf.title='Next sentence'; sf.setAttribute('aria-label','Next sentence');
+    if(bf){ bf.title='Forward 5 sentences'; bf.setAttribute('aria-label','Forward 5 sentences'); }
+  } else {
+    if(bb){ bb.title='\u22121m'; bb.setAttribute('aria-label','Skip back 1 minute'); }
+    sb.title='\u221215s'; sb.setAttribute('aria-label','Skip back 15 seconds');
+    sf.title='+15s'; sf.setAttribute('aria-label','Skip forward 15 seconds');
+    if(bf){ bf.title='+1m'; bf.setAttribute('aria-label','Skip forward 1 minute'); }
+  }
+}
 function skip(s){
-  if(ttsMode) return;
+  if(ttsMode){ const n=Math.abs(s)>=60?(s>0?5:-5):(s>0?1:-1); nudge(n); return; }
   _audio.currentTime=Math.max(0,Math.min(_audio.duration||0,_audio.currentTime+s));
 }
 const RATE_STEPS=[0.5,0.75,1,1.25,1.5,1.75,2,2.5];
@@ -2106,7 +2168,7 @@ function nudge(n){
   curWord=0;
   updateHL(); updateProg(); saveBookProgressDebounced();
   if(autoScroll) scrollToSent(curSent);
-  if(ttsMode && mediaState==='playing'){ clearTimeout(scrollTimer); advanceSent(); }
+  if(ttsMode && mediaState==='playing'){ ttsStop(); ttsPlay(); }
 }
 function resync(){
   if(!sentenceTimings.length) return;
@@ -3290,6 +3352,7 @@ function resetModal(){
   document.getElementById('folderFileList').style.display='none';
   document.getElementById('folderFiles').innerHTML='';
 }
+function pillClick(e,inputId){ if(e.target.closest('.fp-clear')) return; document.getElementById(inputId).click(); }
 function dzOver(e,pillId){ e.preventDefault(); document.getElementById(pillId).classList.add('drag-over'); }
 function dzLeave(pillId){ document.getElementById(pillId).classList.remove('drag-over'); }
 function dzDrop(e,slot){ e.preventDefault(); dzLeave(slot+'Pill'); const f=e.dataTransfer.files[0]; if(f) assignFileToPill(f,slot); }
@@ -3517,27 +3580,39 @@ function saveLinkAudio(){
   $('seekStrip').style.display='';
   $('ttsToggleBtn').style.display='none';
   $('ttsVoiceSec').style.display='none';
-  $('bookInfoBtn').classList.remove('needs-relink');
   if(!b.transcriptType&&sentHlOn&&!ttsMode) setBannerState('notx','No transcript','Highlighting requires a transcript in audio mode');
   if(!IS_PWA) saveLibrary();
   closeLinkAudioModal();
 }
 
 // ══════════════════════════════════════════════════════
-// BOOK INFO MODAL
+// EDIT BOOK MODAL (library screen)
 // ══════════════════════════════════════════════════════
-function openBookInfoModal(){
-  const b=library[curBookIdx];
+let _editBookIdx=-1;
+function openEditBookModal(i,e){
+  if(e) e.stopPropagation();
+  _editBookIdx=i;
+  const b=library[i];
   if(!b) return;
-  document.getElementById('bookInfoSub').textContent=
-    IS_PWA&&CAN_FS?'Files scanned from your library folder.':'Files assigned to this book. Click a slot to change it.';
+  document.getElementById('editBookTitleInput').value=b.title;
+  document.getElementById('editBookAuthorInput').value=b.author||'';
+  document.getElementById('editBookSub').textContent=
+    IS_PWA&&CAN_FS?'Change the title. Files are managed from your library folder.':'Change the title or reassign files for this book.';
+  _renderEditBookSlots();
+  document.getElementById('editBookModal').style.display='flex';
+  _openModalEl('editBookModal');
+}
+function _renderEditBookSlots(){
+  const b=library[_editBookIdx];
+  if(!b) return;
+  const canFiles=!IS_PWA;
   const slots=[
-    {key:'audio',icon:'🎧',label:'Audio File',name:b.audioName||(b.audioUrl?'Linked audio':null),badge:b.audioUrl?'loaded':null,inputId:'biAudioInput',canChange:!IS_PWA},
-    {key:'ebook',icon:'📄',label:'Ebook',name:b.ebookName||(b.ebookData?'Loaded':null),badge:b.ebookData?'loaded':null,inputId:'biEbookInput',canChange:!IS_PWA},
-    {key:'transcript',icon:'📝',label:'Transcript',name:b.transcriptName||(b.transcriptType?b.transcriptType:null),badge:b.transcriptType||null,inputId:'biTxInput',canChange:true},
-    {key:'cover',icon:'🖼️',label:'Cover Image',name:b.coverName||(b.coverUrl?'Custom cover':null),badge:b.coverUrl?'set':null,inputId:'biCoverInput',canChange:true},
+    {key:'audio',icon:'🎧',label:'Audio File',name:b.audioName||(b.audioUrl?'Linked audio':null),badge:b.audioUrl?'loaded':(b.audioName?'needs relink':null),inputId:'ebAudioInput',canChange:canFiles},
+    {key:'ebook',icon:'📄',label:'Ebook',name:b.ebookName||(b.ebookData?'Loaded':null),badge:b.ebookData?'loaded':null,inputId:'ebEbookInput',canChange:canFiles},
+    {key:'transcript',icon:'📝',label:'Transcript',name:b.transcriptName||(b.transcriptType?b.transcriptType:null),badge:b.transcriptType||null,inputId:'ebTxInput',canChange:canFiles},
+    {key:'cover',icon:'🖼️',label:'Cover Image',name:b.coverName||(b.coverUrl?'Custom cover':null),badge:b.coverUrl?'set':null,inputId:'ebCoverInput',canChange:canFiles},
   ];
-  const container=document.getElementById('bookInfoSlots');
+  const container=document.getElementById('editBookSlots');
   container.innerHTML='';
   slots.forEach(slot=>{
     const hasFile=!!slot.name;
@@ -3550,40 +3625,63 @@ function openBookInfoModal(){
         <div class="binfo-slot-label">${xh(slot.label)}${slot.canChange?'':' <span style="font-weight:400;text-transform:none;letter-spacing:0">(from folder)</span>'}</div>
         <div class="binfo-slot-name${hasFile?'':' empty'}">${hasFile?xh(slot.name):'Not set — tap to add'}</div>
       </div>
-      ${slot.badge?`<span class="binfo-slot-badge">${xh(slot.badge)}</span>`:''}
+      ${slot.badge?`<span class="binfo-slot-badge${slot.badge==='needs relink'?' relink':''}">${xh(slot.badge)}</span>`:''}
       ${slot.canChange&&hasFile?'<span class="binfo-slot-action">Change ›</span>':''}
       ${slot.canChange&&!hasFile?'<span class="binfo-slot-action">Add ›</span>':''}`;
     container.appendChild(div);
   });
-  document.getElementById('bookInfoModal').style.display='flex';
-  _openModalEl('bookInfoModal');
 }
-function closeBookInfoModal(){ document.getElementById('bookInfoModal').style.display='none'; _closeModalRestore(); }
-function biReassign(e,type){
+function closeEditBookModal(){
+  document.getElementById('editBookModal').style.display='none';
+  _editBookIdx=-1;
+  _closeModalRestore();
+}
+function saveEditBook(){
+  if(_editBookIdx<0) return;
+  const b=library[_editBookIdx];
+  if(!b) return;
+  const val=document.getElementById('editBookTitleInput').value.trim();
+  const authorVal=document.getElementById('editBookAuthorInput').value.trim();
+  let changed=false;
+  if(val&&val!==b.title){ b.title=val; changed=true; }
+  if(authorVal!==( b.author||'')){ b.author=authorVal||null; changed=true; }
+  if(changed){
+    if(!IS_PWA) saveLibrary();
+    else{
+      const all=getPwaProgress();
+      const entry=all[b.id]||(all[b.id]={});
+      if(val) entry.title=b.title;
+      if(b.author) entry.author=b.author; else delete entry.author;
+      localStorage.setItem(PWA_PROG_KEY,JSON.stringify(all));
+    }
+    showToast('Book details saved');
+  }
+  closeEditBookModal();
+  renderLib();
+}
+function editBookReassign(e,type){
   const f=e.target.files[0]; e.target.value=''; if(!f) return;
   const ext=f.name.split('.').pop().toLowerCase();
-  const b=library[curBookIdx];
+  const b=library[_editBookIdx];
+  if(!b) return;
   if(type==='audio'){
     if(!AUDIO_EXTS.has(ext)){ showToast('Not a recognised audio file','error'); return; }
     if(b.audioUrl) URL.revokeObjectURL(b.audioUrl);
     b.audioUrl=URL.createObjectURL(f); b.audioName=f.name;
-    $('bookInfoBtn').classList.remove('needs-relink');
-    configurePlayerForMode(b, b.audioUrl, b.playbackRate||1);
-    if(!b.transcriptType&&sentHlOn&&!ttsMode) setBannerState('notx','No transcript','Highlighting requires a transcript in audio mode');
-    if(!IS_PWA) saveLibrary();
-    showToast('Audio linked','success');
+    saveLibrary();
+    _renderEditBookSlots();
+    showToast('Audio updated','success');
   } else if(type==='ebook'){
     if(!EBOOK_EXTS.has(ext)){ showToast('Not a recognised ebook file','error'); return; }
     const reader=new FileReader();
     reader.onload=ev=>{
       b.ebookName=f.name; b.ebookType=ext;
       b.ebookData=ext==='epub'?ev.target.result.split(',')[1]:ev.target.result;
-      if(!IS_PWA) saveLibrary();
-      loadEbook(b,()=>{ curSent=0; curWord=0; updateHL(); updateProg(); });
-      openBookInfoModal();
+      saveLibrary();
+      _renderEditBookSlots();
+      showToast('Ebook updated','success');
     };
     ext==='epub'?reader.readAsDataURL(f):reader.readAsText(f,'UTF-8');
-    return;
   } else if(type==='transcript'){
     if(ext!=='json'&&ext!=='txt'){ showToast('Transcript must be JSON or TXT','error'); return; }
     const reader=new FileReader();
@@ -3591,26 +3689,23 @@ function biReassign(e,type){
       b.transcriptName=f.name;
       b.transcriptType=ext==='json'?'whisper':'txt';
       b.transcriptData=ev.target.result;
-      if(!IS_PWA) saveLibrary();
-      loadTranscriptData(b); updateTranscriptUI();
-      openBookInfoModal();
+      saveLibrary();
+      _renderEditBookSlots();
+      showToast('Transcript updated','success');
     };
     reader.readAsText(f,'UTF-8');
-    return;
   } else if(type==='cover'){
-    if(!IMAGE_EXTS.has(ext)){ showToast('Please select an image file (JPG, PNG, WEBP, etc.)','error'); return; }
+    if(!IMAGE_EXTS.has(ext)){ showToast('Please select an image file','error'); return; }
     const reader=new FileReader();
     reader.onload=ev=>{
-      b.coverUrl=ev.target.result;
-      b.coverName=f.name;
-      if(!IS_PWA) saveLibrary();
+      b.coverUrl=ev.target.result; b.coverName=f.name;
+      saveLibrary();
+      _renderEditBookSlots();
       renderLib();
-      openBookInfoModal();
+      showToast('Cover updated','success');
     };
     reader.readAsDataURL(f);
-    return;
   }
-  openBookInfoModal();
 }
 
 // ══════════════════════════════════════════════════════
@@ -3618,12 +3713,34 @@ function biReassign(e,type){
 // ══════════════════════════════════════════════════════
 function showRelink(i){
   const b=library[i];
+  if(localStorage.getItem('folio_relink_dismissed_all')||b.relinkDismissed) return;
   document.getElementById('relinkSub').textContent=`"${b.audioName}" needs to be re-selected. Your position and sync settings are saved.`;
   document.getElementById('relinkDropLbl').textContent=b.audioName;
   document.getElementById('relinkDropHint').textContent='Tap to browse or drop file here';
+  document.getElementById('relinkActions').style.display='flex';
+  document.getElementById('relinkDismissChoice').style.display='none';
   document.getElementById('relinkOverlay').style.display='flex';
 }
 function closeRelink(){ document.getElementById('relinkOverlay').style.display='none'; }
+function rlDontRemind(){
+  document.getElementById('relinkActions').style.display='none';
+  document.getElementById('relinkDismissChoice').style.display='';
+}
+function rlDismissBook(){
+  if(curBookIdx>=0) library[curBookIdx].relinkDismissed=true;
+  saveLibrary();
+  closeRelink();
+  showToast('Re-link prompt hidden for this book');
+}
+function rlDismissAll(){
+  localStorage.setItem('folio_relink_dismissed_all','1');
+  closeRelink();
+  showToast('Re-link prompt hidden for all books');
+}
+function rlDismissCancel(){
+  document.getElementById('relinkDismissChoice').style.display='none';
+  document.getElementById('relinkActions').style.display='flex';
+}
 function rlOver(e){ e.preventDefault(); document.getElementById('relinkDrop').classList.add('drag-over'); }
 function rlLeave(){ document.getElementById('relinkDrop').classList.remove('drag-over'); }
 function rlDrop(e){ e.preventDefault(); rlLeave(); if(e.dataTransfer.files[0]) rlLoad(e.dataTransfer.files[0]); }
@@ -3634,7 +3751,6 @@ function rlLoad(f){
   const b=library[curBookIdx];
   if(b.audioUrl) URL.revokeObjectURL(b.audioUrl);
   b.audioUrl=URL.createObjectURL(f); b.audioName=f.name;
-  $('bookInfoBtn').classList.remove('needs-relink');
   saveLibrary();
   document.getElementById('relinkOverlay').style.display='none';
   openBook(curBookIdx);
@@ -3814,6 +3930,7 @@ async function pwaOpenBook(i){
   syncOffset=b.syncOffset||0; updateOffsetUI();
   showScreen('player');
   $('pTitle').textContent=b.title;
+  $('pAuthor').textContent=b.author||'';
   // Show saved progress immediately while ebook loads
   if(b.totalSents>1&&_pProg){
     const pct=Math.round((b.curSent||0)/(b.totalSents-1)*100);
