@@ -2,6 +2,32 @@
 
 ---
 
+## v1.18 — 2026-03-15
+
+### Added
+- Edit Book Details modal — pencil icon on library cards opens a modal to edit title, author name, and reassign files (audio, ebook, transcript, cover)
+- Author field — optional per-book author name displayed on library cards and in the player top bar
+- Library settings button — gear icon in library header toggles a placeholder settings panel
+- Four skip buttons in media controls — big skip (1m / 5 sentences) and small skip (15s / 1 sentence) on each side of play
+- Skip button icons swap dynamically between audio mode (circular arrow + "15") and TTS mode (chevrons)
+- "Don't remind me" option on relink overlay — dismiss per-book or globally
+- File pills in Add Book modal are now clickable to open the file picker for that slot
+- Amber "needs relink" badge on audio slot in Edit Book Details when blob URL is lost
+
+### Changed
+- Top bar restructured: flat flex layout with `justify-content:space-between` — Back, TOC, Title/Author/Progress, Sleep, TTS, Settings
+- Title, author, and progress text use `clamp()` for responsive sizing across screen widths
+- "Browse Folder" renamed to "Select Folder" in Add Book modal
+- Skip buttons in TTS mode now skip sentences (was silent no-op)
+- Keyboard shortcuts: Arrow = 15s/1 sentence, Shift+Arrow = 1m/5 sentences
+- App version bumped to 1.18.0
+
+### Removed
+- Book Info modal and top bar folder icon — file management moved to Edit Book Details on library screen
+- Top bar divider element
+
+---
+
 ## v1.17 — 2026-03-14
 
 ### Added
