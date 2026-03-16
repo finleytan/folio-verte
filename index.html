@@ -270,16 +270,16 @@ body.theme-hclight{
 
 /* ── TRANSCRIPT BANNER ── */
 .tx-banner{display:none;align-items:center;gap:10px;padding:10px 16px;font-size:13px;font-weight:600;flex-shrink:0;position:relative;overflow:hidden;}
-.tx-banner.loading{display:flex;background:#2a1f08;border-top:1px solid #5a4010;color:#c8a840;}
-.tx-banner.loading::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent 0%,#c8a840 50%,transparent 100%);animation:tx-shimmer 1.5s ease-in-out infinite;}
+.tx-banner.loading{display:flex;background:#2a1f08;border-bottom:1px solid #5a4010;color:#c8a840;}
+.tx-banner.loading::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent 0%,#c8a840 50%,transparent 100%);animation:tx-shimmer 1.5s ease-in-out infinite;}
 @keyframes tx-shimmer{0%{transform:translateX(-100%);}100%{transform:translateX(100%);}}
-.tx-banner.syncing{display:flex;background:#0c1a2e;border-top:1px solid #2a4a80;color:#5b8def;}
-.tx-banner.syncing::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent 0%,#5b8def 50%,transparent 100%);animation:tx-shimmer 1.2s ease-in-out infinite;}
-.tx-banner.ready{display:flex;background:#0a2a18;border-top:2px solid #28a060;color:#50e888;animation:tx-ready-in .5s ease;}
-.tx-banner.ready::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#28a060,#50e888,#28a060);opacity:.6;}
+.tx-banner.syncing{display:flex;background:#0c1a2e;border-bottom:1px solid #2a4a80;color:#5b8def;}
+.tx-banner.syncing::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent 0%,#5b8def 50%,transparent 100%);animation:tx-shimmer 1.2s ease-in-out infinite;}
+.tx-banner.ready{display:flex;background:#0a2a18;border-bottom:2px solid #28a060;color:#50e888;animation:tx-ready-in .5s ease;}
+.tx-banner.ready::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#28a060,#50e888,#28a060);opacity:.6;}
 @keyframes tx-ready-in{0%{background:#1a6838;border-bottom-color:#50e888;}50%{background:#124a28;}100%{background:#0a2a18;}}
-.tx-banner.warn{display:flex;background:var(--amber-bg);border-top:1px solid var(--amber-border);color:var(--amber-text);}
-.tx-banner.error{display:flex;background:#2a0a08;border-top:1px solid #5a2010;color:#e06040;}
+.tx-banner.warn{display:flex;background:var(--amber-bg);border-bottom:1px solid var(--amber-border);color:var(--amber-text);}
+.tx-banner.error{display:flex;background:#2a0a08;border-bottom:1px solid #5a2010;color:#e06040;}
 .tx-banner.notx{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:10px 14px;background:var(--amber-bg);border-top:1px solid var(--amber-border);}
 .tx-banner.notx .notx-top{display:flex;align-items:center;gap:8px;}
 .tx-banner.notx .notx-icon{font-size:13px;flex-shrink:0;}
@@ -752,6 +752,14 @@ html,body,
     </div>
   </div><!-- /top-bar -->
 
+  <!-- TRANSCRIPT BANNER (syncing states — below top bar) -->
+  <div class="tx-banner" id="txBanner">
+    <span id="txBannerIcon" class="tx-check"></span>
+    <span id="txBannerMsg"></span>
+    <span class="tx-spinner" id="txBannerSpinner" style="display:none"></span>
+    <span class="tx-detail" id="txBannerDetail"></span>
+  </div>
+
   <!-- READER BODY -->
   <div class="reader-body">
     <div class="toc-overlay" id="tocOverlay" onclick="toggleToc()"></div>
@@ -771,21 +779,17 @@ html,body,
     </div>
   </div>
 
-  <!-- TRANSCRIPT BANNER -->
-  <div class="tx-banner" id="txBanner">
-    <div class="notx-top" id="txBannerTop" style="display:none">
+  <!-- NOTX BANNER (highlight not synced — above bottom controls) -->
+  <div class="tx-banner" id="notxBanner">
+    <div class="notx-top" id="txBannerTop">
       <span class="notx-icon">⚠</span>
       <span class="notx-title">No transcript</span>
       <span class="notx-sub">Highlighting unavailable in audio mode</span>
     </div>
-    <div class="notx-actions" id="txBannerActions" style="display:none">
+    <div class="notx-actions" id="txBannerActions">
       <button class="notx-btn-primary" onclick="openTranscriptModal()">Add transcript →</button>
       <button class="notx-btn-ghost" onclick="setHighlightMode('off')">Disable highlighting</button>
     </div>
-    <span id="txBannerIcon" class="tx-check"></span>
-    <span id="txBannerMsg"></span>
-    <span class="tx-spinner" id="txBannerSpinner" style="display:none"></span>
-    <span class="tx-detail" id="txBannerDetail"></span>
   </div>
 
   <!-- BOTTOM CONTROLS -->
@@ -2731,25 +2735,18 @@ let _bannerHideTimer=null;
 function setBannerState(state,text,detail){
   if(_bannerHideTimer){ clearTimeout(_bannerHideTimer); _bannerHideTimer=null; }
   const b=document.getElementById('txBanner');
+  const nb=document.getElementById('notxBanner');
   b.className='tx-banner';
+  nb.className='tx-banner';
   if(state==='hidden'){ return; }
-  b.classList.add(state);
-  const txTop=document.getElementById('txBannerTop');
-  const txActions=document.getElementById('txBannerActions');
-  const icon=document.getElementById('txBannerIcon');
-  const msg=document.getElementById('txBannerMsg');
-  const spinner=document.getElementById('txBannerSpinner');
-  const det=document.getElementById('txBannerDetail');
   if(state==='notx'){
-    txTop.style.display='flex';
-    txActions.style.display='flex';
-    icon.style.display='none';
-    msg.style.display='none';
-    det.style.display='none';
-    spinner.style.display='none';
+    nb.classList.add('notx');
   } else {
-    txTop.style.display='none';
-    txActions.style.display='none';
+    b.classList.add(state);
+    const icon=document.getElementById('txBannerIcon');
+    const msg=document.getElementById('txBannerMsg');
+    const spinner=document.getElementById('txBannerSpinner');
+    const det=document.getElementById('txBannerDetail');
     msg.style.display='';
     det.style.display='';
     if(state==='loading'||state==='syncing'){ icon.style.display='none'; spinner.style.display=''; icon.textContent=''; }
