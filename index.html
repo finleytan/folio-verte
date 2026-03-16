@@ -2582,9 +2582,9 @@ function setOrientation(mode,btn){
   try{
     if(typeof screen.orientation.lock==='function'){
       if(mode==='auto') screen.orientation.unlock();
-      else screen.orientation.lock(mode).catch(function(err){showToast('Orient: '+err.message,'warn');});
-    }else{showToast('Orient API not available','warn');}
-  }catch(e){showToast('Orient error: '+e.message,'warn');}
+      else screen.orientation.lock(mode).catch(function(){});
+    }
+  }catch(e){}
   saveDisplayPrefs();
 }
 function setDefaultWpmFromSlider(v){ wpm=parseInt(v); document.getElementById('defWpmInput').value=wpm; updateWpmLabel(); saveDisplayPrefs(); }
