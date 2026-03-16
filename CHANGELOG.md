@@ -10,6 +10,9 @@
 - Bars automatically reappear on any control interaction (play, skip, seek, volume, speed, options, TOC), manual scroll, or keyboard shortcut
 - Bars remain visible when media is paused, stopped, or ended, and when any panel or modal is open
 
+### Fixed
+- PWA does not pick up updates until manually closed and reopened — added `controllerchange` listener that auto-reloads the page when a new service worker activates
+
 ### Changed
 - Service worker cache key bumped from `verte-v1` to `verte-v2`
 - App version bumped to 2.1.0

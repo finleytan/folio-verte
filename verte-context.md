@@ -166,6 +166,7 @@
 | Scroll-pause detection | 2572 | Passive scroll listener on `#eScroll`, throttled via rAF. Sets `scrollPaused=true` for 2s. Also calls `resetBarTimer()` on manual scroll |
 | Auto-hide dblclick | 2623 | PWA only — `dblclick` on `#eScroll` toggles bar visibility via `hideBars()`/`resetBarTimer()` |
 | Close opts panel | 2634 | Click outside `#optPanel` closes it |
+| SW registration + auto-reload | 4161 | Registers `sw.js`; `controllerchange` listener reloads page when new SW activates |
 | Swipe gestures | 4148 | Touch-swipe left/right on `#eScroll` for skip |
 
 ---
