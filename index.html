@@ -732,6 +732,14 @@ html,body,
           <div class="op-row"><span class="op-lbl">Width</span><div style="display:flex;align-items:center;gap:8px"><span class="op-val" id="mwLbl">680px</span><input type="range" class="op-slider" id="mwSlider" min="380" max="900" step="20" value="680" oninput="setMW(this.value)"></div></div>
           <div class="op-row"><span class="op-lbl">Align</span><div class="pills"><button class="ipill active" id="alignPill-left" onclick="setAlign('left',this)">L</button><button class="ipill" id="alignPill-justify" onclick="setAlign('justify',this)">J</button><button class="ipill" id="alignPill-center" onclick="setAlign('center',this)">C</button></div></div>
         </div>
+        <div class="op-sec" id="orientSec" style="display:none">
+          <div class="op-ttl">Orientation</div>
+          <div class="pills">
+            <button class="pill active" id="orientPill-auto" onclick="setOrientation('auto',this)">Auto</button>
+            <button class="pill" id="orientPill-portrait" onclick="setOrientation('portrait',this)">Portrait</button>
+            <button class="pill" id="orientPill-landscape" onclick="setOrientation('landscape',this)">Landscape</button>
+          </div>
+        </div>
       </div>
       <div class="op-tab-body" id="opTab-advanced" style="display:none">
         <div class="op-sec" style="color:var(--text3);font-size:12px;line-height:1.7">
@@ -982,7 +990,7 @@ html,body,
 'use strict';
 
 // ── App version ───────────────────────────────────
-const APP_VERSION = '2.1.2';
+const APP_VERSION = '2.2.0';
 
 // ══════════════════════════════════════════════════════
 // STATE
@@ -1538,6 +1546,7 @@ function saveDisplayPrefs(){
     wordHl:wordHlOn, sentHl:sentHlOn,
     hlMode:!sentHlOn?'off':wordHlOn?'word':'sentence',
     wpm, sentPauseMs,
+    orientation: document.querySelector('.pill.active[id^=orientPill]')?.id?.replace('orientPill-','') || 'auto',
   };
   localStorage.setItem(DISPLAY_PREFS_KEY,JSON.stringify(prefs));
 }
@@ -1583,6 +1592,14 @@ function loadDisplayPrefs(){
     _syncHlPills();
     if(p.wpm){ wpm=p.wpm; document.getElementById('defWpmSlider').value=wpm; document.getElementById('defWpmInput').value=wpm; updateWpmLabel(); }
     if(p.sentPauseMs!==undefined){ sentPauseMs=p.sentPauseMs; document.getElementById('sentPauseLbl').textContent=sentPauseMs+'ms'; }
+    if(IS_PWA&&screen.orientation&&screen.orientation.lock){
+      document.getElementById('orientSec').style.display='';
+      if(p.orientation&&p.orientation!=='auto'){
+        document.querySelectorAll('[id^=orientPill]').forEach(b=>b.classList.remove('active'));
+        document.getElementById('orientPill-'+p.orientation)?.classList.add('active');
+        screen.orientation.lock(p.orientation).catch(function(){});
+      }
+    }
     updateThemeColor();
   }catch(e){}
 }
@@ -2557,6 +2574,15 @@ function setAlign(a,btn){
   const ec=document.getElementById('eContent'); if(ec) ec.style.textAlign=a;
   document.querySelectorAll('[id^=alignPill]').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  saveDisplayPrefs();
+}
+function setOrientation(mode,btn){
+  document.querySelectorAll('[id^=orientPill]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(screen.orientation&&screen.orientation.lock){
+    if(mode==='auto') screen.orientation.unlock();
+    else screen.orientation.lock(mode).catch(function(){});
+  }
   saveDisplayPrefs();
 }
 function setDefaultWpmFromSlider(v){ wpm=parseInt(v); document.getElementById('defWpmInput').value=wpm; updateWpmLabel(); saveDisplayPrefs(); }

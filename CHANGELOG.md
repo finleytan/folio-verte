@@ -2,6 +2,20 @@
 
 ---
 
+## v2.2 — 2026-03-16
+
+### Added
+- Screen orientation lock setting in Display options (PWA only) — choose Auto, Portrait, or Landscape
+- Preference persisted in display prefs and restored on app load
+
+### Changed
+- Manifest default orientation set to `portrait` (was `any`)
+- Auto-hide bars: manual scroll no longer reappears bars; single tap on reading area shows bars when hidden
+- Bars now fully collapse (height transitions to 0) so reading area expands to fill the screen
+- App version bumped to 2.2.0
+
+---
+
 ## v2.1 — 2026-03-16
 
 ### Added
