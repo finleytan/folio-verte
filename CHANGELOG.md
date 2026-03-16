@@ -2,6 +2,20 @@
 
 ---
 
+## v2.1 — 2026-03-16
+
+### Added
+- Auto-hide player bars in PWA mode — top bar and bottom controls fade out after 6 seconds of inactivity during active playback, creating an immersive reading experience
+- Double-tap on reading area toggles bar visibility in PWA mode
+- Bars automatically reappear on any control interaction (play, skip, seek, volume, speed, options, TOC), manual scroll, or keyboard shortcut
+- Bars remain visible when media is paused, stopped, or ended, and when any panel or modal is open
+
+### Changed
+- Service worker cache key bumped from `verte-v1` to `verte-v2`
+- App version bumped to 2.1.0
+
+---
+
 ## v2.0 — 2026-03-16
 
 ### Changed
