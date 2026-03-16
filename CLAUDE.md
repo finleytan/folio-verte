@@ -28,5 +28,6 @@ Single-file HTML PWA (~4,299 lines). Audiobook/ebook reader with synced highligh
 - Deliver changes as find/replace pairs only — never as diffs or patches
 - After delivering changes, always include the syntax check command
 
+**Read first every session**: [INSTRUCTIONS.md](INSTRUCTIONS.md)
 Detailed context and function line numbers: [verte-context.md](verte-context.md)
 Deep-reference fragile areas: [verte-fragile.md](verte-fragile.md)
