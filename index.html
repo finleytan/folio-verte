@@ -2578,7 +2578,6 @@ function toggleOpInfo(el){ const parent=el.closest('.op-ttl')||el.closest('.op-r
     if(_scrollRaf) return; // already queued
     _scrollRaf=requestAnimationFrame(()=>{
       _scrollRaf=null;
-      resetBarTimer();
       if(!autoScroll) return;
       scrollPaused=true;
       if(_scrollPauseTimer) clearTimeout(_scrollPauseTimer);
