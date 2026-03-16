@@ -5,18 +5,19 @@
 ## v2.1 — 2026-03-16
 
 ### Added
-- Auto-hide player bars in PWA mode — top bar and bottom controls fade out after 6 seconds of inactivity during active playback, creating an immersive reading experience
-- Double-tap on reading area toggles bar visibility in PWA mode
+- Auto-hide player bars in PWA mode — top bar and bottom controls collapse after 6 seconds of inactivity during active playback; reading area expands to fill the freed space
+- Single tap on reading area restores bars when hidden
 - Bars automatically reappear on any control interaction (play, skip, seek, volume, speed, options, TOC), manual scroll, or keyboard shortcut
 - Bars remain visible when media is paused, stopped, or ended, and when any panel or modal is open
 
 ### Fixed
 - PWA does not pick up updates until manually closed and reopened — added `controllerchange` listener that auto-reloads the page when a new service worker activates
 - Auto-hide timer never starts on playback — `resetBarTimer()` was called before `setMediaState('playing')`, so the guard always saw stale state
+- Auto-hide CSS rule broken after theme change — `setTheme()` wipes `body.className` removing `is-pwa`; removed redundant `body.is-pwa` scoping from CSS since JS is already gated by `IS_PWA`
 
 ### Changed
 - Service worker cache key bumped from `verte-v1` to `verte-v2`
-- App version bumped to 2.1.1
+- App version bumped to 2.1.2
 
 ---
 
