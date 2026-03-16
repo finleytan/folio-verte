@@ -1593,13 +1593,11 @@ function loadDisplayPrefs(){
     if(p.wpm){ wpm=p.wpm; document.getElementById('defWpmSlider').value=wpm; document.getElementById('defWpmInput').value=wpm; updateWpmLabel(); }
     if(p.sentPauseMs!==undefined){ sentPauseMs=p.sentPauseMs; document.getElementById('sentPauseLbl').textContent=sentPauseMs+'ms'; }
     if(IS_PWA){
-      var canLock=false;
-      try{canLock=typeof screen.orientation.lock==='function';}catch(e){}
-      if(canLock) document.getElementById('orientSec').style.display='';
-      if(canLock&&p.orientation&&p.orientation!=='auto'){
+      document.getElementById('orientSec').style.display='';
+      if(p.orientation&&p.orientation!=='auto'){
         document.querySelectorAll('[id^=orientPill]').forEach(b=>b.classList.remove('active'));
         document.getElementById('orientPill-'+p.orientation)?.classList.add('active');
-        screen.orientation.lock(p.orientation).catch(function(){});
+        try{screen.orientation.lock(p.orientation).catch(function(){});}catch(e){}
       }
     }
     updateThemeColor();
