@@ -58,7 +58,7 @@
 | `cycleLibSort` | 1857 | Library UI | Cycles A–Z / Recent / Progress; persists to `verte_lib_sort_v1` |
 | `cycleLibFilter` | 1866 | Library UI | Cycles All / Audiobooks / Ebooks; persists to `verte_lib_filter_v1` |
 | `_sortedLibIndices` | 1875 | Library UI | Returns library indices sorted by current `_libSort` order |
-| `renderLib` | 1886 | Library UI | Shows onboarding card when library is empty (browser mode); applies search/sort/filter; pencil icon opens Edit Book modal |
+| `renderLib` | 1886 | Library UI | Shows onboarding card when library is empty (browser mode); applies search/sort/filter; pencil icon opens Edit Book modal; adds `now-playing` class to card matching `_lastOpenedBookIdx` |
 | `unhideBook` | 2006 | Library UI | ⚠️ Shows resume/start-over prompt if book has saved progress |
 | `_doUnhide` | 2032 | Library UI | Executes unhide with optional progress reset |
 | `renameBook` | 2046 | Library UI | ⚠️ Remove blur listener before Enter/Escape to prevent double-fire |
@@ -96,7 +96,7 @@
 | `ttsPlay` | 2594 | TTS | ⚠️ ttsSpeaking owned here — stopScrollEngine must never set it. Reads rate from `rateCustom` input. Calls `resetBarTimer()` **after** the state quad (see fragile #41) |
 | `ttsPause` / `ttsStop` | 2646 | TTS | Call `clearBarTimer()` |
 | `scrubToPosition` | 2659 | TTS | |
-| `_resolveChapterAtIdx` | 2676 | Ebook Scrub | Returns chapter name at given sentence index; reused by `updateProg` and scrub tooltip |
+| `_resolveChapterAtIdx` | 2677 | Ebook Scrub | Returns chapter name at given sentence index; caches result via `_cachedChIdx`/`_cachedChLabel`/`_cachedChNext` to skip redundant `tocEntries` walks. Cache reset on book close/switch |
 | `_updateEbookScrub` | 2681 | Ebook Scrub | Syncs scrub bar fill/thumb to `curSent`; called from `updateProg()` |
 | `_showEbookScrub` | 2687 | Ebook Scrub | Shows/hides scrub bar; also ensures `#bottomControls` is visible when scrub bar is shown |
 | `_wireEbookScrub` | 2693 | Ebook Scrub | ⚠️ Pointer event handling for ebook scrub bar. Uses `setPointerCapture` for drag. Pauses TTS during scrub, restarts on release. Sets `curWord=-1` on commit (fragile #14). Called from `init()` |
@@ -143,8 +143,8 @@
 | `yieldToMain` | 3699 | Ebook | |
 | `loadEbook` | 3705 | Ebook | ⚠️ Uses `_ebookLoadGen` cancellation guard — stale loads abort after yields. Sets `totalSents` on book object after DOM build. Applies `item.cls` and `item.wordFmts` for inline formatting |
 | `splitSentences` | 3816 | Ebook | ⚠️ Two copies must stay in sync — worker copy inside _timingWorkerFn (~3234) |
-| `parseTxt` / `parseMd` / `parseHtml` | 3835 | Ebook | |
-| `extractFromDom` | 3857 | Ebook | ⚠️ Preserves inline formatting (italic, smallcaps) via `wordFmts`. Recognizes div classes (extract, num, right, center) as `cls`. Strips noise spans (pagebreak, spacec, gray, space, border) |
+| `parseTxt` / `parseMd` / `parseHtml` | 3835 | Ebook | `parseMd` uses two-pass regex: first strips paired markers (`**bold**`), then sweeps isolated `*_\`~` chars |
+| `extractFromDom` | 3857 | Ebook | ⚠️ Preserves inline formatting (italic, smallcaps) via `wordFmts`. Recognizes div classes (extract, num, right, center) as `cls`. Strips noise spans (pagebreak, spacec, gray, space, border). Maps `<p class="x-sg-chapter-heading">` to level-1 headings |
 | `parseEpub` | 3937 | Ebook | |
 | `extractEpubMeta` | 3974 | Ebook | Extracts `dc:title` and `dc:creator` from EPUB OPF metadata via regex. Loads JSZip if needed. Returns `{title, author}` or nulls on failure |
 | `arrayBufferToBase64` | 3997 | Ebook | |
@@ -223,6 +223,20 @@ sentenceTimings[i] = { start: number, end: number }  // sparse array (undefined 
 wordTimings[i] = { starts: Float64Array, count: number }  // sparse array
 transcriptWords[i] = { word: string, start: number, end: number }
 ```
+
+### Library State
+
+| Variable | Type | Purpose |
+|----------|------|---------|
+| `_lastOpenedBookIdx` | `number` | Index of last opened book; persists after `goLib()` resets `curBookIdx` to -1. Used by `renderLib()` for `now-playing` card indicator |
+
+### Chapter Cache
+
+| Variable | Type | Purpose |
+|----------|------|---------|
+| `_cachedChIdx` | `number` | Index into `tocEntries` for currently cached chapter (-1 = no cache) |
+| `_cachedChLabel` | `string` | Cached chapter label (truncated to 28 chars) |
+| `_cachedChNext` | `number` | `sentIdx` of next chapter boundary (Infinity if last chapter). Used to skip `tocEntries` walk when `curSent` is within range |
 
 ### Auto-Hide State (PWA only)
 

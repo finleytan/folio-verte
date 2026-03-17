@@ -2,6 +2,23 @@
 
 ---
 
+## v2.8 — 2026-03-17
+
+### Added
+- Now-playing indicator on library cards — accent border ring on last-opened book
+- `x-sg-chapter-heading` paragraph class mapped to level-1 headings in EPUB parser
+- Chapter index cache in `_resolveChapterAtIdx` — skips redundant TOC walks during playback
+
+### Fixed
+- `parseMd` leaving partial markdown symbols (stray `*`, `_`) in reader view — now uses two-pass regex
+- Install banner dismiss flag never expired — now uses 30-day timestamp with legacy backward compat
+- Relinking audio while Ebooks filter active caused book to disappear from library — filter auto-resets to All
+
+### Changed
+- Library list view gap increased from 6px to 10px
+
+---
+
 ## v2.7 — 2026-03-16
 
 ### Added
