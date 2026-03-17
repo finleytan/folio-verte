@@ -1,6 +1,6 @@
 # Verte
 
-Single-file HTML PWA (~4,433 lines). Audiobook/ebook reader with synced highlighting.
+Single-file HTML PWA (~4,860 lines). Audiobook/ebook reader with synced highlighting.
 
 ## CSS variable groups
 - Core palette: `--bg`, `--surface`, `--border`, `--text`, `--accent`, etc.

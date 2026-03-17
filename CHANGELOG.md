@@ -2,6 +2,42 @@
 
 ---
 
+## v2.7 — 2026-03-16
+
+### Added
+- Brand identity overhaul — IM Fell English wordmark font, V-mark SVG logo with gold fold corner, gold diamond divider, "Listen. Read. Disappear." tagline
+- Five-theme system — Parchment, Dark, Sepia, Sage, Midnight (all with gold #C8980A accent). Removed old Hi-C Dark theme
+- Theme color swatches — compact colored circles replace text pills in both player and library settings
+- Highlight colour picker — Blue, Amber, Green, Rose swatches in both player options and library settings, with double-ring active state
+- Library settings panel — full-screen overlay with close button, sections for Appearance, Playback defaults, Notifications, Library, Advanced, and About
+- Persisted preferences — auto-scroll, default playback rate, highlight colour, TTS voice, suppress-notx-banner, suppress-speed-toast, confirm-delete all saved to localStorage
+- Default playback rate — slider in library settings (0.5–3×), used as fallback when opening new books
+- TTS voice persistence — saved voice index restored when voices load asynchronously
+- Confirm delete toggle — skip inline confirmation when disabled
+- Suppress notifications — toggles for "no transcript" banner and speed change toasts
+
+### Fixed
+- Auto-scroll preference never persisted (always reset to true on launch)
+- updateWpmLabel crash on startup when #wpmSpeedLbl element missing
+- Speed change toasts shown even when user doesn't want them
+- "No transcript" banner shown even when user dismissed it
+- Theme selection in library settings not synced with player options panel
+
+---
+
+## v2.6 — 2026-03-16
+
+### Added
+- Library view modes — toggle between grid and list view with a button in the library header. List view shows compact horizontal cards with inline progress bars. Preference persisted to localStorage
+- Library search — real-time search input filters books by title or author
+- Library sort — cycle through A–Z, Recent (last opened), and Progress sort orders. Persisted to localStorage
+- Library filter — cycle through All, Audiobooks, and Ebooks filters. Persisted to localStorage
+- Unhide book resume/start-over prompt — when restoring a hidden PWA book with saved progress, an inline overlay asks whether to resume or start fresh. Books with no progress restore immediately
+- EPUB inline formatting preservation — `extractFromDom` now preserves italic (`<em>`/`<i>`), small-caps (`<span class="smallcaps">`), section breaks (`extract`/`extract1` divs), text alignment classes, and numbered list items from EPUB source. Noise spans (pagebreak, spacec, gray, etc.) are silently stripped
+- Native text selection fix — removed horizontal padding from `.word` spans and added `box-decoration-break:clone` to `.word` and `.sent` to eliminate selection highlight seams on Android Chrome
+
+---
+
 ## v2.5 — 2026-03-16
 
 ### Added
