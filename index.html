@@ -20,8 +20,8 @@
   --bg:#0E1014; --bg2:#181C20; --surface:#1E2228; --surface2:#262C34;
   --border:#303840; --text:#EEF0F4; --text2:#B0B8C4; --text3:#606870;
   --accent:#C8980A; --accent-text:#C8980A;
-  --hl-bg:rgba(200,152,10,.10); --hl-border:rgba(200,152,10,.42);
-  --word-hl:#C8980A; --shadow:rgba(0,0,10,.60);
+  --hl-bg:rgba(91,141,239,.12); --hl-border:rgba(91,141,239,.45);
+  --word-hl:#5B8DEF; --word-hl-text:#ffffff; --shadow:rgba(0,0,10,.60);
   --font-ui:'DM Sans',sans-serif; --font-body:'Lora',Georgia,serif;
   --font-size:18px; --line-height:1.88; --max-width:680px;
   --radius:14px; --radius-sm:8px; --touch:44px;
@@ -35,45 +35,45 @@ body.theme-light{
   --bg:#F5F0E2; --bg2:#EDE4CE; --surface:#E0D4B8; --surface2:#D4C6A4;
   --border:#B8A478; --text:#0A0C10; --text2:#2C2010; --text3:#6A5A3A;
   --accent:#C8980A; --accent-text:#7A5800;
-  --hl-bg:rgba(200,152,10,.13); --hl-border:rgba(200,152,10,.50);
-  --word-hl:#C8980A; --shadow:rgba(0,0,0,.10);
+  --hl-bg:rgba(91,141,239,.13); --hl-border:rgba(91,141,239,.50);
+  --word-hl:#5B8DEF; --shadow:rgba(0,0,0,.10);
   --amber-bg:#EDE4B0; --amber-border:#B8A060; --amber-text:#3A2808; --amber-muted:#6A5030;
 }
 body.theme-slate{
   --bg:#F1F3F6; --bg2:#E6E9EE; --surface:#D8DCE4; --surface2:#CBD0DA;
   --border:#ACB4C0; --text:#0A0C10; --text2:#1A2230; --text3:#566070;
   --accent:#C8980A; --accent-text:#7A5800;
-  --hl-bg:rgba(200,152,10,.11); --hl-border:rgba(200,152,10,.44);
-  --word-hl:#C8980A; --shadow:rgba(0,0,0,.09);
+  --hl-bg:rgba(91,141,239,.13); --hl-border:rgba(91,141,239,.50);
+  --word-hl:#5B8DEF; --shadow:rgba(0,0,0,.09);
   --amber-bg:#E8E4D0; --amber-border:#A89870; --amber-text:#2A2010; --amber-muted:#6A5830;
 }
 body.theme-night{
   --bg:#14203A; --bg2:#1E2E50; --surface:#1E2E50; --surface2:#243454;
   --border:#2E4060; --text:#EEF2F8; --text2:#A0B8D0; --text3:#4A6080;
-  --accent:#C8980A; --accent-text:#C8980A; --hl-bg:rgba(200,152,10,.10); --hl-border:rgba(200,152,10,.40);
-  --word-hl:#C8980A; --shadow:rgba(0,0,0,.45);
+  --accent:#C8980A; --accent-text:#C8980A; --hl-bg:rgba(91,141,239,.12); --hl-border:rgba(91,141,239,.45);
+  --word-hl:#5B8DEF; --shadow:rgba(0,0,0,.45);
   --amber-bg:#1a1800; --amber-border:#3a3000; --amber-text:#C8980A; --amber-muted:#a07808;
 }
 body.theme-umber{
   --bg:#2A1E14; --bg2:#362818; --surface:#42321E; --surface2:#4E3C28;
   --border:#604830; --text:#F0E4D0; --text2:#C8A878; --text3:#805840;
   --accent:#C8980A; --accent-text:#C8980A;
-  --hl-bg:rgba(200,152,10,.15); --hl-border:rgba(200,152,10,.55);
-  --word-hl:#C8980A; --shadow:rgba(0,0,0,.45);
+  --hl-bg:rgba(91,141,239,.12); --hl-border:rgba(91,141,239,.45);
+  --word-hl:#5B8DEF; --shadow:rgba(0,0,0,.45);
   --amber-bg:#1C1008; --amber-border:#503818; --amber-text:#C8980A; --amber-muted:#a07808;
 }
 body.theme-hclight{
   --bg:#ffffff; --bg2:#f8f8f8; --surface:#f8f8f8; --surface2:#eeeeee;
   --border:#000000; --text:#000000; --text2:#333333; --text3:#666666;
-  --accent:#0000cc; --accent-text:#0000cc; --hl-bg:#cce5ff; --hl-border:#0000cc; --word-hl:#0000cc;
+  --accent:#0000cc; --accent-text:#0000cc; --hl-bg:rgba(91,141,239,.13); --hl-border:rgba(91,141,239,.50); --word-hl:#5B8DEF;
   --amber-bg:#fffff0; --amber-border:#000000; --amber-text:#000000; --amber-muted:#333333;
 }
 body.theme-hcdark{
   --bg:#000000; --bg2:#0a0a0a; --surface:#111111; --surface2:#1a1a1a;
   --border:#ffffff; --text:#ffffff; --text2:#dddddd; --text3:#aaaaaa;
   --accent:#C8980A; --accent-text:#C8980A;
-  --hl-bg:rgba(200,152,10,.18); --hl-border:#C8980A;
-  --word-hl:#C8980A; --shadow:rgba(0,0,0,.80);
+  --hl-bg:rgba(91,141,239,.12); --hl-border:rgba(91,141,239,.45);
+  --word-hl:#5B8DEF; --shadow:rgba(0,0,0,.80);
   --amber-bg:#1a1000; --amber-border:#C8980A; --amber-text:#C8980A; --amber-muted:#a07808;
 }
 
@@ -428,7 +428,7 @@ body.theme-light .speed-pill{color:var(--text2);}
 @keyframes sent-pulse{0%{box-shadow:0 0 0 0 rgba(91,141,239,.5);}70%{box-shadow:0 0 0 8px rgba(91,141,239,0);}100%{box-shadow:none;}}
 .sent.sent-resume-pulse{animation:sent-pulse .8s ease-out;}
 .word{border-radius:2px;cursor:pointer;padding:0;}
-.word.word-active{background:var(--word-hl);color:white;border-radius:3px;}
+.word.word-active{background:var(--word-hl);color:var(--word-hl-text);border-radius:3px;}
 .word::selection,.word *::selection{-webkit-box-decoration-break:clone;box-decoration-break:clone;}
 @keyframes word-flash{0%{background:var(--accent);color:white;box-shadow:0 0 8px rgba(91,141,239,.5);}100%{background:transparent;color:inherit;box-shadow:none;}}
 .word.flashing{animation:word-flash .35s ease;}
@@ -754,10 +754,10 @@ html,body,
         </div>
         <div class="lib-set-label">Highlight colour</div>
         <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:12px">
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="hlColorSwatch-yellow" onclick="setHlColor('yellow')" style="background:#F5D800" title="Yellow"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Yellow</span></div>
           <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch active" id="hlColorSwatch-blue" onclick="setHlColor('blue')" style="background:#5B8DEF" title="Blue"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Blue</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="hlColorSwatch-amber" onclick="setHlColor('amber')" style="background:#C8980A" title="Amber"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Amber</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="hlColorSwatch-pink" onclick="setHlColor('pink')" style="background:#E8507A" title="Pink"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Pink</span></div>
           <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="hlColorSwatch-green" onclick="setHlColor('green')" style="background:#4CAF50" title="Green"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Green</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="hlColorSwatch-rose" onclick="setHlColor('rose')" style="background:#D34F63" title="Rose"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Rose</span></div>
         </div>
         <div class="lib-set-label">Playback defaults</div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -878,10 +878,10 @@ html,body,
           </div>
           <div class="op-row" style="margin-top:6px;gap:8px">
             <span class="op-lbl" style="flex:none;font-size:11px">Colour</span>
+            <button class="hl-swatch" id="hlColorSwatch2-yellow" onclick="setHlColor('yellow')" style="background:#F5D800" title="Yellow"></button>
             <button class="hl-swatch active" id="hlColorSwatch2-blue" onclick="setHlColor('blue')" style="background:#5B8DEF" title="Blue"></button>
-            <button class="hl-swatch" id="hlColorSwatch2-amber" onclick="setHlColor('amber')" style="background:#C8980A" title="Amber"></button>
+            <button class="hl-swatch" id="hlColorSwatch2-pink" onclick="setHlColor('pink')" style="background:#E8507A" title="Pink"></button>
             <button class="hl-swatch" id="hlColorSwatch2-green" onclick="setHlColor('green')" style="background:#4CAF50" title="Green"></button>
-            <button class="hl-swatch" id="hlColorSwatch2-rose" onclick="setHlColor('rose')" style="background:#D34F63" title="Rose"></button>
           </div>
         </div>
         <input type="hidden" id="rateCustom" value="1">
@@ -1211,7 +1211,7 @@ html,body,
 'use strict';
 
 // ── App version ───────────────────────────────────
-const APP_VERSION = '2.9.0';
+const APP_VERSION = '2.10.0';
 
 // ══════════════════════════════════════════════════════
 // STATE
@@ -1841,7 +1841,7 @@ function loadDisplayPrefs(){
     }
     if(p.autoScroll!==undefined){ autoScroll=p.autoScroll; var ast=document.getElementById('asToggle'); if(ast) ast.classList.toggle('on',autoScroll); }
     if(p.defaultPlaybackRate!==undefined){ defaultPlaybackRate=p.defaultPlaybackRate; var dsl=document.getElementById('defSpeedSlider'); if(dsl) dsl.value=defaultPlaybackRate; var dsLbl=document.getElementById('defSpeedLbl'); if(dsLbl) dsLbl.textContent=defaultPlaybackRate.toFixed(2)+'x'; }
-    if(p.hlColor){ hlColor=p.hlColor; if(typeof _applyHlColor==='function') _applyHlColor(); }
+    if(p.hlColor){ hlColor=['yellow','blue','pink','green'].includes(p.hlColor)?p.hlColor:'blue'; if(typeof _applyHlColor==='function') _applyHlColor(); }
     if(p.ttsVoiceIdx!==undefined){ window._pendingTtsVoiceIdx=p.ttsVoiceIdx; }
     if(p.suppressNotxBanner!==undefined){ suppressNotxBanner=p.suppressNotxBanner; var snt=document.getElementById('suppressNotxToggle'); if(snt) snt.classList.toggle('on',suppressNotxBanner); }
     if(p.suppressSpeedToast!==undefined){ suppressSpeedToast=p.suppressSpeedToast; var sst=document.getElementById('suppressSpeedToggle'); if(sst) sst.classList.toggle('on',suppressSpeedToast); }
@@ -3052,20 +3052,24 @@ function setTheme(t,btn){
   var libPill=document.getElementById('libThemePill-'+libKey);
   if(libPill) libPill.classList.add('active');
   updateThemeColor();
+  _applyHlColor();
   saveDisplayPrefs();
 }
 function _applyHlColor(key){
   var colors={
-    blue:{bg:'rgba(91,141,239,.12)',border:'rgba(91,141,239,.45)',word:'#5B8DEF'},
-    amber:{bg:'rgba(200,152,10,.12)',border:'rgba(200,152,10,.45)',word:'#C8980A'},
-    green:{bg:'rgba(76,175,80,.12)',border:'rgba(76,175,80,.45)',word:'#4CAF50'},
-    rose:{bg:'rgba(211,79,99,.12)',border:'rgba(211,79,99,.45)',word:'#D34F63'}
+    yellow:{hlBg:'rgba(245,216,0,.18)',hlBgDark:'rgba(245,216,0,.15)',hlBorder:'rgba(245,216,0,.60)',hlBorderDark:'rgba(245,216,0,.55)',wordHl:'#F5D800',wordText:'#000000'},
+    blue:{hlBg:'rgba(91,141,239,.13)',hlBgDark:'rgba(91,141,239,.12)',hlBorder:'rgba(91,141,239,.50)',hlBorderDark:'rgba(91,141,239,.45)',wordHl:'#5B8DEF',wordText:'#ffffff'},
+    pink:{hlBg:'rgba(232,80,122,.13)',hlBgDark:'rgba(232,80,122,.12)',hlBorder:'rgba(232,80,122,.50)',hlBorderDark:'rgba(232,80,122,.45)',wordHl:'#E8507A',wordText:'#ffffff'},
+    green:{hlBg:'rgba(76,175,80,.13)',hlBgDark:'rgba(76,175,80,.12)',hlBorder:'rgba(76,175,80,.50)',hlBorderDark:'rgba(76,175,80,.45)',wordHl:'#3D9E40',wordText:'#ffffff'}
   };
   var c=colors[key||hlColor]||colors.blue;
+  var cls=document.body.className;
+  var dark=!cls.includes('theme-light')&&!cls.includes('theme-slate')&&!cls.includes('theme-hclight');
   var s=document.body.style;
-  s.setProperty('--hl-bg',c.bg);
-  s.setProperty('--hl-border',c.border);
-  s.setProperty('--word-hl',c.word);
+  s.setProperty('--hl-bg',dark?c.hlBgDark:c.hlBg);
+  s.setProperty('--hl-border',dark?c.hlBorderDark:c.hlBorder);
+  s.setProperty('--word-hl',c.wordHl);
+  document.documentElement.style.setProperty('--word-hl-text',c.wordText);
   document.querySelectorAll('[id^=hlColorSwatch-],[id^=hlColorSwatch2-]').forEach(function(b){b.classList.remove('active');});
   var k=key||hlColor;
   var el=document.getElementById('hlColorSwatch-'+k); if(el) el.classList.add('active');

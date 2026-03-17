@@ -2,6 +2,23 @@
 
 ---
 
+## v2.10.0 — 2026-03-17
+
+### Changed
+- **Highlight colour palette** replaced — amber and rose removed; yellow and pink added. New set: Yellow (#F5D800), Blue (#5B8DEF), Pink (#E8507A), Green (#4CAF50)
+- `_applyHlColor` now applies separate light/dark opacity variants for `--hl-bg` and `--hl-border` based on active theme (light themes use `.13`/`.50`; dark themes use `.12`/`.45`)
+- `setTheme` now calls `_applyHlColor()` after applying the new theme class, so highlight opacity is always correct for the active theme
+- Yellow highlight uses `--word-hl-text:#000000` (black) for word-level text; all other colours use `#ffffff` — eliminates poor contrast on yellow word highlight
+
+### Added
+- `--word-hl-text` CSS variable in `:root` (default `#ffffff`); set dynamically by `_applyHlColor`
+- `.word.word-active` now uses `color:var(--word-hl-text)` instead of hardcoded `color:white`
+
+### Fixed
+- Stored `amber` or `rose` highlight colour from previous sessions now falls back to `blue` on load
+
+---
+
 ## v2.9.0 — 2026-03-17
 
 ### Added

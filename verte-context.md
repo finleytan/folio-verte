@@ -6,7 +6,7 @@
 |------|-------|----------|
 | CSS | 18–657 | All styles |
 | HTML | 658–1209 | 4 screens + 4 modals |
-| JS | 1210–4932 | All logic |
+| JS | 1210–4934 | All logic |
 
 ### HTML Structure
 
@@ -118,9 +118,9 @@
 | `buildToc` | 2911 | TOC | |
 | `updateTocActive` | 2960 | TOC | |
 | `toggleOpts` / `switchOptTab` | 2972 | Options | |
-| `setTheme` | 2982 | Options | ⚠️ Wipes body.className — loses is-pwa class until reload (known issue #22). Syncs both `themePill-*` and `libThemePill-*` |
-| `_applyHlColor` | 2992 | Options | Sets `--hl-bg`, `--hl-border`, `--word-hl` CSS vars. Syncs both swatch sets. Does not save |
-| `setHlColor` | 3009 | Options | Sets `hlColor`, calls `_applyHlColor`, saves |
+| `setTheme` | 3047 | Options | ⚠️ Wipes body.className — loses is-pwa class until reload (known issue #22). Syncs both `themePill-*` and `libThemePill-*`. Calls `_applyHlColor()` after theme change to reapply light/dark opacity variants |
+| `_applyHlColor` | 3058 | Options | Sets `--hl-bg`, `--hl-border`, `--word-hl`, `--word-hl-text` CSS vars. Detects light vs dark theme from `body.className` and applies `hlBg`/`hlBgDark` variants accordingly. Four colours: yellow, blue, pink, green. Yellow uses `wordText:#000000` (black text on highlight); others use `#ffffff`. Syncs both swatch sets. Does not save |
+| `setHlColor` | 3078 | Options | Sets `hlColor`, calls `_applyHlColor`, saves |
 | `updateThemeColor` | 3014 | Options | |
 | `setFont` | 3018 | Options | |
 | `setFS` / `setLH` / `setMW` | 3035 | Options | |
