@@ -596,6 +596,24 @@ html,body,
 .delete-confirm-no{background:var(--surface2);border:1px solid var(--border);color:var(--text2);
   font-size:12px;font-weight:500;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:var(--font-ui);}
 
+/* ── STATUS MENU (mark as) ── */
+.status-menu{
+  position:absolute;inset:0;background:rgba(10,5,5,.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;border-radius:var(--radius);z-index:10;padding:14px 12px;
+  animation:fadeIn .15s ease;
+}
+.status-menu-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);}
+.status-menu-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.status-menu-btn{
+  background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);
+  font-size:11px;font-weight:500;padding:5px 10px;border-radius:20px;cursor:pointer;
+  font-family:var(--font-ui);display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;
+}
+.status-menu-btn:hover{background:rgba(255,255,255,.1);color:white;border-color:rgba(255,255,255,.3);}
+.status-menu-btn.active{background:rgba(200,152,10,.15);border-color:var(--accent);color:var(--accent);}
+.status-menu-btn .sm-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+
 /* ── SLEEP TIMER BADGE ── */
 #sleepTimerBtn{position:relative;}
 #sleepTimerBadge{
@@ -770,32 +788,32 @@ html,body,
       <div class="s-section">
         <div class="s-label">Theme</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-light" onclick="setTheme('light',this)" style="background:#F5F0E2" title="Tallow"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Tallow</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-slate" onclick="setTheme('slate',this)" style="background:#F1F3F6" title="Quire"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Quire</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-umber" onclick="setTheme('umber',this)" style="background:#2A1E14" title="Umber"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Umber</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch active" id="sTheme-dark" onclick="setTheme('',this)" style="background:#0E1014" title="Iron"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Iron</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-night" onclick="setTheme('night',this)" style="background:#14203A" title="Vesper"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Vesper</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-hclight" onclick="setTheme('hclight',this)" style="background:#ffffff;border-color:#ccc" title="Hi-C Light"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Hi-C Light</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-hcdark" onclick="setTheme('hcdark',this)" style="background:#000000;border-color:#ffffff" title="Hi-C Dark"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Hi-C Dark</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-light" onclick="setTheme('light',this)" style="background:#F5F0E2" title="Tallow" aria-label="Tallow theme"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Tallow</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-slate" onclick="setTheme('slate',this)" style="background:#F1F3F6" title="Quire" aria-label="Quire theme"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Quire</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-umber" onclick="setTheme('umber',this)" style="background:#2A1E14" title="Umber" aria-label="Umber theme"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Umber</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch active" id="sTheme-dark" onclick="setTheme('',this)" style="background:#0E1014" title="Iron" aria-label="Iron theme"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Iron</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-night" onclick="setTheme('night',this)" style="background:#14203A" title="Vesper" aria-label="Vesper theme"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Vesper</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-hclight" onclick="setTheme('hclight',this)" style="background:#ffffff;border-color:#ccc" title="Hi-C Light" aria-label="High contrast light theme"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Hi-C Light</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="theme-swatch" id="sTheme-hcdark" onclick="setTheme('hcdark',this)" style="background:#000000;border-color:#ffffff" title="Hi-C Dark" aria-label="High contrast dark theme"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Hi-C Dark</span></div>
         </div>
       </div>
       <div class="s-section">
         <div class="s-label">Highlight colour</div>
         <div style="display:flex;gap:8px;align-items:flex-start">
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="sHlColor-yellow" onclick="setHlColor('yellow')" style="background:#F5D800" title="Yellow"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Yellow</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch active" id="sHlColor-blue" onclick="setHlColor('blue')" style="background:#5B8DEF" title="Blue"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Blue</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="sHlColor-pink" onclick="setHlColor('pink')" style="background:#E8507A" title="Pink"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Pink</span></div>
-          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="sHlColor-green" onclick="setHlColor('green')" style="background:#4CAF50" title="Green"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Green</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="sHlColor-yellow" onclick="setHlColor('yellow')" style="background:#F5D800" title="Yellow" aria-label="Yellow highlight"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Yellow</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch active" id="sHlColor-blue" onclick="setHlColor('blue')" style="background:#5B8DEF" title="Blue" aria-label="Blue highlight"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Blue</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="sHlColor-pink" onclick="setHlColor('pink')" style="background:#E8507A" title="Pink" aria-label="Pink highlight"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Pink</span></div>
+          <div style="display:inline-flex;flex-direction:column;align-items:center"><button class="hl-swatch" id="sHlColor-green" onclick="setHlColor('green')" style="background:#4CAF50" title="Green" aria-label="Green highlight"></button><span style="display:block;font-size:9px;color:var(--text3);text-align:center;margin-top:3px;font-family:var(--font-ui)">Green</span></div>
         </div>
       </div>
       <div class="s-section">
         <div class="s-label">Font</div>
         <div class="pills">
-          <button class="pill active" id="sFont-lora" onclick="setFont('Lora,Georgia,serif','lora',this)">Lora</button>
-          <button class="pill" id="sFont-georgia" onclick="setFont('Georgia,serif','georgia',this)">Georgia</button>
-          <button class="pill" id="sFont-sans" onclick="setFont('DM Sans,sans-serif','sans',this)">DM Sans</button>
-          <button class="pill" id="sFont-mono" onclick="setFont('Courier New,monospace','mono',this)">Courier New</button>
-          <button class="pill" id="sFont-dyslexic" onclick="setFont(&quot;'OpenDyslexic',sans-serif&quot;,'dyslexic',this)">OpenDyslexic</button>
+          <button class="pill active" id="sFont-lora" onclick="setFont('Lora,Georgia,serif','lora',this)" aria-label="Lora font">Lora</button>
+          <button class="pill" id="sFont-georgia" onclick="setFont('Georgia,serif','georgia',this)" aria-label="Georgia font">Georgia</button>
+          <button class="pill" id="sFont-sans" onclick="setFont('DM Sans,sans-serif','sans',this)" aria-label="DM Sans font">DM Sans</button>
+          <button class="pill" id="sFont-mono" onclick="setFont('Courier New,monospace','mono',this)" aria-label="Courier New font">Courier New</button>
+          <button class="pill" id="sFont-dyslexic" onclick="setFont(&quot;'OpenDyslexic',sans-serif&quot;,'dyslexic',this)" aria-label="OpenDyslexic font">OpenDyslexic</button>
         </div>
       </div>
       <div class="s-section">
@@ -803,14 +821,14 @@ html,body,
         <div class="s-row"><span class="s-lbl">Font size</span><div style="display:flex;align-items:center;gap:8px"><span class="s-val" id="sFontSizeLbl">18px</span><input type="range" class="s-slider" id="sFontSize" min="13" max="28" value="18" oninput="setFS(this.value)"></div></div>
         <div class="s-row"><span class="s-lbl">Line height</span><div style="display:flex;align-items:center;gap:8px"><span class="s-val" id="sLineHeightLbl">1.88</span><input type="range" class="s-slider" id="sLineHeight" min="1.3" max="2.4" step="0.05" value="1.88" oninput="setLH(this.value)"></div></div>
         <div class="s-row"><span class="s-lbl">Width</span><div style="display:flex;align-items:center;gap:8px"><span class="s-val" id="sMaxWidthLbl">680px</span><input type="range" class="s-slider" id="sMaxWidth" min="380" max="900" step="20" value="680" oninput="setMW(this.value)"></div></div>
-        <div class="s-row"><span class="s-lbl">Align</span><div class="pills"><button class="ipill active" id="sAlign-left" onclick="setAlign('left',this)">L</button><button class="ipill" id="sAlign-justify" onclick="setAlign('justify',this)">J</button><button class="ipill" id="sAlign-center" onclick="setAlign('center',this)">C</button></div></div>
+        <div class="s-row"><span class="s-lbl">Align</span><div class="pills"><button class="ipill active" id="sAlign-left" onclick="setAlign('left',this)" aria-label="Align left">L</button><button class="ipill" id="sAlign-justify" onclick="setAlign('justify',this)" aria-label="Justify">J</button><button class="ipill" id="sAlign-center" onclick="setAlign('center',this)" aria-label="Align center">C</button></div></div>
       </div>
       <div class="s-section" id="sOrientSec" style="display:none">
         <div class="s-label">Orientation</div>
         <div class="pills">
-          <button class="pill active" id="sOrient-auto" onclick="setOrientation('auto',this)">Auto</button>
-          <button class="pill" id="sOrient-portrait" onclick="setOrientation('portrait',this)">Portrait</button>
-          <button class="pill" id="sOrient-landscape" onclick="setOrientation('landscape',this)">Landscape</button>
+          <button class="pill active" id="sOrient-auto" onclick="setOrientation('auto',this)" aria-label="Auto orientation">Auto</button>
+          <button class="pill" id="sOrient-portrait" onclick="setOrientation('portrait',this)" aria-label="Portrait orientation">Portrait</button>
+          <button class="pill" id="sOrient-landscape" onclick="setOrientation('landscape',this)" aria-label="Landscape orientation">Landscape</button>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5">Locking enters fullscreen. Reverts to auto when you exit fullscreen.</div>
       </div>
@@ -822,24 +840,24 @@ html,body,
         <div class="s-label">Highlight</div>
         <div class="s-row" style="margin-top:2px">
           <div class="pills" style="width:100%">
-            <button class="pill" id="sHlMode-off" onclick="setHighlightMode('off')" style="flex:1;text-align:center">Off</button>
-            <button class="pill" id="sHlMode-sentence" onclick="setHighlightMode('sentence')" style="flex:1.4;text-align:center">Sentence</button>
-            <button class="pill" id="sHlMode-word" onclick="setHighlightMode('word')" style="flex:2.2;text-align:center">Sentence + Word</button>
+            <button class="pill" id="sHlMode-off" onclick="setHighlightMode('off')" style="flex:1;text-align:center" aria-label="Highlighting off">Off</button>
+            <button class="pill" id="sHlMode-sentence" onclick="setHighlightMode('sentence')" style="flex:1.4;text-align:center" aria-label="Sentence highlighting">Sentence</button>
+            <button class="pill" id="sHlMode-word" onclick="setHighlightMode('word')" style="flex:2.2;text-align:center" aria-label="Sentence and word highlighting">Sentence + Word</button>
           </div>
         </div>
       </div>
       <div class="s-section">
         <div class="s-label">Controls</div>
-        <div class="s-row"><span class="s-lbl">Auto-scroll</span><button class="toggle on" id="sAutoScroll" onclick="toggleAS()"></button></div>
+        <div class="s-row"><span class="s-lbl">Auto-scroll</span><button class="toggle on" id="sAutoScroll" onclick="toggleAS()" aria-label="Toggle auto-scroll"></button></div>
         <div class="s-row" style="gap:8px">
           <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px" id="sResyncBtn" onclick="resync()">↺ Resync</button>
         </div>
         <div class="s-row" id="sOffsetRow" style="display:none">
           <span class="s-lbl">Sync offset <span class="s-info-btn" onclick="toggleOpInfo(this)">ⓘ</span></span>
           <div style="display:flex;align-items:center;gap:6px">
-            <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="adjustOffset(-0.5)">-0.5s</button>
+            <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="adjustOffset(-0.5)" aria-label="Decrease sync offset">-0.5s</button>
             <span id="sOffsetVal" style="font-size:13px;min-width:48px;text-align:center">0.0s</span>
-            <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="adjustOffset(+0.5)">+0.5s</button>
+            <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="adjustOffset(+0.5)" aria-label="Increase sync offset">+0.5s</button>
           </div>
         </div>
         <div class="s-desc" id="sOffsetDescRow" style="display:none">Shifts highlighting earlier or later to correct misalignment with the audio.</div>
@@ -852,11 +870,11 @@ html,body,
           <span class="s-val" id="sSpeedLbl">1.00×</span>
         </div>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="rate-preset-btn" onclick="setRate(0.75)">0.75×</button>
-          <button class="rate-preset-btn active" onclick="setRate(1)">1×</button>
-          <button class="rate-preset-btn" onclick="setRate(1.25)">1.25×</button>
-          <button class="rate-preset-btn" onclick="setRate(1.5)">1.5×</button>
-          <button class="rate-preset-btn" onclick="setRate(2)">2×</button>
+          <button class="rate-preset-btn" onclick="setRate(0.75)" aria-label="0.75 times speed">0.75×</button>
+          <button class="rate-preset-btn active" onclick="setRate(1)" aria-label="Normal speed">1×</button>
+          <button class="rate-preset-btn" onclick="setRate(1.25)" aria-label="1.25 times speed">1.25×</button>
+          <button class="rate-preset-btn" onclick="setRate(1.5)" aria-label="1.5 times speed">1.5×</button>
+          <button class="rate-preset-btn" onclick="setRate(2)" aria-label="2 times speed">2×</button>
         </div>
       </div>
       <div class="s-section">
@@ -871,12 +889,6 @@ html,body,
           </select>
         </div>
       </div>
-      <div class="s-section">
-        <div class="s-label">Sleep timer</div>
-        <div class="s-row">
-          <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px" onclick="cycleSleepTimer()">🌙 Cycle sleep timer</button>
-        </div>
-      </div>
     </div>
 
     <!-- ── LIBRARY ── -->
@@ -884,9 +896,9 @@ html,body,
       <div class="s-section">
         <div class="s-label">Defaults for new books</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-          <button class="pill" id="sDefHl-off" onclick="setDefaultHlMode('off')">Off</button>
-          <button class="pill" id="sDefHl-sentence" onclick="setDefaultHlMode('sentence')">Sentence</button>
-          <button class="pill active" id="sDefHl-word" onclick="setDefaultHlMode('word')">Sentence + Word</button>
+          <button class="pill" id="sDefHl-off" onclick="setDefaultHlMode('off')" aria-label="Default highlighting off">Off</button>
+          <button class="pill" id="sDefHl-sentence" onclick="setDefaultHlMode('sentence')" aria-label="Default sentence highlighting">Sentence</button>
+          <button class="pill active" id="sDefHl-word" onclick="setDefaultHlMode('word')" aria-label="Default sentence and word highlighting">Sentence + Word</button>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <span style="font-size:11px;color:var(--text3);white-space:nowrap">Speed</span>
@@ -898,18 +910,18 @@ html,body,
         <div class="s-label">Library</div>
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0">
           <span style="font-size:12px;color:var(--text2)">Confirm before deleting</span>
-          <button class="toggle on" id="sConfirmDelete" onclick="toggleConfirmDelete()"></button>
+          <button class="toggle on" id="sConfirmDelete" onclick="toggleConfirmDelete()" aria-label="Toggle delete confirmation"></button>
         </div>
       </div>
       <div class="s-section">
         <div class="s-label">Notifications</div>
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0">
           <span style="font-size:12px;color:var(--text2)">Hide "no transcript" banner</span>
-          <button class="toggle" id="sSuppressNotx" onclick="toggleSuppressNotxBanner()"></button>
+          <button class="toggle" id="sSuppressNotx" onclick="toggleSuppressNotxBanner()" aria-label="Toggle sync banner"></button>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0">
           <span style="font-size:12px;color:var(--text2)">Hide speed change toasts</span>
-          <button class="toggle" id="sSuppressSpeed" onclick="toggleSuppressSpeedToast()"></button>
+          <button class="toggle" id="sSuppressSpeed" onclick="toggleSuppressSpeedToast()" aria-label="Toggle speed toast"></button>
         </div>
       </div>
       <button id="sRescanBtn" class="btn btn-ghost" style="display:none;width:100%;text-align:left;gap:8px;margin-top:8px" onclick="pwaScanAndRender();closeSettings()">🔄 Rescan library folder</button>
@@ -1260,7 +1272,7 @@ let folderFiles = [];
 let _hiddenBooks = [];
 let _libView = 'grid'; // 'grid' | 'list'
 let _libSort = 'alpha'; // 'alpha' | 'recent' | 'progress'
-let _libFilter = 'all'; // 'all' | 'audio' | 'ebook'
+let _libFilter = 'all'; // 'all' | 'new' | 'reading' | 'finished'
 let _fontBody = "'Lora',Georgia,serif";
 let _fontSize = 18;
 let _lineHeight = 1.88;
@@ -1738,6 +1750,8 @@ function saveBookProgress(){
   b.wpm=wpm; b.sentPauseMs=sentPauseMs;
   b.playbackRate=_audio.playbackRate||1;
   b.totalSents=sentences.length||b.totalSents||1;
+  const _p=b.totalSents>1?Math.round((b.curSent||0)/(b.totalSents-1)*100):0;
+  if(_p>=95&&b.status!=='finished') b.status='finished';
   saveLibrary();
 }
 
@@ -1920,10 +1934,10 @@ function cycleLibSort(){
   renderLib();
 }
 function cycleLibFilter(){
-  var filters=['all','audio','ebook'];
+  var filters=['all','new','reading','finished'];
   _libFilter=filters[(filters.indexOf(_libFilter)+1)%filters.length];
   try{localStorage.setItem('verte_lib_filter_v1',_libFilter);}catch(e){}
-  var labels={all:'All',audio:'Audiobooks',ebook:'Ebooks'};
+  var labels={all:'All','new':'Not Started',reading:'Reading',finished:'Finished'};
   var btn=document.getElementById('libFilterBtn');
   if(btn) btn.textContent=labels[_libFilter];
   renderLib();
@@ -1992,10 +2006,10 @@ function renderLib(){
   _order.forEach(i=>{
     const b=library[i];
     if(_ql&&b.title.toLowerCase().indexOf(_ql)<0&&(!b.author||b.author.toLowerCase().indexOf(_ql)<0)) return;
-    const hasAudio=b.audioUrl||b.audioHandle;
-    if(_libFilter==='audio'&&!hasAudio) return;
-    if(_libFilter==='ebook'&&hasAudio) return;
     const prog=b.totalSents>1?Math.round((b.curSent||0)/(b.totalSents-1)*100):0;
+    const hasAudio=b.audioUrl||b.audioHandle;
+    const effectiveStatus=b.status||(prog>=95?'finished':prog>0||b.lastOpened?'reading':'new');
+    if(_libFilter!=='all'&&effectiveStatus!==_libFilter) return;
     const [c1,c2]=coverGrad(b.title);
     const initials=coverInitials(b.title);
     const card=document.createElement('div');
@@ -2003,12 +2017,12 @@ function renderLib(){
     const coverInner = b.coverUrl
       ? `<img class="book-cover-img" src="${xh(b.coverUrl)}" alt="">`
       : `<div class="book-cover-art">${xh(initials)}</div>`;
-    const progLabel = prog===100
+    const progLabel = effectiveStatus==='finished'
       ? '<span class="book-done-badge">FINISHED</span>'
-      : prog>0
+      : effectiveStatus==='reading'
         ? `<div class="book-meta book-meta-progress">${prog}% complete</div>`
         : `<div class="book-meta book-meta-progress not-started">Not started</div>`;
-    const accentClass = prog>0 ? 'book-list-accent' : 'book-list-accent accent-none';
+    const accentClass = effectiveStatus!=='new' ? 'book-list-accent' : 'book-list-accent accent-none';
     card.innerHTML=`
       <div class="${accentClass}"></div>
       <div class="book-cover" style="background:linear-gradient(135deg,${c1},${c2})">
@@ -2023,7 +2037,8 @@ function renderLib(){
         <div class="book-prog-bar"><div class="book-prog-fill" style="width:${prog}%"></div></div>
       </div>
       <div class="book-card-actions">
-        <button class="card-action-btn" title="Edit" onclick="openEditBookModal(${i},event)">✏️</button>
+        <button class="card-action-btn" title="Reading status" onclick="markBook(${i},event)">◐</button>
+        <button class="card-action-btn" title="Edit details" onclick="openEditBookModal(${i},event)">✏️</button>
         <button class="card-action-btn" title="${IS_PWA?'Hide':'Delete'}" onclick="deleteBook(${i},event)">${IS_PWA?'🙈':'🗑️'}</button>
       </div>`;
     card.addEventListener('click',(e)=>{
@@ -2223,6 +2238,54 @@ function deleteBook(i,e){
   card.style.position='relative';
   card.appendChild(conf);
 }
+function markBook(i,e){
+  e.stopPropagation();
+  const card=e.target.closest('.book-card');
+  if(!card) return;
+  if(card.querySelector('.status-menu')) return;
+  const b=library[i];
+  const cur=b.status||null;
+  const menu=document.createElement('div');
+  menu.className='status-menu';
+  menu.innerHTML=`<div class="status-menu-title">Mark as</div>
+    <div class="status-menu-row">
+      <button class="status-menu-btn${cur==='new'?' active':''}" data-s="new"><span class="sm-dot" style="background:#6aa3f8"></span>Not Started</button>
+      <button class="status-menu-btn${cur==='reading'?' active':''}" data-s="reading"><span class="sm-dot" style="background:var(--accent)"></span>Reading</button>
+      <button class="status-menu-btn${cur==='finished'?' active':''}" data-s="finished"><span class="sm-dot" style="background:#4ade80"></span>Finished</button>
+    </div>`;
+  menu.querySelectorAll('[data-s]').forEach(btn=>{
+    btn.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      setBookStatus(i,btn.dataset.s||null);
+      menu.remove();
+    });
+  });
+  menu.addEventListener('click',ev=>{
+    ev.stopPropagation();
+    if(ev.target===menu) menu.remove();
+  });
+  card.style.position='relative';
+  card.appendChild(menu);
+}
+function setBookStatus(i,status){
+  const b=library[i];
+  if(!b) return;
+  if(status) b.status=status; else delete b.status;
+  if(status==='new'){
+    b.curSent=0; b.curWord=0; b.audioTime=0; b.lastOpened=0; b.totalSents=b.totalSents||1;
+  }
+  if(!IS_PWA) saveLibrary();
+  else{
+    const all=getPwaProgress();
+    const entry=all[b.id]||(all[b.id]={});
+    if(status) entry.status=status; else delete entry.status;
+    if(status==='new'){
+      entry.curSent=0; entry.curWord=0; entry.audioTime=0; entry.lastOpened=0;
+    }
+    localStorage.setItem(PWA_PROG_KEY,JSON.stringify(all));
+  }
+  renderLib();
+}
 
 // ── Shared setup when opening any book ──
 function configurePlayerForMode(b, audioSrc, rate){
@@ -2283,6 +2346,7 @@ async function openBook(i){
   if(IS_PWA && CAN_FS){ pwaOpenBook(i); return; }
   const b=library[i];
   b.lastOpened=Date.now();
+  if(!b.status||b.status==='new') b.status='reading';
   curBookIdx=i; _lastOpenedBookIdx=i;
   wpm=b.wpm||wpm; sentPauseMs=b.sentPauseMs||sentPauseMs;
   syncOffset=b.syncOffset||0; updateOffsetUI();
@@ -4236,7 +4300,7 @@ async function addBook(){
       transcriptType:txType, transcriptData:txData,
       coverUrl:coverUrl||null, coverName:upData.cover?.name||null,
       curSent:0, curWord:0, audioTime:0, wpm:150, sentPauseMs:500, playbackRate:1,
-      totalSents:1,
+      totalSents:1, status:'new',
     });
     saveLibrary(); renderLib(); closeModal();
   };
@@ -4724,6 +4788,8 @@ function savePwaProgress(){
   const b=library[curBookIdx];
   const prog={curSent,curWord,audioTime:isFinite(_audio.currentTime)?_audio.currentTime:0,wpm,sentPauseMs,playbackRate:_audio.playbackRate||1,syncOffset,totalSents:sentences.length||b.totalSents||1,lastOpened:b.lastOpened||Date.now()};
   Object.assign(b,prog);
+  const _p=b.totalSents>1?Math.round((b.curSent||0)/(b.totalSents-1)*100):0;
+  if(_p>=95&&b.status!=='finished'){ b.status='finished'; prog.status='finished'; }
   const all=getPwaProgress();
   all[b.id]=prog;
   localStorage.setItem(PWA_PROG_KEY,JSON.stringify(all));
@@ -4731,6 +4797,7 @@ function savePwaProgress(){
 async function pwaOpenBook(i){
   const b=library[i];
   b.lastOpened=Date.now();
+  if(!b.status||b.status==='new') b.status='reading';
   curBookIdx=i; _lastOpenedBookIdx=i;
   wpm=b.wpm||wpm; sentPauseMs=b.sentPauseMs||sentPauseMs;
   syncOffset=b.syncOffset||0; updateOffsetUI();
@@ -4947,9 +5014,10 @@ async function init(){
   try{
     _libSort=localStorage.getItem('verte_lib_sort_v1')||'alpha';
     _libFilter=localStorage.getItem('verte_lib_filter_v1')||'all';
+    if(['all','new','reading','finished'].indexOf(_libFilter)<0) _libFilter='all';
     var sb=document.getElementById('libSortBtn'),fb=document.getElementById('libFilterBtn');
     var sl={alpha:'A\u2013Z',recent:'Recent',progress:'Progress'};
-    var fl={all:'All',audio:'Audiobooks',ebook:'Ebooks'};
+    var fl={all:'All','new':'Not Started',reading:'Reading',finished:'Finished'};
     if(sb) sb.textContent=sl[_libSort]||'A\u2013Z';
     if(fb) fb.textContent=fl[_libFilter]||'All';
   }catch(e){}
