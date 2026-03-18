@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(node --check index.html)",
-      "Bash(npx playwright:*)"
+      "Bash(npx playwright:*)",
+      "Bash(ffmpeg -i \"E:/Audiobooks/Melissa Brayden/Soho Loft/Soho Loft 02 Just Three Words/Soho Loft 02 Just Three Words.mp3\" -ac 2 -ar 44100 \"E:/Audiobooks/Melissa Brayden/Soho Loft/Soho Loft 02 Just Three Words/Soho Loft 02 Just Three Words - fixed.mp3\")"
     ]
   }
 }
