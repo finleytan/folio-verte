@@ -2,6 +2,20 @@
 
 ---
 
+## v2.14.0 — 2026-03-18
+
+### Added
+- **Chapter skip buttons** — `⏮`/`⏭` buttons in bottom controls to jump between chapters; hidden when book has no TOC
+- **Chapter counter in top bar** — shows `Ch 3/18 · Chapter Name · 45%`; counts only chapter-like headings (Chapter, Prologue, Epilogue, Part, etc.) and bare numbers, excluding frontmatter
+- `skipChapter(dir)` function — finds chapter boundaries from `tocEntries`, seeks audio using end-time of last matched sentence before chapter boundary for accurate sync
+
+### Changed
+- `_updateSkipBtns()` now shows/hides chapter skip buttons based on `tocEntries` availability
+- `updateProg()` now computes chapter counter from filtered chapter headings
+- `loadEbook` calls `_updateSkipBtns()` after `buildToc()` to show chapter buttons once TOC is populated
+
+---
+
 ## v2.13.0 — 2026-03-18
 
 ### Changed

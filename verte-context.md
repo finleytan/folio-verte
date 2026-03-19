@@ -6,7 +6,7 @@
 |------|-------|----------|
 | CSS | 18–656 | All styles — wrapped in `#region CSS` with sub-regions: Theme Variables, Layout & Components, Responsive & Animation |
 | HTML | 657–1221 | 4 screens + unified settings panel + 4 modals — wrapped in `#region HTML Templates` with sub-regions: Install Banner, PWA Screens, Library Screen, Settings Panel, Player Screen, Modals |
-| JS | 1222–5031 | All logic — wrapped in `#region JavaScript` with sub-regions: State & Constants, Core Utilities, Keyboard & Modal Navigation, PWA Install & DOM Cache, Persistence, Library UI, Playback, Reader UI, Transcript & Timing, Modals, PWA File System & Screen Router, Init |
+| JS | 1222–5090 | All logic — wrapped in `#region JavaScript` with sub-regions: State & Constants, Core Utilities, Keyboard & Modal Navigation, PWA Install & DOM Cache, Persistence, Library UI, Playback, Reader UI, Transcript & Timing, Modals, PWA File System & Screen Router, Init |
 
 ### HTML Structure
 
@@ -79,8 +79,9 @@
 | `setMediaState` | 2413 | Media Controls | |
 | `togglePlay` | 2416 | Media Controls | ⚠️ Shows toast if no audio and TTS off |
 | `mediaPlay` / `mediaPause` / `mediaStop` | 2422 | Media Controls | ⚠️ `mediaPlay` only acquires wake lock in `.then()` — all playback state (icon, mediaState, ticker) is set by the `play` event handler in `wireAudioEvents`, not here |
-| `_updateSkipBtns` | 2453 | Media Controls | Swaps skip button icons/labels: circular-arrow+15 for audio, chevrons for TTS; also handles big-skip (1m / 5 sentences) |
-| `skip` | 2468 | Media Controls | In TTS mode: ±1 sentence (15s) or ±5 sentences (60s). In audio mode: seeks by seconds |
+| `_updateSkipBtns` | 2472 | Media Controls | Swaps skip button icons/labels: circular-arrow+15 for audio, chevrons for TTS; also handles big-skip (1m / 5 sentences). Shows/hides chapter skip buttons based on `tocEntries` availability |
+| `skip` | 2487 | Media Controls | In TTS mode: ±1 sentence (15s) or ±5 sentences (60s). In audio mode: seeks by seconds |
+| `skipChapter` | 2502 | Media Controls | Jumps to next/prev chapter via `tocEntries`. Back: if >3 sentences into chapter jumps to its start, else previous chapter. Audio seek uses end-time of last matched sentence before chapter boundary. Handles TTS restart |
 | `changeSpeed` | 2474 | Media Controls | |
 | `cycleSpeed` | 2480 | Media Controls | Tap-to-cycle through RATE_STEPS; reads from `sRateCustom` in TTS mode |
 | `setRate` | 2487 | Media Controls | Also syncs `sSpeed` slider and `sSpeedLbl` in settings panel |
@@ -107,7 +108,7 @@
 | `_showEbookScrub` | 2860 | Ebook Scrub | Shows/hides scrub bar; also ensures `#bottomControls` is visible when scrub bar is shown |
 | `_wireEbookScrub` | 2866 | Ebook Scrub | ⚠️ Pointer event handling for ebook scrub bar. Uses `setPointerCapture` for drag. Pauses TTS during scrub, restarts on release. Sets `curWord=-1` on commit (fragile #14). Called from `init()` |
 | `updateHL` | 2939 | Highlighting | ⚠️ sentences[] holds live DOM refs — stale after any #eContent innerHTML wipe |
-| `updateProg` | 2951 | Highlighting | Uses `_resolveChapterAtIdx` for chapter label. Calls `_updateEbookScrub()` |
+| `updateProg` | 2951 | Highlighting | Uses `_resolveChapterAtIdx` for chapter label. Shows chapter counter (`Ch N/M`) filtered by chapter-like headings (Chapter, Prologue, Epilogue, Part, bare numbers). Calls `_updateEbookScrub()` |
 | `_cacheScrollMetrics` | 2960 | Highlighting | |
 | `scrollToSent` | 2967 | Highlighting | |
 | `toggleAS` | 2980 | Highlighting | Now calls `saveDisplayPrefs()` |

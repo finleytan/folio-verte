@@ -1047,6 +1047,9 @@ html,body,
           <span class="vol-pop-label" id="volPopLabel">100%</span>
         </div>
       </div>
+      <button class="ic-btn skip-btn ch-skip-btn" id="chSkipBackBtn" onclick="skipChapter(-1)" title="Previous chapter" aria-label="Previous chapter" style="display:none">
+        <svg class="ic-svg" viewBox="0 0 24 24"><line x1="4" y1="4" x2="4" y2="20" stroke-width="2.5"/><polygon points="20 4 8 12 20 20"/></svg>
+      </button>
       <button class="ic-btn skip-btn" id="bigSkipBackBtn" onclick="skip(-60)" title="−1m" aria-label="Skip back 1 minute">
         <svg class="ic-svg" viewBox="0 0 24 24"><polygon points="11 19 2 12 11 5"/><polygon points="22 19 13 12 22 5"/></svg>
       </button>
@@ -1059,6 +1062,9 @@ html,body,
       </button>
       <button class="ic-btn skip-btn" id="bigSkipFwdBtn" onclick="skip(60)" title="+1m" aria-label="Skip forward 1 minute">
         <svg class="ic-svg" viewBox="0 0 24 24"><polygon points="13 19 22 12 13 5"/><polygon points="2 19 11 12 2 5"/></svg>
+      </button>
+      <button class="ic-btn skip-btn ch-skip-btn" id="chSkipFwdBtn" onclick="skipChapter(1)" title="Next chapter" aria-label="Next chapter" style="display:none">
+        <svg class="ic-svg" viewBox="0 0 24 24"><polygon points="4 4 16 12 4 20"/><line x1="20" y1="4" x2="20" y2="20" stroke-width="2.5"/></svg>
       </button>
       <button class="speed-pill" id="rateBtnInline" onclick="cycleSpeed()" title="Tap to cycle speed" aria-label="Playback speed">1×</button>
     </div>
@@ -1237,7 +1243,7 @@ html,body,
 
 // #region State & Constants
 // ── App version ───────────────────────────────────
-const APP_VERSION = '2.13.0';
+const APP_VERSION = '2.14.0';
 
 // ══════════════════════════════════════════════════════
 // STATE
@@ -2483,11 +2489,51 @@ function _updateSkipBtns(){
     sf.title='+15s'; sf.setAttribute('aria-label','Skip forward 15 seconds');
     if(bf){ bf.title='+1m'; bf.setAttribute('aria-label','Skip forward 1 minute'); }
   }
+  const hasCh=tocEntries&&tocEntries.length>0;
+  const cb=$('chSkipBackBtn'), cf=$('chSkipFwdBtn');
+  if(cb) cb.style.display=hasCh?'':'none';
+  if(cf) cf.style.display=hasCh?'':'none';
 }
 function skip(s){
   resetBarTimer();
   if(ttsMode){ const n=Math.abs(s)>=60?(s>0?5:-5):(s>0?1:-1); nudge(n); return; }
   _audio.currentTime=Math.max(0,Math.min(_audio.duration||0,_audio.currentTime+s));
+}
+function skipChapter(dir){
+  resetBarTimer();
+  if(!tocEntries.length) return;
+  let best=-1;
+  for(let i=tocEntries.length-1;i>=0;i--){ if(tocEntries[i].sentIdx<=curSent){best=i;break;} }
+  let target;
+  if(dir>0){
+    target=best+1<tocEntries.length?best+1:null;
+  } else {
+    // If more than 3 sentences into current chapter, jump to its start; otherwise go to previous
+    target=best>=0&&curSent>tocEntries[best].sentIdx+3?best:(best>0?best-1:null);
+  }
+  if(target===null) return;
+  curSent=tocEntries[target].sentIdx; curWord=-1;
+  updateHL(); updateProg(); saveBookProgress();
+  if(!ttsMode&&sentenceTimings){
+    // Use end time of last matched sentence before chapter boundary — that's where
+    // the new chapter begins in the audio. Falls back to forward/backward start scan.
+    let seekTime=null;
+    for(let i=curSent-1;i>=0;i--){ if(sentenceTimings[i]){seekTime=sentenceTimings[i].end;break;} }
+    if(seekTime===null){
+      let t=sentenceTimings[curSent];
+      if(!t) for(let i=curSent+1;i<sentences.length;i++){ if(sentenceTimings[i]){t=sentenceTimings[i];break;} }
+      if(t) seekTime=t.start;
+    }
+    if(seekTime!==null) _audio.currentTime=Math.max(0,seekTime-syncOffset);
+  }
+  requestAnimationFrame(()=>{
+    scrollPaused=false;
+    scrollToSent(curSent,true);
+    if(ttsMode){
+      if(mediaState==='playing'){ ttsStop(); ttsPlay(); }
+      else if(ttsPaused){ ttsStop(); }
+    }
+  });
 }
 const RATE_STEPS=[0.5,0.75,1,1.25,1.5,1.75,2,2.5];
 function changeSpeed(dir){
@@ -2971,8 +3017,20 @@ function updateProg(){
   const pct=sentences.length>1?curSent/(sentences.length-1)*100:0;
   if(_readProg) _readProg.style.width=pct+'%';
   const ch=_resolveChapterAtIdx(curSent);
-  const chapterLabel=ch?(ch+' · '):'';
-  _pProg.textContent=sentences.length?chapterLabel+Math.round(pct)+'%':'—';
+  let label='';
+  if(tocEntries&&tocEntries.length>0){
+    const _chRx=/^(chapter|prologue|epilogue|part|book|act|section|interlude)\b|^\d+$/i;
+    const chEntries=tocEntries.filter(e=>_chRx.test(e.text.trim()));
+    const countable=chEntries.length>1?chEntries:tocEntries;
+    if(countable.length>1){
+      let chNum=0;
+      for(let i=0;i<countable.length;i++){ if(countable[i].sentIdx<=curSent) chNum=i+1; }
+      label='Ch '+chNum+'/'+countable.length+(ch?' · '+ch:'');
+    } else {
+      label=ch||'';
+    }
+  } else if(ch){ label=ch; }
+  _pProg.textContent=sentences.length?(label?label+' · ':'')+Math.round(pct)+'%':'—';
   if(curBookIdx>=0){ library[curBookIdx].totalSents=sentences.length; }
   _updateEbookScrub();
 }
@@ -3955,6 +4013,7 @@ async function loadEbook(book,onDone){
   content.addEventListener('click',_contentClickHandler);
   if(curBookIdx>=0) library[curBookIdx].totalSents=sentences.length||1;
   buildToc();
+  _updateSkipBtns();
   if(transcriptWords||transcriptText) await buildSentenceTimings();
   if(onDone) onDone();
   else{ curSent=0; curWord=0; updateHL(); updateProg(); }
